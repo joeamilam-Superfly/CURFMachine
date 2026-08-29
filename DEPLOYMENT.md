@@ -29,3 +29,7 @@ See `SECURITY-AND-PRIVACY.md` for the full reasoning behind both of those.
 ## What this does and does not solve
 
 This proxy keeps the API key out of the browser and makes the traffic eligible to sit behind a Zero Data Retention arrangement. It does not, by itself, grant that arrangement, redact sensitive fields, or make the decision about which patents are sensitive enough to withhold from the pipeline entirely. Those are policy decisions for CURF, not something this file can decide for you.
+
+## If a function route still 404s after this
+
+Check Netlify's deploy log for the specific build (Site > Deploys > click the deploy > Deploy log) and look for a "Functions bundling" section. It should list both `evaluate-patent` and `fetch-clemson-patents` by name. If a function is missing from that list entirely, the problem is upstream of routing, most likely the `netlify/functions` folder didn't make it into the repository or build as expected, check that first before touching netlify.toml again.

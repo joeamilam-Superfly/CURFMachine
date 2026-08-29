@@ -1,3 +1,19 @@
 [build]
   publish = "."
   functions = "netlify/functions"
+
+# Netlify always deploys a function at /.netlify/functions/<filename>,
+# regardless of any custom "config.path" export in the function file
+# itself, that mechanism has a confirmed bug in some environments where
+# it silently fails. These redirects map the friendlier paths the app
+# actually calls onto that always-available default URL instead.
+
+[[redirects]]
+  from = "/api/evaluate-patent"
+  to = "/.netlify/functions/evaluate-patent"
+  status = 200
+
+[[redirects]]
+  from = "/api/clemson-patents"
+  to = "/.netlify/functions/fetch-clemson-patents"
+  status = 200
