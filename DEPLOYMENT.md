@@ -1,11 +1,12 @@
 # Deploying the CURF Docket app for real
 
-This folder has four pieces:
+This folder has five pieces:
 
 - `index.html`, the app itself (this is the file the browser loads at the site's root by default, no redirect rule needed)
 - `netlify/functions/evaluate-patent.js`, the server side proxy that holds the Anthropic API key
 - `netlify/functions/fetch-clemson-patents.js`, the server side proxy that queries the USPTO PatentsView API for real Clemson assigned patents
 - `netlify.toml`, wiring so Netlify serves all of it together
+- `package.json`, declaring this project uses ES modules. This is required for the function syntax used here (`export default`, `export const config`) to be recognized by Netlify's build system at all. Without it, the functions silently fail to register and calling them returns a 404, not an error naming the actual problem.
 
 ## Before deploying with real IP data
 
