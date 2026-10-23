@@ -16,6 +16,18 @@
 // everything about HOW search is configured (which tool version,
 // max_uses, and the token budget) stays hardcoded here, the client
 // cannot expand or reconfigure it, only ask for it to be on or off.
+//
+// LICENSING TARGETS: a request with task "licensing_targets" asks who
+// the patent could be sold or licensed to. The prompt and the
+// licensing_targets output schema live in netlify/lib/licensing-targets.js.
+// That task turns search on itself (max_uses 3). The model JSON is
+// normalized before it is returned: entries need a real name, a type,
+// and a reason, and fewer than 3 credible destinations becomes a hard
+// pass. The list is not padded. The same normalizer runs when any
+// other call already returned licensing_targets or the older
+// top_acquirer_targets list. A core evaluation that leaves the list
+// empty is not rewritten. The fields travel inside the evaluation
+// object stored in evaluated_patents.record_json. No new table.
 // When on, this uses Anthropic's server side web search tool
 // (web_search_20250305, the basic non-agentic version, confirmed
 // current against Anthropic's own tool reference docs) so the model
@@ -43,17 +55,19 @@
 // request. Older advice describing a 10 second default with a paid
 // bump to 26 seconds is now out of date, current as of Netlify's own
 // docs checked when this was written. A web search heavy call that
-// runs the full 2 allowed searches plus model reasoning can
+// runs the full allowed searches plus model reasoning can
 // realistically approach or exceed that ceiling, especially on a
 // niche technical topic that takes the model longer to research. This
 // is exactly why the client now splits patent evaluation into two
 // separate calls: a fast, search free core evaluation every patent
-// needs, and a small, separate, search enabled call only made when the
-// path is LICENSE. If timeouts persist even with that split, lowering
+// needs, and a separate licensing-target search (max_uses 3) for any
+// patent that is not already a no-demand hard pass. If timeouts persist even with that split, lowering
 // max_uses further, or moving the acquirer search specifically to a
 // genuinely asynchronous background function with a polling endpoint,
 // a real architecture change, are the only remaining paths. Asking
 // Netlify for more time is not one of them.
+
+import { buildLicensingSearchRequest, rewriteLicensingInResponse } from "../lib/licensing-targets.js";
 
 export default async (req, context) => {
   if (req.method !== "POST") {
@@ -81,24 +95,39 @@ export default async (req, context) => {
     });
   }
 
-  const { system, messages, enableSearch } = body || {};
-  if (!system || !messages) {
+  const { system, messages, enableSearch, task } = body || {};
+  const licensingTask = task === "licensing_targets";
+  let systemPrompt = system;
+  let messageList = messages;
+  let searchOn = enableSearch === true;
+  let maxTokens = searchOn ? 2500 : 2000;
+  let tools;
+
+  if (licensingTask) {
+    const built = buildLicensingSearchRequest(body.patent);
+    systemPrompt = built.system;
+    messageList = built.messages;
+    searchOn = true;
+    maxTokens = built.max_tokens;
+    tools = built.tools;
+  } else if (searchOn) {
+    tools = [{ type: "web_search_20250305", name: "web_search", max_uses: 2 }];
+  }
+
+  if (!systemPrompt || !messageList) {
     return new Response(JSON.stringify({ error: "Request must include system and messages" }), {
       status: 400,
       headers: { "Content-Type": "application/json" }
     });
   }
 
-  const searchOn = enableSearch === true;
   const requestBody = {
     model: "claude-sonnet-4-6",
-    max_tokens: searchOn ? 2500 : 2000,
-    system: system,
-    messages: messages
+    max_tokens: maxTokens,
+    system: systemPrompt,
+    messages: messageList
   };
-  if (searchOn) {
-    requestBody.tools = [{ type: "web_search_20250305", name: "web_search", max_uses: 2 }];
-  }
+  if (tools) requestBody.tools = tools;
 
   try {
     const upstream = await fetch("https://api.anthropic.com/v1/messages", {
@@ -112,7 +141,8 @@ export default async (req, context) => {
     });
 
     const data = await upstream.json();
-    return new Response(JSON.stringify(data), {
+    const payload = upstream.ok ? rewriteLicensingInResponse(data, { enforce: licensingTask }) : data;
+    return new Response(JSON.stringify(payload), {
       status: upstream.status,
       headers: { "Content-Type": "application/json" }
     });

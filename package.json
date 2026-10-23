@@ -1,5 +1,11 @@
 {
   "name": "curf-docket",
   "private": true,
-  "type": "module"
+  "type": "module",
+  "scripts": {
+    "test": "node --test netlify/lib/licensing-targets.test.js netlify/lib/licensing-page.test.js"
+  },
+  "devDependencies": {
+    "jsdom": "^25.0.1"
+  }
 }
