@@ -184,12 +184,14 @@ test("reviewing a publication keeps it on the list and stores it in the portfoli
   const licensing = document.querySelector("#licensing-targets");
   const pilots = document.querySelector("#pilot-targets");
   assert.match(licensing.textContent, /Milliken/);
+  assert.doesNotMatch(licensing.textContent, /Hard pass/);
   assert.match(pilots.textContent, /Clemson River Lab/);
-  const modelCalls = calls.filter(call => call.href.includes("/api/evaluate-patent")).length;
-  assert.equal(modelCalls, 3);
+  assert.doesNotMatch(pilots.textContent, /hard pass/i);
+  const modelCalls = calls.filter(call => call.href.includes("/api/evaluate-patent"));
+  assert.deepEqual(modelCalls.map(call => call.task), ["publication_evidence", "licensing_targets", "pilot_targets"]);
   document.querySelector("#btn-review-publications").click();
   await flush();
-  assert.equal(calls.filter(call => call.href.includes("/api/evaluate-patent")).length, modelCalls);
+  assert.equal(calls.filter(call => call.href.includes("/api/evaluate-patent")).length, modelCalls.length);
   assert.match(document.querySelector("#pubwatch-body").textContent, /In the portfolio/);
   assert.deepEqual(errors, [], errors.join("\n"));
 });

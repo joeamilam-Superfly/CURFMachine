@@ -80,6 +80,8 @@
 
 import { buildLicensingSearchRequest, rewriteLicensingInResponse } from "../lib/licensing-targets.js";
 import { buildPilotSearchRequest, rewritePilotInResponse } from "../lib/pilot-targets.js";
+import { buildPublicationEvidenceRequest, rewritePublicationEvidence } from "../lib/venture-readiness.js";
+import { listGroupNames } from "../lib/sc-investment.js";
 
 export default async (req, context) => {
   if (req.method !== "POST") {
@@ -110,13 +112,21 @@ export default async (req, context) => {
   const { system, messages, enableSearch, task } = body || {};
   const licensingTask = task === "licensing_targets";
   const pilotTask = task === "pilot_targets";
+  const publicationTask = task === "publication_evidence";
   let systemPrompt = system;
   let messageList = messages;
   let searchOn = enableSearch === true;
   let maxTokens = searchOn ? 2500 : 2000;
   let tools;
 
-  if (licensingTask) {
+  if (publicationTask) {
+    const built = buildPublicationEvidenceRequest(body.publication, listGroupNames());
+    systemPrompt = built.system;
+    messageList = built.messages;
+    searchOn = false;
+    maxTokens = built.max_tokens;
+    tools = undefined;
+  } else if (licensingTask) {
     const built = buildLicensingSearchRequest(body.patent);
     systemPrompt = built.system;
     messageList = built.messages;
@@ -163,8 +173,12 @@ export default async (req, context) => {
     const data = await upstream.json();
     let payload = data;
     if (upstream.ok) {
-      payload = rewriteLicensingInResponse(payload, { enforce: licensingTask });
-      payload = rewritePilotInResponse(payload, { enforce: pilotTask });
+      if (publicationTask) {
+        payload = rewritePublicationEvidence(payload);
+      } else {
+        payload = rewriteLicensingInResponse(payload, { enforce: licensingTask });
+        payload = rewritePilotInResponse(payload, { enforce: pilotTask });
+      }
     }
     return new Response(JSON.stringify(payload), {
       status: upstream.status,
