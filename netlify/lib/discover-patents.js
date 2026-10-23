@@ -492,7 +492,8 @@ function toClientPatent(row){
     backward_citation_count: row.backward_citation_count,
     sources,
     google_patents_url: row.google_patents_url || null,
-    uspto_url: row.uspto_url || null
+    uspto_url: row.uspto_url || null,
+    first_seen_at: row.first_seen_at || null
   };
 }
 
