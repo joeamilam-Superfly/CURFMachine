@@ -188,6 +188,91 @@ test("a pursue patent stores only the pilot section from the search", async () =
   assert.equal(write.body.record_json.title, "Moisture film");
 });
 
+test("an evaluation that already has pilot targets is returned without another search", async () => {
+  const record = storedRecord({
+    pilot_targets: [{ name: "Stored Lab", verified: true, source: "https://example.com/stored" }],
+    biggest_proof_gap: "Already stored.",
+    suggested_next_step: "Use the stored lab.",
+    pilot_recommendation: "pursue",
+    pilot_search_error: ""
+  });
+  process.env.SUPABASE_URL = "https://example.supabase.co";
+  process.env.SUPABASE_SERVICE_KEY = "service-key";
+  process.env.ANTHROPIC_API_KEY = "test-key";
+  const calls = installFetch([
+    {
+      match: entry => entry.method === "GET",
+      respond: () => new Response(JSON.stringify([{ patent_id: "US-1", record_json: record }]), { status: 200 })
+    }
+  ]);
+  const response = await handler(new Request("http://local/api/generate-pilot-targets", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ patent_id: "US-1" })
+  }));
+  assert.equal(response.status, 200);
+  const data = await response.json();
+  assert.equal(data.saved, true);
+  assert.equal(data.pilot_targets[0].name, "Stored Lab");
+  assert.equal(data.verified_count, 1);
+  assert.equal(calls.some(entry => entry.url.includes("anthropic.com")), false);
+  assert.equal(calls.some(entry => entry.method === "PATCH"), false);
+});
+
+test("refresh forces a new search even when pilot targets are already stored", async () => {
+  const record = storedRecord({
+    pilot_targets: [{ name: "Stored Lab", verified: true, source: "https://example.com/stored" }],
+    pilot_recommendation: "pursue",
+    biggest_proof_gap: "Old gap.",
+    suggested_next_step: "Old step."
+  });
+  process.env.SUPABASE_URL = "https://example.supabase.co";
+  process.env.SUPABASE_SERVICE_KEY = "service-key";
+  process.env.ANTHROPIC_API_KEY = "test-key";
+  const calls = installFetch([
+    {
+      match: entry => entry.method === "GET",
+      respond: () => new Response(JSON.stringify([{ patent_id: "US-1", record_json: record }]), { status: 200 })
+    },
+    {
+      match: entry => entry.url.includes("api.anthropic.com"),
+      respond: () => new Response(JSON.stringify({
+        stop_reason: "end_turn",
+        content: [{ type: "text", text: JSON.stringify({
+          pilot_targets: [{
+            name: "Fresh Lab",
+            type: "test lab/standards body",
+            what_it_proves: "A bench test would measure the rate.",
+            why_it_fits: "The lab tests this class of material.",
+            effort: "low",
+            source: "https://example.com/fresh",
+            prior_pilots: []
+          }],
+          biggest_proof_gap: "No field data.",
+          suggested_next_step: "Ask the fresh lab.",
+          pilot_recommendation: "pursue"
+        }) }]
+      }), { status: 200 })
+    },
+    {
+      match: entry => entry.method === "PATCH",
+      respond: entry => new Response(JSON.stringify([{ patent_id: "US-1", record_json: entry.body.record_json }]), { status: 200 })
+    }
+  ]);
+  const response = await handler(new Request("http://local/api/generate-pilot-targets", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ patent_id: "US-1", force: true })
+  }));
+  assert.equal(response.status, 200);
+  const data = await response.json();
+  assert.equal(data.pilot_targets[0].name, "Fresh Lab");
+  assert.equal(calls.some(entry => entry.url.includes("anthropic.com")), true);
+  const write = calls.find(entry => entry.method === "PATCH");
+  assert.equal(write.body.record_json.evaluation.licensing_targets.length, 3);
+  assert.equal(write.body.record_json.evaluation.pilot_targets[0].name, "Fresh Lab");
+});
+
 test("a failed search does not write the record", async () => {
   process.env.SUPABASE_URL = "https://example.supabase.co";
   process.env.SUPABASE_SERVICE_KEY = "service-key";

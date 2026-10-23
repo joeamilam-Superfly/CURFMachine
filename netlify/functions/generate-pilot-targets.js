@@ -119,6 +119,18 @@ async function searchPilotSection(record){
   return readPilotSection(data);
 }
 
+function storedPilotSection(record){
+  const ev = record && record.evaluation;
+  if(!ev || !Array.isArray(ev.pilot_targets)) return null;
+  return {
+    pilot_targets: ev.pilot_targets,
+    biggest_proof_gap: ev.biggest_proof_gap || "",
+    suggested_next_step: ev.suggested_next_step || "",
+    pilot_recommendation: ev.pilot_recommendation || "",
+    pilot_search_error: ev.pilot_search_error || ""
+  };
+}
+
 function sectionResponse(patentId, section, saved, hardPass){
   const targets = Array.isArray(section.pilot_targets) ? section.pilot_targets : [];
   return {
@@ -164,6 +176,12 @@ export default async (req) => {
     }
     if(record.evaluation && record.evaluation.cached_only){
       return json({ error: "The full evaluation is not stored for this patent" }, 400);
+    }
+
+    const force = body.force === true;
+    if(!force){
+      const existing = storedPilotSection(record);
+      if(existing) return json(sectionResponse(patentId, existing, stored, isPilotHardPass(record)));
     }
 
     const hardPass = isPilotHardPass(record);
