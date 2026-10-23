@@ -43,6 +43,11 @@
   status = 200
 
 [[redirects]]
+  from = "/api/generate-pilot-targets-background"
+  to = "/.netlify/functions/generate-pilot-targets-background"
+  status = 200
+
+[[redirects]]
   from = "/api/send-email"
   to = "/.netlify/functions/send-email"
   status = 200

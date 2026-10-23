@@ -253,3 +253,174 @@ test("pilot targets show prior-work links first and flag unverified names last",
   assert.match(hardPass.textContent, /One Diagnostics/);
   assert.deepEqual(errors, [], errors.join("\n"));
 });
+
+function storedPilotTarget(name, source){
+  return {
+    name,
+    type: "test lab/standards body",
+    what_it_proves: "A bench test would measure the rate.",
+    why_it_fits: "The lab tests this material.",
+    effort: "low",
+    source,
+    prior_pilots: [],
+    prior_pilot_note: "No verified prior pilot found",
+    verified: true
+  };
+}
+
+function flush(){
+  return new Promise(resolve => {
+    let left = 20;
+    const step = () => {
+      left -= 1;
+      if(left <= 0) resolve();
+      else setTimeout(step, 0);
+    };
+    setTimeout(step, 0);
+  });
+}
+
+test("refresh keeps the current pilot cards visible until the new search finishes", async () => {
+  const { dom, errors, calls } = loadPage([
+    record(2, "Fresh carbon panels", evaluation({
+      pilot_targets: [storedPilotTarget("Stored Lab", "https://example.com/stored")],
+      pilot_recommendation: "pursue",
+      biggest_proof_gap: "Old gap.",
+      suggested_next_step: "Ask the stored lab."
+    }))
+  ], (url, options) => {
+    const href = String(url);
+    const method = (options && options.method) || "GET";
+    if(href.includes("/api/generate-pilot-targets-background")){
+      return Promise.resolve({ ok: true, status: 202, json: () => Promise.resolve({}) });
+    }
+    if(href.includes("/api/generate-pilot-targets") && method === "POST"){
+      return Promise.resolve({
+        ok: true,
+        status: 202,
+        json: () => Promise.resolve({
+          pending: true,
+          dispatched: false,
+          job_status: "pending",
+          started_at: "2026-10-23T20:00:00.000Z"
+        })
+      });
+    }
+    if(href.includes("/api/generate-pilot-targets")){
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({
+          pending: false,
+          job_status: "done",
+          started_at: "2026-10-23T20:00:00.000Z",
+          pilot_targets: [storedPilotTarget("Fresh Lab", "https://example.com/fresh")],
+          biggest_proof_gap: "New gap.",
+          suggested_next_step: "Ask the fresh lab.",
+          pilot_recommendation: "pursue",
+          pilot_search_error: ""
+        })
+      });
+    }
+    return Promise.resolve({ ok: false, status: 404, json: () => Promise.resolve({}) });
+  });
+  dom.window.PILOT_POLL_MS = 0;
+  const { document } = dom.window;
+  openCase(document, 2);
+  document.querySelector("[data-pilot-action]").click();
+  const during = document.querySelector("#pilot-targets");
+  assert.match(during.textContent, /Finding pilot targets…/);
+  assert.match(during.textContent, /Stored Lab/);
+  assert.equal(during.querySelector("button").disabled, true);
+  await flush();
+  const after = document.querySelector("#pilot-targets");
+  assert.match(after.textContent, /Fresh Lab/);
+  assert.doesNotMatch(after.textContent, /Stored Lab/);
+  assert.doesNotMatch(after.textContent, /Finding pilot targets/);
+  assert.equal(after.querySelector("button").disabled, false);
+  assert.match(document.querySelector("#licensing-targets").textContent, /Milliken/);
+  assert.ok(calls.some(url => url.includes("/api/generate-pilot-targets-background")));
+  assert.deepEqual(errors, [], errors.join("\n"));
+});
+
+test("a failed refresh leaves the current pilot cards in place", async () => {
+  const { dom, errors } = loadPage([
+    record(2, "Fresh carbon panels", evaluation({
+      pilot_targets: [storedPilotTarget("Stored Lab", "https://example.com/stored")],
+      pilot_recommendation: "pursue",
+      biggest_proof_gap: "Old gap.",
+      suggested_next_step: "Ask the stored lab."
+    }))
+  ], (url, options) => {
+    const href = String(url);
+    const method = (options && options.method) || "GET";
+    if(href.includes("/api/generate-pilot-targets") && method === "POST"){
+      return Promise.resolve({
+        ok: false,
+        status: 502,
+        json: () => Promise.resolve({ error: "Pilot generation could not be started (500)" })
+      });
+    }
+    return Promise.resolve({ ok: false, status: 404, json: () => Promise.resolve({}) });
+  });
+  const { document } = dom.window;
+  openCase(document, 2);
+  document.querySelector("[data-pilot-action]").click();
+  await flush();
+  const pilots = document.querySelector("#pilot-targets");
+  assert.match(pilots.textContent, /Stored Lab/);
+  assert.match(pilots.textContent, /Pilot targets were not updated/);
+  assert.match(pilots.textContent, /could not be started/);
+  assert.equal(pilots.querySelector("button").disabled, false);
+  assert.match(document.querySelector("#licensing-targets").textContent, /Milliken/);
+  assert.deepEqual(errors, [], errors.join("\n"));
+});
+
+test("a finished job from an older search does not replace the cards being refreshed", async () => {
+  const { dom, errors } = loadPage([
+    record(2, "Fresh carbon panels", evaluation({
+      pilot_targets: [storedPilotTarget("Stored Lab", "https://example.com/stored")],
+      pilot_recommendation: "pursue"
+    }))
+  ], (url, options) => {
+    const href = String(url);
+    const method = (options && options.method) || "GET";
+    if(href.includes("/api/generate-pilot-targets") && method === "POST"){
+      return Promise.resolve({
+        ok: true,
+        status: 202,
+        json: () => Promise.resolve({
+          pending: true,
+          dispatched: true,
+          job_status: "pending",
+          started_at: "2026-10-23T20:00:00.000Z"
+        })
+      });
+    }
+    if(href.includes("/api/generate-pilot-targets")){
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({
+          pending: false,
+          job_status: "done",
+          started_at: "1999-01-01T00:00:00.000Z",
+          pilot_targets: [storedPilotTarget("Wrong Lab", "https://example.com/wrong")],
+          pilot_recommendation: "pursue"
+        })
+      });
+    }
+    return Promise.resolve({ ok: false, status: 404, json: () => Promise.resolve({}) });
+  });
+  dom.window.PILOT_POLL_MS = 0;
+  dom.window.PILOT_POLL_ATTEMPTS = 2;
+  const { document } = dom.window;
+  openCase(document, 2);
+  document.querySelector("[data-pilot-action]").click();
+  await flush();
+  const pilots = document.querySelector("#pilot-targets");
+  assert.match(pilots.textContent, /Stored Lab/);
+  assert.doesNotMatch(pilots.textContent, /Wrong Lab/);
+  assert.match(pilots.textContent, /still running/);
+  assert.deepEqual(errors, [], errors.join("\n"));
+});
