@@ -593,7 +593,7 @@ export async function readPublicationWatch(supabaseUrl, supabaseKey){
   const findingsResult = await supabaseFetch(
     supabaseUrl,
     supabaseKey,
-    FINDINGS + "?select=*&order=found_at.desc&limit=50",
+    FINDINGS + "?select=*&order=found_at.desc&limit=200",
     { method: "GET" }
   );
   if(!findingsResult.ok){
