@@ -2433,7 +2433,10 @@
           market_demand_rationale: (core && core.market_demand_rationale) || "",
           trl_rationale: (core && core.trl_rationale) || "",
           unsupported_claims: (core && core.unsupported_claims) || "",
-          sc_industry_group: (core && core.sc_industry_group) || ""
+          claims_summary: (core && core.unsupported_claims) || "",
+          abstract: (core && core.marketing_abstract) || "",
+          sc_industry_group: (core && core.sc_industry_group) || "",
+          licensing_targets: core && Array.isArray(core.licensing_targets) ? core.licensing_targets : []
         }
       })
     });
@@ -3893,20 +3896,84 @@
       '</div>';
   }
 
-  function renderPilotTargetsPanel(ev){
-    if(ev.pilot_search_error && !Array.isArray(ev.pilot_targets)){
-      return '<div class="panel" id="pilot-targets"><div class="panel-head"><h3>Pilot &amp; proof-of-concept targets</h3></div><div class="panel-body">' +
-        '<div class="caveat-box" style="background:var(--red-bg); border-color:#E0B4A6; color:var(--red);">Pilot target research did not complete: ' + escapeHtml(ev.pilot_search_error) + '.</div>' +
-        '<p style="font-size:13px; margin-top:8px;">Re-evaluate to add pilot targets.</p>' +
+  function pilotActionButton(patent, label){
+    if(!patent) return '';
+    const busy = patent.pilotLookup === 'loading';
+    return '<button type="button" class="btn secondary small" data-pilot-action="' + patent.id + '"' + (busy ? ' disabled' : '') + '>' + escapeHtml(label) + '</button>';
+  }
+
+  async function runPilotLookup(p){
+    if(!p || p.status !== 'evaluated' || !p.evaluation || p.evaluation.cached_only) return;
+    if(p.pilotLookup === 'loading') return;
+    const generation = (p.pilotGeneration || 0) + 1;
+    p.pilotGeneration = generation;
+    p.pilotLookup = 'loading';
+    p.pilotLookupError = '';
+    if(openCaseId === p.id) openCaseFile(p.id, { silent: true });
+    try{
+      const response = await fetchWithTimeoutRetry('/api/generate-pilot-targets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          patent_id: remotePatentId(p),
+          record: serializePatentForStorage(p)
+        })
+      });
+      const data = await response.json().catch(() => ({}));
+      if(p.pilotGeneration !== generation) return;
+      if(!response.ok || (data && data.error)){
+        throw new Error((data && data.error) || readApiError(data, response.status));
+      }
+      const ev = p.evaluation;
+      ev.pilot_targets = Array.isArray(data.pilot_targets) ? data.pilot_targets : [];
+      ev.biggest_proof_gap = data.biggest_proof_gap || '';
+      ev.suggested_next_step = data.suggested_next_step || '';
+      ev.pilot_recommendation = data.pilot_recommendation || '';
+      ev.pilot_search_error = data.pilot_search_error || '';
+      p.pilotLookup = 'ready';
+      savePatentRecordsToStorage();
+      if(!data.saved) pushPatentRecordToRemote(p);
+    }catch(err){
+      if(p.pilotGeneration !== generation) return;
+      p.pilotLookup = 'error';
+      p.pilotLookupError = err.message || 'Pilot target search failed';
+    }
+    if(openCaseId === p.id) openCaseFile(p.id, { silent: true });
+  }
+
+  function attachPilotActionHandler(){
+    document.querySelectorAll('[data-pilot-action]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const patent = patents.find(item => item.id === parseInt(btn.dataset.pilotAction, 10));
+        if(patent) runPilotLookup(patent);
+      });
+    });
+  }
+
+  function renderPilotTargetsPanel(ev, patent){
+    const hasSection = Array.isArray(ev.pilot_targets);
+    const loading = patent && patent.pilotLookup === 'loading';
+    const label = hasSection ? 'Refresh pilot targets' : 'Add pilot targets';
+    const button = pilotActionButton(patent, label);
+    const lookupError = patent && patent.pilotLookup === 'error'
+      ? '<div class="caveat-box" style="background:var(--red-bg); border-color:#E0B4A6; color:var(--red);">Pilot targets were not updated: ' + escapeHtml(patent.pilotLookupError || 'Pilot target search failed') + '.</div>'
+      : '';
+    if(loading){
+      return '<div class="panel" id="pilot-targets"><div class="panel-head"><h3>Pilot &amp; proof-of-concept targets</h3>' + button + '</div><div class="panel-body">' +
+        '<p style="font-size:13.5px; margin:0;"><span class="spinner" style="border-color: rgba(36,48,86,0.25); border-top-color: #243056;"></span>Finding pilot targets…</p>' +
         '</div></div>';
     }
-    if(!Array.isArray(ev.pilot_targets)){
-      return '<div class="panel" id="pilot-targets"><div class="panel-head"><h3>Pilot &amp; proof-of-concept targets</h3></div><div class="panel-body">' +
-        '<p style="font-size:13px; margin:0;">Re-evaluate to add pilot targets.</p>' +
+    if(!hasSection){
+      const storedError = ev.pilot_search_error
+        ? '<div class="caveat-box" style="background:var(--red-bg); border-color:#E0B4A6; color:var(--red);">Pilot target research did not complete: ' + escapeHtml(ev.pilot_search_error) + '.</div>'
+        : '';
+      return '<div class="panel" id="pilot-targets"><div class="panel-head"><h3>Pilot &amp; proof-of-concept targets</h3>' + button + '</div><div class="panel-body">' +
+        lookupError + storedError +
         '</div></div>';
     }
     if(ev.pilot_recommendation === 'not recommended'){
-      return '<div class="panel" id="pilot-targets"><div class="panel-head"><h3>Pilot &amp; proof-of-concept targets</h3><span class="tag error">Not recommended</span></div><div class="panel-body">' +
+      return '<div class="panel" id="pilot-targets"><div class="panel-head"><h3>Pilot &amp; proof-of-concept targets</h3><span class="tag error">Not recommended</span>' + button + '</div><div class="panel-body">' +
+        lookupError +
         '<div class="caveat-box" style="background:var(--red-bg); border-color:#E0B4A6; color:var(--red);">Pilots aren\'t recommended. This patent is a hard pass with no marketable destinations.</div>' +
         (ev.biggest_proof_gap ? '<p style="font-size:13.5px; margin-top:10px;"><strong>Biggest proof gap:</strong> ' + escapeHtml(ev.biggest_proof_gap) + '</p>' : '') +
         (ev.suggested_next_step ? '<p style="font-size:13.5px;"><strong>Suggested next step:</strong> ' + escapeHtml(ev.suggested_next_step) + '</p>' : '') +
@@ -3920,7 +3987,8 @@
     const cards = targets.length
       ? targets.map(renderPilotTargetCard).join('')
       : '<p style="font-size:13px; color:var(--slate);">No pilot targets were named. The list was not padded.</p>';
-    return '<div class="panel" id="pilot-targets"><div class="panel-head"><h3>Pilot &amp; proof-of-concept targets</h3>' + tag + '</div><div class="panel-body">' +
+    return '<div class="panel" id="pilot-targets"><div class="panel-head"><h3>Pilot &amp; proof-of-concept targets</h3>' + tag + button + '</div><div class="panel-body">' +
+      lookupError +
       '<p style="font-size:13px; margin-top:0;">Every recommended target includes a source for previous work in this technical area. Unverified names have no such link, are not a recommendation, and are ranked last.</p>' +
       (ev.biggest_proof_gap ? '<p style="font-size:13.5px;"><strong>Biggest proof gap:</strong> ' + escapeHtml(ev.biggest_proof_gap) + '</p>' : '') +
       (ev.suggested_next_step ? '<p style="font-size:13.5px;"><strong>Suggested next step:</strong> ' + escapeHtml(ev.suggested_next_step) + '</p>' : '') +
@@ -3970,9 +4038,8 @@
     lines.push('Pilot and proof-of-concept targets');
     if(ev.pilot_search_error && !Array.isArray(ev.pilot_targets)){
       lines.push('Pilot target research did not complete: ' + ev.pilot_search_error);
-      lines.push('Re-evaluate to add pilot targets.');
     }else if(!Array.isArray(ev.pilot_targets)){
-      lines.push('Re-evaluate to add pilot targets.');
+      lines.push('Pilot targets have not been generated yet.');
     }else if(ev.pilot_recommendation === 'not recommended'){
       lines.push('Pilots aren\'t recommended. This patent is a hard pass with no marketable destinations.');
       if(ev.biggest_proof_gap) lines.push('Biggest proof gap: ' + ev.biggest_proof_gap);
@@ -4027,7 +4094,7 @@
     });
   }
 
-  function openCaseFile(id){
+  function openCaseFile(id, options){
     const p = patents.find(x => x.id === id);
     if(!p) return;
     openCaseId = id;
@@ -4138,7 +4205,7 @@
         '<p style="font-size:12px; color:var(--slate); margin-top:8px;">Model confidence: <strong>' + escapeHtml(ev.confidence || 'unspecified') + '</strong></p>' +
       '</div></div>' +
 
-      licensingHtml + renderPilotTargetsPanel(ev) + venturePlanHtml +
+      licensingHtml + renderPilotTargetsPanel(ev, p) + venturePlanHtml +
 
       '<div class="panel"><div class="panel-head"><h3>Marketing abstract, for outside audiences</h3></div><div class="panel-body">' +
         '<p style="font-size:13.5px;">' + escapeHtml(ev.marketing_abstract || 'Not generated.') + '</p>' +
@@ -4162,6 +4229,10 @@
     attachArchiveButtonHandler();
     attachDownloadReportHandler();
     attachOutreachDraftHandlers(p, outreachTargets);
+    attachPilotActionHandler();
+    if(!(options && options.silent) && ev && !ev.cached_only && !Array.isArray(ev.pilot_targets)){
+      runPilotLookup(p);
+    }
   }
 
   function escapeHtml(str){

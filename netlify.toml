@@ -38,6 +38,11 @@
   status = 200
 
 [[redirects]]
+  from = "/api/generate-pilot-targets"
+  to = "/.netlify/functions/generate-pilot-targets"
+  status = 200
+
+[[redirects]]
   from = "/api/send-email"
   to = "/.netlify/functions/send-email"
   status = 200

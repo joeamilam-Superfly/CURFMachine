@@ -38,7 +38,8 @@ test("prompt requires a source for prior work and forbids invented pilots", () =
     dept: "Packaging",
     text: "A humidity responsive produce film.",
     recommended_path: "LICENSE",
-    unsupported_claims: "No field data."
+    claims_summary: "No field data.",
+    licensing_targets: [{ name: "Milliken", type: "licensee", why_it_fits: "Runs packaging film trials." }]
   });
   assert.match(built.system, /pilot_targets/);
   assert.match(built.system, /web_search/);
@@ -52,7 +53,9 @@ test("prompt requires a source for prior work and forbids invented pilots", () =
   for(const field of ["what_it_proves", "why_it_fits", "sc_connection", "effort", "prior_pilots", "biggest_proof_gap", "suggested_next_step"]){
     assert.match(PILOT_OUTPUT_SHAPE, new RegExp(field));
   }
-  assert.match(built.messages[0].content, /No field data/);
+  assert.match(built.messages[0].content, /Claims summary: No field data/);
+  assert.match(built.messages[0].content, /Milliken/);
+  assert.match(built.messages[0].content, /Do not copy the list/);
 });
 
 test("verified prior pilots rank ahead of a sourced name and unsourced names are unverified last", () => {
