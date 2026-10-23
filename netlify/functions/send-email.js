@@ -6,9 +6,9 @@
 // package would fail to bundle. Resend's API needs nothing but fetch
 // and an API key.
 //
-// This is intentionally generic, not tied only to publication alerts,
-// so it can be reused by any future feature that needs to send an
-// email, rather than building a new email function per feature.
+// The route is public, so it only delivers to CURF_ALERT_EMAIL. It is
+// not an open relay. Publication scans send through Resend directly
+// and do not call this function.
 //
 // SETUP:
 //   1. Create a free account at resend.com.
@@ -50,10 +50,26 @@ export default async (req, context) => {
     });
   }
 
+  // This URL is public. It must not be an open relay: the only address
+  // it will send to is the one configured for CURF alerts. Publication
+  // scans call Resend directly and do not depend on this restriction.
+  const alertTo = (process.env.CURF_ALERT_EMAIL || "").trim().toLowerCase();
+  if (!alertTo) {
+    return new Response(JSON.stringify({ error: "Server is missing CURF_ALERT_EMAIL. This endpoint only sends to that address." }), {
+      status: 500, headers: { "Content-Type": "application/json" }
+    });
+  }
+  const recipients = (Array.isArray(to) ? to : [to]).map(addr => String(addr || "").trim().toLowerCase());
+  if (recipients.length !== 1 || recipients[0] !== alertTo) {
+    return new Response(JSON.stringify({ error: "This endpoint only sends to the configured CURF_ALERT_EMAIL." }), {
+      status: 403, headers: { "Content-Type": "application/json" }
+    });
+  }
+
   const fromAddress = process.env.RESEND_FROM_EMAIL || "CURF Docket <onboarding@resend.dev>";
 
   try {
-    const resendPayload = { from: fromAddress, to: Array.isArray(to) ? to : [to], subject };
+    const resendPayload = { from: fromAddress, to: [alertTo], subject };
     if (html) resendPayload.html = html;
     if (text) resendPayload.text = text;
 

@@ -41,13 +41,22 @@ async function fetchExistingUrls(supabaseUrl, supabaseKey){
   return Array.isArray(data) ? data.map(r => r.source_url) : [];
 }
 
+function escapeHtml(value){
+  return String(value == null ? "" : value)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
 async function storeFindings(supabaseUrl, supabaseKey, findings){
   if(findings.length === 0) return;
-  await fetch(supabaseUrl + "/rest/v1/" + TABLE, {
+  const res = await fetch(supabaseUrl + "/rest/v1/" + TABLE, {
     method: "POST",
     headers: { ...supabaseHeaders(supabaseKey), "Prefer": "resolution=ignore-duplicates" },
     body: JSON.stringify(findings)
   });
+  if(!res.ok){
+    const detail = await res.text();
+    throw { step: "supabase_store", status: res.status, detail };
+  }
 }
 
 async function searchForPublications(anthropicKey){
@@ -87,7 +96,7 @@ async function searchForPublications(anthropicKey){
 
 async function sendAlertEmail(resendKey, fromAddress, toAddress, newHighFindings){
   const listHtml = newHighFindings.map(f =>
-    "<li><a href=\"" + f.source_url + "\">" + f.title + "</a>, " + f.commercial_rationale + "</li>"
+    "<li><a href=\"" + escapeHtml(f.source_url) + "\">" + escapeHtml(f.title) + "</a>, " + escapeHtml(f.commercial_rationale) + "</li>"
   ).join("");
   const payload = {
     from: fromAddress,

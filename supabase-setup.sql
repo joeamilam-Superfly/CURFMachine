@@ -46,11 +46,20 @@ create table if not exists publication_watch (
   alerted boolean not null default false
 );
 
--- Nothing else is required. Row level security is intentionally left
--- off on this table: it is only ever queried using the service_role
--- key from a Netlify function running server side, never from the
--- browser with the anon key, so there is no client-facing surface
--- that RLS would need to restrict. If you later add any other way of
--- reading this table (e.g. a dashboard using the anon key), add RLS
--- policies at that point, don't assume this table is safe to expose
--- more broadly than it is today.
+-- The Netlify functions read and write these tables with the
+-- service_role key. The browser never queries Supabase directly, and
+-- this app has no logged-in user. RLS is enabled with no policies so
+-- the anon and authenticated roles are denied. service_role bypasses
+-- RLS. The grants below match that design: anon gets nothing
+-- (including no SELECT), authenticated gets nothing, service_role
+-- gets select/insert/update/delete. Safe to re-run.
+alter table evaluated_patents enable row level security;
+alter table publication_watch enable row level security;
+
+revoke all on table evaluated_patents from public, anon, authenticated;
+revoke all on table publication_watch from public, anon, authenticated;
+revoke all on sequence publication_watch_id_seq from public, anon, authenticated;
+
+grant select, insert, update, delete on table evaluated_patents to service_role;
+grant select, insert, update, delete on table publication_watch to service_role;
+grant usage, select on sequence publication_watch_id_seq to service_role;
