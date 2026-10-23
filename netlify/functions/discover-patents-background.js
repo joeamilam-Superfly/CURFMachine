@@ -1,5 +1,5 @@
 // Button-triggered discovery scan. Netlify returns 202 immediately.
-// The Discover page polls GET /api/discover-patents for the stored
+// The Triage page polls GET /api/discover-patents for the stored
 // catalog and the latest discovery_scan_runs row.
 
 import { runDiscoveryScan } from "../lib/discover-patents.js";

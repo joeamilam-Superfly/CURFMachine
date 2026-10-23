@@ -171,6 +171,7 @@
   .tag.mature{ background: var(--amber-bg); color: var(--amber); }
   .tag.pending{ background: var(--paper-dark); color: var(--slate); }
   .tag.error{ background: var(--red-bg); color: var(--red); }
+  .tag.new{ background:#FFF1E6; color: var(--orange-deep); }
 
   /* intake */
   .intake-grid{ display:grid; grid-template-columns: 1.1fr 1fr; gap:20px; }
@@ -277,10 +278,9 @@
     </div>
     <div class="nav">
       <div class="nav-label">Workflow</div>
-      <button class="nav-item active" data-view="discover"><span class="num">1</span> Discover</button>
-      <button class="nav-item" data-view="triage"><span class="num">2</span> Triage</button>
-      <button class="nav-item" data-view="portfolio"><span class="num">3</span> Portfolio</button>
-      <button class="nav-item" data-view="pubwatch"><span class="num">4</span> Publications</button>
+      <button class="nav-item active" data-view="triage"><span class="num">1</span> Triage</button>
+      <button class="nav-item" data-view="portfolio"><span class="num">2</span> Portfolio</button>
+      <button class="nav-item" data-view="pubwatch"><span class="num">3</span> Publications</button>
       <div class="nav-label">Also</div>
       <button class="nav-item" data-view="tools"><span class="num"></span> Tools</button>
       <button class="nav-item" data-view="intake"><span class="num"></span> Intake</button>
@@ -299,80 +299,37 @@
     <div id="remote-save-status" style="display:none; background:#FBF0DA; border:1px solid #E4C990; color:#6B4E0E; padding:12px 16px; border-radius:3px; font-size:12.5px; margin-bottom:20px; max-width:1120px;"></div>
     <div id="eval-progress" style="display:none; background:#E4E9F7; border:1px solid #C5D0EA; color:#243056; padding:12px 16px; border-radius:3px; font-size:12.5px; margin-bottom:20px; max-width:1120px;"></div>
 
-    <!-- DISCOVER -->
-    <div class="view active" id="view-discover">
+    <!-- TRIAGE -->
+    <div class="view active" id="view-triage">
       <div class="steps" aria-label="Workflow">
-        <button class="step current" data-view="discover"><span>1</span> Discover</button>
-        <button class="step" data-view="triage"><span>2</span> Triage</button>
-        <button class="step" data-view="portfolio"><span>3</span> Portfolio</button>
-        <button class="step" data-view="pubwatch"><span>4</span> Publications</button>
+        <button class="step current" data-view="triage"><span>1</span> Triage</button>
+        <button class="step" data-view="portfolio"><span>2</span> Portfolio</button>
+        <button class="step" data-view="pubwatch"><span>3</span> Publications</button>
       </div>
       <div class="page-head">
         <div>
           <div class="eyebrow">Step 1</div>
-          <h1>Discover Clemson patents</h1>
-          <p>Scan USPTO and Google Patents for Clemson filings, then keep one row when both sources name the same document. An application and its later grant stay separate. The list below is that catalog. Until a scan is stored, the August 29, 2026 snapshot is shown so triage can still start.</p>
-        </div>
-        <div style="display:flex; gap:8px; flex-wrap:wrap;">
-          <button class="btn" id="btn-scan-patents">Scan USPTO and Google Patents</button>
-          <button class="btn secondary" id="btn-load-known-registry">Reload known snapshot</button>
-        </div>
-      </div>
-      <div class="next-action">
-        <div>
-          <div class="eyebrow">Next</div>
-          <p id="discover-next">Scan both sources, then continue to triage to rank what is not already cached.</p>
-        </div>
-        <button class="btn" data-view="triage">Continue to triage</button>
-      </div>
-      <div class="panel" id="discover-status-panel" style="display:none;">
-        <div class="panel-body" id="discover-status"></div>
-      </div>
-      <div class="panel">
-        <div class="panel-body" style="padding-bottom:0;">
-          <div class="field" style="margin:0 0 12px; max-width:360px;">
-            <label for="discover-filter">Filter this list</label>
-            <input type="text" id="discover-filter" placeholder="Number, title, or assignee">
-          </div>
-        </div>
-        <div class="panel-body" style="padding:0;">
-          <table class="docket">
-            <thead>
-              <tr><th>Date</th><th>Title</th><th>Sources</th></tr>
-            </thead>
-            <tbody id="discover-body"></tbody>
-          </table>
-          <div class="empty" id="discover-empty" style="display:none;">
-            <h3>No patents in this view</h3>
-            <p>Clear the filter, reload the known snapshot, or run a scan.</p>
-          </div>
-          <div id="discover-pagination" style="display:none; padding:14px 16px; border-top:1px solid var(--line); align-items:center; justify-content:space-between;">
-            <span id="discover-pagination-label" style="font-size:12.5px; color:var(--slate);"></span>
-            <span>
-              <button class="btn secondary small" id="btn-discover-prev">Previous</button>
-              <button class="btn secondary small" id="btn-discover-next" style="margin-left:8px;">Next</button>
-            </span>
-          </div>
-        </div>
-      </div>
-      <div class="caveat-box" style="margin-top:16px;">Google Patents uses the public BigQuery dataset (GCP_PROJECT_ID and GCP_SERVICE_ACCOUNT_KEY_BASE64). USPTO uses the Open Data Portal (USPTO_ODP_API_KEY). A missing USPTO key still stores the Google list. Run supabase-workflow.sql once before the first scan. That file does not change evaluations already stored.</div>
-    </div>
-
-    <!-- TRIAGE -->
-    <div class="view" id="view-triage">
-      <div class="steps" aria-label="Workflow">
-        <button class="step" data-view="discover"><span>1</span> Discover</button>
-        <button class="step current" data-view="triage"><span>2</span> Triage</button>
-        <button class="step" data-view="portfolio"><span>3</span> Portfolio</button>
-        <button class="step" data-view="pubwatch"><span>4</span> Publications</button>
-      </div>
-      <div class="page-head">
-        <div>
-          <div class="eyebrow">Step 2</div>
           <h1>Triage</h1>
-          <p>A cheap licensing rank plus South Carolina investment alignment, so the office can choose which patents get a full evaluation. Rank skips anything already in the triage cache. Evaluate selected runs the full model only for patents that are not already in the portfolio. A patent already evaluated opens the stored result.</p>
+          <p>Scan USPTO and Google Patents, then rank what is not already cached. An application and its later grant stay separate. Until a scan is stored, the August 29, 2026 snapshot is shown so triage can still start. Rank skips anything already in the triage cache. Evaluate selected runs the full model only for patents that are not already in the portfolio. A patent already evaluated opens the stored result.</p>
         </div>
       </div>
+
+      <div class="panel" id="scan-patents-panel">
+        <div class="panel-head"><h3>Scan for new patents</h3></div>
+        <div class="panel-body">
+          <p style="margin-top:0;">Scan USPTO and Google Patents for Clemson filings, then keep one row when both sources name the same document. The table below is that catalog.</p>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button class="btn" id="btn-scan-patents">Scan USPTO and Google Patents</button>
+            <button class="btn secondary" id="btn-load-known-registry">Reload known snapshot</button>
+          </div>
+          <p id="scan-summary" style="font-size:13.5px; margin:14px 0 0;">No scan has been stored yet. Showing the August 29, 2026 snapshot so triage can start.</p>
+          <div id="discover-status-panel" style="display:none; margin-top:10px;">
+            <div id="discover-status" style="font-size:12.5px; color:var(--slate);"></div>
+          </div>
+          <div class="caveat-box" style="margin-top:14px; margin-bottom:0;">Google Patents uses the public BigQuery dataset (GCP_PROJECT_ID and GCP_SERVICE_ACCOUNT_KEY_BASE64). USPTO uses the Open Data Portal (USPTO_ODP_API_KEY). A missing USPTO key still stores the Google list. Run supabase-workflow.sql once before the first scan. That file does not change evaluations already stored.</div>
+        </div>
+      </div>
+
       <div class="next-action">
         <div>
           <div class="eyebrow">Next</div>
@@ -393,6 +350,13 @@
         <div class="panel-body">
           <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end;">
             <button class="btn" id="btn-rank-registry">Rank unranked</button>
+            <div class="field" style="margin:0; min-width:140px;">
+              <label for="registry-new-filter">New</label>
+              <select id="registry-new-filter">
+                <option value="all">All patents</option>
+                <option value="new">New only</option>
+              </select>
+            </div>
             <div class="field" style="margin:0; min-width:140px;">
               <label for="registry-tier-filter">Tier</label>
               <select id="registry-tier-filter">
@@ -437,7 +401,7 @@
           </table>
           <div class="empty" id="registry-empty">
             <h3>No patents in this view</h3>
-            <p>Change the tier or SC alignment filter, or go back to Discover and load a list.</p>
+            <p>Change the New, tier, or SC alignment filter, reload the known snapshot, or run a scan.</p>
           </div>
           <div id="registry-pagination" style="display:none; padding:14px 16px; border-top:1px solid var(--line); align-items:center; justify-content:space-between;">
             <span id="registry-pagination-label" style="font-size:12.5px; color:var(--slate);"></span>
@@ -486,7 +450,7 @@
       <div id="problem-match-results"></div>
 
       <div class="panel-head" style="border:none; padding-top:24px; padding-bottom:0;"><h3>Specific patent search</h3></div>
-      <p style="font-size:13px; color:var(--slate); margin:6px 0 16px 0;">Searches the catalog loaded on Discover. If that catalog is still the August 2026 snapshot, the search stays inside the snapshot. A match that is already evaluated opens the stored case instead of running the model again.</p>
+      <p style="font-size:13px; color:var(--slate); margin:6px 0 16px 0;">Searches the catalog loaded on Triage. If that catalog is still the August 2026 snapshot, the search stays inside the snapshot. A match that is already evaluated opens the stored case instead of running the model again.</p>
 
       <div class="intake-grid">
         <div class="panel">
@@ -577,14 +541,13 @@
     <!-- PORTFOLIO -->
     <div class="view" id="view-portfolio">
       <div class="steps" aria-label="Workflow">
-        <button class="step" data-view="discover"><span>1</span> Discover</button>
-        <button class="step" data-view="triage"><span>2</span> Triage</button>
-        <button class="step current" data-view="portfolio"><span>3</span> Portfolio</button>
-        <button class="step" data-view="pubwatch"><span>4</span> Publications</button>
+        <button class="step" data-view="triage"><span>1</span> Triage</button>
+        <button class="step current" data-view="portfolio"><span>2</span> Portfolio</button>
+        <button class="step" data-view="pubwatch"><span>3</span> Publications</button>
       </div>
       <div class="page-head">
         <div>
-          <div class="eyebrow">Step 3</div>
+          <div class="eyebrow">Step 2</div>
           <h1>Portfolio</h1>
           <p>Full evaluations land here and stay here. Each row is the stored result, including the demand read and marketing abstract. Opening a case does not run the model again. Re-evaluate, on the case file, is the only way to replace a stored result. Sorted by value score, then South Carolina alignment.</p>
         </div>
@@ -629,14 +592,13 @@
     <!-- PUBLICATIONS -->
     <div class="view" id="view-pubwatch">
       <div class="steps" aria-label="Workflow">
-        <button class="step" data-view="discover"><span>1</span> Discover</button>
-        <button class="step" data-view="triage"><span>2</span> Triage</button>
-        <button class="step" data-view="portfolio"><span>3</span> Portfolio</button>
-        <button class="step current" data-view="pubwatch"><span>4</span> Publications</button>
+        <button class="step" data-view="triage"><span>1</span> Triage</button>
+        <button class="step" data-view="portfolio"><span>2</span> Portfolio</button>
+        <button class="step current" data-view="pubwatch"><span>3</span> Publications</button>
       </div>
       <div class="page-head">
         <div>
-          <div class="eyebrow">Step 4</div>
+          <div class="eyebrow">Step 3</div>
           <h1>Publications</h1>
           <p>Scan public Clemson research, read the quick relevance score, then run a deeper review only on the rows you select. The same source URL is stored once. A review already saved is shown again and is not sent back to the model unless you choose Re-review.</p>
         </div>
@@ -812,9 +774,9 @@
   let registryAll = []; // the unfiltered list for the current registry source (snapshot or live pull)
   let registryStatusBase = '';
   let registryPage = 0;
-  let discoverPage = 0;
-  let discoverFilter = '';
   let registrySource = 'snapshot';
+  let lastDiscoveryScan = null;
+  let lastScanNewCount = null;
   const triageSelected = new Set();
   let publicationFindings = [];
   let publicationRelevanceFilter = 'all';
@@ -1233,6 +1195,7 @@
   // ---------- navigation ----------
   const views = document.querySelectorAll('.view');
   function showView(name){
+    if(name === 'discover') name = 'triage';
     views.forEach(v => v.classList.remove('active'));
     const view = document.getElementById('view-' + name);
     if(!view) return;
@@ -1247,14 +1210,17 @@
     window.scrollTo(0,0);
     if(name !== 'casefile') openCaseId = null;
     if(name === 'pubwatch') loadPublicationWatch();
-    if(name === 'discover') renderDiscover();
     if(name === 'triage') renderRegistry();
   }
   function bindViewButtons(root){
     (root || document).querySelectorAll('[data-view]').forEach(el=>{
       if(el.dataset.viewBound === '1') return;
       el.dataset.viewBound = '1';
-      el.addEventListener('click', (e)=>{ e.preventDefault(); showView(el.dataset.view); });
+      el.addEventListener('click', (e)=>{
+        e.preventDefault();
+        const target = el.dataset.view === 'discover' ? 'triage' : el.dataset.view;
+        showView(target);
+      });
     });
   }
   bindViewButtons(document);
@@ -1288,13 +1254,7 @@
     evaluateAllPending();
   });
 
-  // ---------- Discover ----------
-  function sourceTags(p){
-    const sources = Array.isArray(p.sources) && p.sources.length ? p.sources : ['snapshot'];
-    const label = { google_patents: 'Google Patents', uspto: 'USPTO', snapshot: 'Snapshot' };
-    return sources.map(source => '<span class="tag mature" style="margin-right:4px;">' + escapeHtml(label[source] || source) + '</span>').join('');
-  }
-
+  // ---------- Scan for new patents (lives on Triage) ----------
   function setDiscoverStatus(html, isError){
     const panel = document.getElementById('discover-status-panel');
     const el = document.getElementById('discover-status');
@@ -1303,45 +1263,54 @@
     el.innerHTML = isError ? '<span style="color:var(--red);">' + html + '</span>' : html;
   }
 
-  function filteredDiscoverRows(){
-    const query = discoverFilter.trim().toLowerCase();
-    if(!query) return registryAll;
-    return registryAll.filter(p => {
-      const blob = [p.patent_id, p.title, (p.assignees || []).join(' ')].join(' ').toLowerCase();
-      return blob.indexOf(query) !== -1;
-    });
+  // A patent is "new in this scan" when its stored first_seen_at falls
+  // inside the latest discovery_scan_runs window. first_seen_at is set
+  // while that run is writing, after the run row is inserted.
+  function seenInScan(patent, scan){
+    if(!patent || !scan || !patent.first_seen_at) return false;
+    const seen = Date.parse(patent.first_seen_at);
+    const started = Date.parse(scan.started_at || '');
+    if(!Number.isFinite(seen) || !Number.isFinite(started)) return false;
+    if(seen < started - 15000) return false;
+    const finished = Date.parse(scan.finished_at || '');
+    if(Number.isFinite(finished) && seen > finished + 15000) return false;
+    return true;
   }
 
-  function renderDiscover(){
-    const body = document.getElementById('discover-body');
-    const emptyEl = document.getElementById('discover-empty');
-    const paginationEl = document.getElementById('discover-pagination');
-    if(!body || !emptyEl || !paginationEl) return;
-    const rows = filteredDiscoverRows();
-    if(rows.length === 0){
-      body.innerHTML = '';
-      emptyEl.style.display = 'block';
-      paginationEl.style.display = 'none';
+  function patentsNewInScan(list, scan){
+    if(!scan) return null;
+    return (list || []).filter(p => seenInScan(p, scan)).length;
+  }
+
+  function isNewPatent(p){
+    if(seenInScan(p, lastDiscoveryScan)) return true;
+    return registryTier(p) === 'Unranked';
+  }
+
+  function newBadgeTitle(p){
+    const inScan = seenInScan(p, lastDiscoveryScan);
+    const unranked = registryTier(p) === 'Unranked';
+    if(inScan && unranked) return 'First seen in the latest scan, and not ranked yet';
+    if(inScan) return 'First seen in the latest scan';
+    return 'Not ranked yet';
+  }
+
+  function renderScanSummary(){
+    const el = document.getElementById('scan-summary');
+    if(!el) return;
+    const scan = lastDiscoveryScan;
+    if(!scan){
+      el.textContent = registrySource === 'snapshot'
+        ? 'No scan has been stored yet. Showing the August 29, 2026 snapshot so triage can start.'
+        : 'No scan has been stored yet.';
       return;
     }
-    emptyEl.style.display = 'none';
-    const totalPages = Math.max(1, Math.ceil(rows.length / REGISTRY_PAGE_SIZE));
-    if(discoverPage >= totalPages) discoverPage = totalPages - 1;
-    if(discoverPage < 0) discoverPage = 0;
-    const start = discoverPage * REGISTRY_PAGE_SIZE;
-    const pageItems = rows.slice(start, start + REGISTRY_PAGE_SIZE);
-    body.innerHTML = pageItems.map(p => {
-      const link = p.google_patents_url
-        ? '<a href="' + escapeHtml(p.google_patents_url) + '" target="_blank" rel="noopener">' + escapeHtml(p.patent_id || '') + '</a>'
-        : escapeHtml(p.patent_id || '');
-      const uspto = p.uspto_url ? ' · <a href="' + escapeHtml(p.uspto_url) + '" target="_blank" rel="noopener">USPTO</a>' : '';
-      const typeLabel = p.record_type ? ' <span class="tag ' + (p.record_type === 'Grant' ? 'license' : 'pending') + '">' + escapeHtml(p.record_type) + '</span>' : '';
-      return '<tr><td class="mono">' + escapeHtml(p.date || '') + '</td><td><div class="patent-title">' + escapeHtml(p.title || 'Untitled') + typeLabel + '</div><div class="patent-sub">' + link + uspto + '</div></td><td>' + sourceTags(p) + '</td></tr>';
-    }).join('');
-    paginationEl.style.display = 'flex';
-    document.getElementById('discover-pagination-label').textContent = 'Showing ' + (start + 1) + '–' + (start + pageItems.length) + ' of ' + rows.length;
-    document.getElementById('btn-discover-prev').disabled = discoverPage === 0;
-    document.getElementById('btn-discover-next').disabled = start + pageItems.length >= rows.length;
+    const when = scan.finished_at || scan.started_at;
+    const whenText = when ? new Date(when).toLocaleString() : 'an unknown time';
+    const countText = lastScanNewCount == null
+      ? 'New patents could not be counted from this scan.'
+      : (lastScanNewCount + ' new patent' + (lastScanNewCount === 1 ? '' : 's') + ' found.');
+    el.textContent = 'Last scan ' + whenText + '. ' + countText;
   }
 
   function applyCatalog(patents, source){
@@ -1349,9 +1318,13 @@
     registrySource = source || 'catalog';
     registryResults = applyEvaluatedFilter(registryAll);
     registryPage = 0;
-    discoverPage = 0;
+    if(source === 'snapshot'){
+      renderRegistryStatus('Showing the August 29, 2026 snapshot.');
+    } else {
+      renderRegistryStatus((patents || []).length + ' patents from the stored catalog. A New badge marks patents first seen in the latest scan, and patents that are not ranked yet.');
+    }
     renderRegistry();
-    renderDiscover();
+    renderScanSummary();
   }
 
   function describeDiscoveryScan(data){
@@ -1374,19 +1347,21 @@
 
   async function loadDiscoveredCatalog(){
     try{
-      const res = await fetch('/api/discovered-patents');
+      const res = await fetch('/api/discover-patents');
       if(!res.ok) return;
       const data = await res.json();
       if(!data.configured){
         setDiscoverStatus('Shared storage is not configured. Showing the August 29, 2026 snapshot. Set SUPABASE_URL and SUPABASE_SERVICE_KEY, then run supabase-workflow.sql.', false);
+        renderScanSummary();
         return;
       }
+      lastDiscoveryScan = data.last_scan || null;
+      lastScanNewCount = patentsNewInScan(data.patents || [], lastDiscoveryScan);
+      renderScanSummary();
       const note = describeDiscoveryScan(data);
       if(note) setDiscoverStatus(escapeHtml(note), !!(data.error || (data.last_scan && data.last_scan.status === 'error')));
       if(Array.isArray(data.patents) && data.patents.length){
         applyCatalog(data.patents, 'catalog');
-        const next = document.getElementById('discover-next');
-        if(next) next.textContent = data.patents.length + ' patents are in the catalog. Continue to triage to rank the ones that are not cached yet.';
       }
     }catch(err){
       // The snapshot loaded with the page stays in place.
@@ -1407,18 +1382,19 @@
     }
     await new Promise(resolve => setTimeout(resolve, 5000));
     try{
-      const res = await fetch('/api/discovered-patents');
+      const res = await fetch('/api/discover-patents');
       const data = await res.json();
       if(data && data.configured === false){
         setDiscoverStatus('The scan cannot store results until SUPABASE_URL and SUPABASE_SERVICE_KEY are set.', true);
         return;
       }
       if(scanFinished(data, startedMs) || (data.error && !(data.last_scan && data.last_scan.status === 'running'))){
+        lastDiscoveryScan = data.last_scan || null;
+        lastScanNewCount = patentsNewInScan(data.patents || [], lastDiscoveryScan);
+        renderScanSummary();
         const note = describeDiscoveryScan(data);
         setDiscoverStatus(escapeHtml(note || 'Scan finished.'), !!(data.error || (data.last_scan && data.last_scan.status === 'error')));
         if(Array.isArray(data.patents) && data.patents.length) applyCatalog(data.patents, 'catalog');
-        const next = document.getElementById('discover-next');
-        if(next) next.textContent = 'Scan finished. Continue to triage and rank the patents that are not cached yet.';
         return;
       }
       setDiscoverStatus('Scanning USPTO and Google Patents. Check ' + (40 - attemptsLeft + 1) + ' of 40.', false);
@@ -1453,20 +1429,7 @@
     setDiscoverStatus('Loaded ' + KNOWN_CLEMSON_PATENTS.length + ' known Clemson patents from the snapshot dated August 29, 2026. This replaces the on-screen list. A later scan loads the stored catalog again.', false);
     renderRegistryStatus('Showing the August 29, 2026 snapshot.');
     renderRegistry();
-    renderDiscover();
-  });
-  document.getElementById('discover-filter').addEventListener('input', (e)=>{
-    discoverFilter = e.target.value;
-    discoverPage = 0;
-    renderDiscover();
-  });
-  document.getElementById('btn-discover-prev').addEventListener('click', ()=>{
-    discoverPage = Math.max(0, discoverPage - 1);
-    renderDiscover();
-  });
-  document.getElementById('btn-discover-next').addEventListener('click', ()=>{
-    discoverPage += 1;
-    renderDiscover();
+    renderScanSummary();
   });
 
   function renderRegistryStatus(baseMessage){
@@ -1492,6 +1455,7 @@
   let registryTierFilter = "all";
   let registryAlignFilter = "all";
   let registrySort = "priority";
+  let registryNewFilter = "all";
   let rankInFlight = false;
 
   function registryAlignment(p){
@@ -1533,6 +1497,7 @@
 
   function visibleRegistryRows(){
     const rows = registryResults.filter(p => {
+      if(registryNewFilter === "new" && !isNewPatent(p)) return false;
       if(registryTierFilter !== "all" && registryTier(p) !== registryTierFilter) return false;
       return alignmentPassesFilter(registryAlignment(p));
     });
@@ -1574,7 +1539,7 @@
       paginationEl.style.display = 'none';
       emptyEl.innerHTML = hiddenAlreadyEvaluatedCount > 0 && registryResults.length === 0
         ? '<h3>All caught up</h3><p>Every patent in this list has already been evaluated. ' + hiddenAlreadyEvaluatedCount + ' hidden. <button class="btn secondary small" id="btn-show-evaluated-empty">Show them anyway</button></p>'
-        : '<h3>No patents in this view</h3><p>Change the tier or SC alignment filter, reload the known snapshot, or run the live Google Patents pull below.</p>';
+        : '<h3>No patents in this view</h3><p>Change the New, tier, or SC alignment filter, reload the known snapshot, or run a scan.</p>';
       const showBtnEmpty = document.getElementById('btn-show-evaluated-empty');
       if(showBtnEmpty) showBtnEmpty.addEventListener('click', ()=>{ showAlreadyEvaluated = true; refilterRegistry(); });
       return;
@@ -1591,6 +1556,7 @@
     body.innerHTML = pageItems.map(p => {
       const sector = guessSector(p.title, p.abstract);
       const inventorsStr = (p.inventors || []).join(', ') || 'Not listed';
+      const newLabel = isNewPatent(p) ? ' <span class="tag new" title="' + escapeHtml(newBadgeTitle(p)) + '">New</span>' : '';
       const typeLabel = p.record_type ? (' <span class="tag ' + (p.record_type === 'Grant' ? 'license' : 'pending') + '" style="margin-left:6px;">' + escapeHtml(p.record_type) + '</span>') : '';
       const evaluatedLabel = isPatentEvaluated(p.patent_id) ? ' <span class="tag mature">Already evaluated</span>' : '';
       const citationLabel = (typeof p.backward_citation_count === 'number') ? (' <span class="key-badge" title="Backward citations: prior art this patent cites">' + p.backward_citation_count + ' citations</span>') : '';
@@ -1607,7 +1573,7 @@
         '<td><input type="checkbox" data-triage-select="' + escapeHtml(p.patent_id || '') + '"' + checked + ' aria-label="Select ' + escapeHtml(p.title || 'patent') + '"></td>' +
         '<td><span class="tag ' + (TIER_TAG[tier] || 'pending') + '" title="' + escapeHtml(tierTitle) + '">' + escapeHtml(tier) + '</span></td>' +
         '<td class="mono">' + escapeHtml(p.date || '') + '</td>' +
-        '<td><div class="patent-title">' + escapeHtml(p.title || 'Untitled') + typeLabel + evaluatedLabel + '</div><div class="patent-sub">' + link + ' · ' + escapeHtml(inventorsStr) + citationLabel + '</div></td>' +
+        '<td><div class="patent-title">' + escapeHtml(p.title || 'Untitled') + newLabel + typeLabel + evaluatedLabel + '</div><div class="patent-sub">' + link + ' · ' + escapeHtml(inventorsStr) + citationLabel + '</div></td>' +
         '<td>' + alignmentCell(registryAlignment(p)) + '</td>' +
         '<td><span class="tag mature">' + escapeHtml(sector) + '</span></td>' +
         '<td>' + actionBtn + '</td>' +
@@ -1854,6 +1820,11 @@
     if(opened && chosen.length === 1) openCaseFile(opened.id);
     else showView('portfolio');
   }
+  document.getElementById('registry-new-filter').addEventListener('change', (e)=>{
+    registryNewFilter = e.target.value;
+    registryPage = 0;
+    renderRegistry();
+  });
   document.getElementById('registry-tier-filter').addEventListener('change', (e)=>{
     registryTierFilter = e.target.value;
     registryPage = 0;
@@ -2580,7 +2551,7 @@
         const known = findKnownPatent(m.patent_number);
         let action;
         if(!known){
-          action = '<span style="font-size:12px; color:var(--slate);">Not in the loaded catalog.</span> <button class="btn secondary small" data-view="discover">Open Discover</button>';
+          action = '<span style="font-size:12px; color:var(--slate);">Not in the loaded catalog.</span> <button class="btn secondary small" data-view="triage">Open triage</button>';
         } else if(docketHasPatent(known.number) || isPatentEvaluated(known.number)){
           action = '<button class="btn secondary small" data-open-known="' + escapeHtml(known.number) + '">Open case</button>';
         } else {
@@ -3074,7 +3045,7 @@
     if(active.length === 0){
       recentEl.innerHTML = patents.length > 0
         ? '<div class="empty"><h3>Everything is archived</h3><p>Every patent currently in the docket has been archived.</p><div style="margin-top:12px;"><button class="btn small" data-view="portfolio">Open portfolio</button></div></div>'
-        : '<div class="empty"><h3>No patents on the docket yet</h3><p>Start from Discover, then triage the ones worth a full evaluation.</p><div style="margin-top:12px; display:flex; gap:8px; justify-content:center; flex-wrap:wrap;"><button class="btn small" data-view="triage">Open triage</button><button class="btn secondary small" data-view="intake">Submit a disclosure</button></div></div>';
+        : '<div class="empty"><h3>No patents on the docket yet</h3><p>Start from Triage, rank the list, then evaluate the ones worth a full read.</p><div style="margin-top:12px; display:flex; gap:8px; justify-content:center; flex-wrap:wrap;"><button class="btn small" data-view="triage">Open triage</button><button class="btn secondary small" data-view="intake">Submit a disclosure</button></div></div>';
       bindViewButtons(recentEl);
       return;
     }
@@ -3583,9 +3554,9 @@
 
   loadKnownRegistry();
   fillAlignmentFilter();
-  renderRegistryStatus('Loaded ' + KNOWN_CLEMSON_PATENTS.length + ' known Clemson assigned patents and published applications, most recent first, from a snapshot dated August 29, 2026. A stored catalog replaces this when Discover can read it.');
+  renderRegistryStatus('Loaded ' + KNOWN_CLEMSON_PATENTS.length + ' known Clemson assigned patents and published applications, most recent first, from a snapshot dated August 29, 2026. A stored catalog replaces this when a scan can be read.');
   renderAll();
-  renderDiscover();
+  renderScanSummary();
   renderRegistry();
   loadDiscoveredCatalog();
   loadTriageCache().then(() => {
