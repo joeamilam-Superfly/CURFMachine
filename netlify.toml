@@ -1,6 +1,15 @@
 [build]
-  publish = "."
+  publish = "public"
   functions = "netlify/functions"
+
+# Only public/ is published. Docs and SQL stay in the repo, outside the
+# published output; they mention the Supabase URL (not a secret), so
+# they are excluded from the secrets scan.
+[build.environment]
+  SECRETS_SCAN_OMIT_PATHS = "*.md,*.sql,DEPLOYMENT.md,SECURITY-AND-PRIVACY.md"
+
+[functions]
+  node_bundler = "esbuild"
 
 # Netlify always deploys a function at /.netlify/functions/<filename>,
 # regardless of any custom "config.path" export in the function file

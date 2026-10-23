@@ -1,7 +1,9 @@
 // netlify/functions/triage-patents-background.js
 //
 // Background rank of Clemson patents for licensing potential.
-// The client already fetched the registry and POSTs a compact list.
+// The client already fetched the registry and POSTs compact chunks of
+// about 25 uncached patents per request (background function bodies
+// are limited to 256 KB). Each chunk is ranked and stored on its own.
 // This function does not call BigQuery again.
 //
 // Cost control, using Anthropic's published starting rates for
@@ -28,8 +30,8 @@
 // The client gets HTTP 202 immediately and polls GET
 // /api/triage-patents. Nothing returned here reaches the browser.
 
-import { applyAlignmentToTier, listGroupNames, scoreAlignment } from "./sc-investment.js";
-import { applyTermOverride, buildTriageSignals } from "./triage-signals.js";
+import { applyAlignmentToTier, listGroupNames, scoreAlignment } from "../lib/sc-investment.js";
+import { applyTermOverride, buildTriageSignals } from "../lib/triage-signals.js";
 
 const TABLE = "patent_triage";
 const TRIAGE_MODEL = "claude-haiku-5-5";
@@ -195,7 +197,7 @@ export default async (req) => {
     return;
   }
   const incoming = Array.isArray(body && body.patents) ? body.patents : [];
-  const patents = incoming.filter(p => p && p.patent_id).slice(0, 400);
+  const patents = incoming.filter(p => p && p.patent_id).slice(0, 100);
   if(patents.length === 0){
     console.log("triage-patents-background: no patents in the request");
     return;

@@ -1418,19 +1418,36 @@
     }
   }
 
+  // Rank payloads stay small: background functions reject bodies over
+  // 256 KB, so send only the fields the server reads, truncated to the
+  // same limits the server applies, and send them in chunks.
+  const RANK_CHUNK_SIZE = 25;
+  function clip(value, max){ return String(value || '').slice(0, max); }
   function compactRegistryPatent(p){
     return {
       patent_id: p.patent_id,
-      title: p.title || '',
-      abstract: p.abstract || '',
-      cpc_codes: p.cpc_codes || [],
+      title: clip(p.title, 300),
+      abstract: clip(p.abstract, 700),
+      cpc_codes: (Array.isArray(p.cpc_codes) ? p.cpc_codes : []).slice(0, 6).map(c => clip(c, 40)),
       filing_date: p.filing_date || null,
       publication_date: p.date || null,
       kind_code: p.kind_code || null,
       record_type: p.record_type || null,
-      assignees: p.assignees || [],
+      assignees: (Array.isArray(p.assignees) ? p.assignees : []).slice(0, 5).map(a => clip(typeof a === 'string' ? a : (a && a.name) || '', 120)),
       backward_citation_count: p.backward_citation_count
     };
+  }
+
+  async function waitForChunk(ids, done, total){
+    for(let attempt = 0; attempt < 45; attempt++){
+      if(triageError) throw new Error(triageError);
+      await loadTriageCache();
+      renderRegistry();
+      const pending = ids.filter(id => !triageById.has(id));
+      if(pending.length === 0) return;
+      setRankStatus('Ranking. ' + (done + ids.length - pending.length) + ' of ' + total + ' stored. This page checks every few seconds.');
+      await new Promise(resolve => setTimeout(resolve, 4000));
+    }
   }
 
   async function pollTriage(ids, attempt){
@@ -1485,14 +1502,20 @@
     if(btn) btn.disabled = true;
     setRankStatus('Starting the rank for ' + uncached.length + ' patents.');
     try{
-      const res = await fetch('/api/triage-patents-background', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ patents: registryAll.map(compactRegistryPatent) })
-      });
-      if(res.status !== 202 && !res.ok){
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error || ('Rank request failed with status ' + res.status));
+      const total = uncached.length;
+      for(let i = 0; i < total; i += RANK_CHUNK_SIZE){
+        const chunk = uncached.slice(i, i + RANK_CHUNK_SIZE);
+        setRankStatus('Sending batch ' + (i / RANK_CHUNK_SIZE + 1) + ' of ' + Math.ceil(total / RANK_CHUNK_SIZE) + ' (' + i + ' of ' + total + ' done).');
+        const res = await fetch('/api/triage-patents-background', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ patents: chunk.map(compactRegistryPatent) })
+        });
+        if(res.status !== 202 && !res.ok){
+          const body = await res.json().catch(() => ({}));
+          throw new Error(body.error || ('Rank request failed with status ' + res.status));
+        }
+        await waitForChunk(chunk.map(p => p.patent_id), i, total);
       }
       await pollTriage(uncached.map(p => p.patent_id), 0);
     }catch(err){

@@ -5,7 +5,7 @@
 //
 // Netlify does not allow this function to be called by URL.
 
-import { runPublicationScan } from "./publication-watch-lib.js";
+import { runPublicationScan } from "../lib/publication-watch-lib.js";
 
 export default async () => {
   const result = await runPublicationScan({ trigger: "weekly", scoreLimit: 8 });
