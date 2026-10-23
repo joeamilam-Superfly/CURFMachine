@@ -104,6 +104,7 @@
 
   /* dashboard cards */
   .stat-row{ display:grid; grid-template-columns: repeat(4, 1fr); gap:14px; margin-bottom: 26px; }
+  .stat-row.cols-5{ grid-template-columns: repeat(5, 1fr); }
   .stat-card{
     background:#fff; border:1px solid var(--line); border-radius: var(--radius);
     padding: 16px 18px; box-shadow: var(--shadow);
@@ -219,12 +220,22 @@
 
   @media (max-width: 900px){
     .app{ flex-direction:column; }
-    .sidebar{ width:100%; height:auto; position:relative; flex-direction:row; overflow-x:auto; }
-    .sidebar-brand, .sidebar-foot{ display:none; }
-    .nav{ display:flex; padding:8px; }
-    .main{ padding: 20px; }
-    .stat-row{ grid-template-columns: repeat(2,1fr); }
+    .sidebar{ width:100%; height:auto; position:relative; flex-direction:column; overflow:visible; }
+    .sidebar-brand{ display:flex; align-items:center; gap:10px; padding:12px 14px; }
+    .sidebar-brand .seal{ margin-bottom:0; flex-shrink:0; }
+    .sidebar-foot{ display:none; }
+    .nav{ display:flex; flex-wrap:nowrap; gap:4px; padding:8px 10px 12px; overflow-x:auto; -webkit-overflow-scrolling:touch; }
+    .nav-item{ width:auto; flex:0 0 auto; white-space:nowrap; }
+    .main{ padding: 16px; }
+    .stat-row, .stat-row.cols-5{ grid-template-columns: repeat(2, 1fr); }
     .intake-grid{ grid-template-columns: 1fr; }
+    .page-head h1{ font-size: 22px; }
+    .stamp{ transform: none; }
+    .panel, .panel-body{ max-width:100%; }
+    .panel-body{ overflow-x:auto; -webkit-overflow-scrolling:touch; }
+    table.docket{ min-width: 640px; }
+    .trl-scale{ overflow-x:auto; }
+    .trl-cell{ min-width: 28px; flex: 0 0 28px; }
   }
 </style>
 </head>
@@ -241,9 +252,11 @@
     <div class="nav">
       <button class="nav-item active" data-view="dashboard"><span class="num">01</span> Dashboard</button>
       <button class="nav-item" data-view="registry"><span class="num">02</span> Clemson Registry</button>
-      <button class="nav-item" data-view="intake"><span class="num">03</span> Intake</button>
-      <button class="nav-item" data-view="portfolio"><span class="num">04</span> Portfolio</button>
-      <button class="nav-item" data-view="practices"><span class="num">05</span> Methodology</button>
+      <button class="nav-item" data-view="problemmatch"><span class="num">03</span> Problem Match</button>
+      <button class="nav-item" data-view="intake"><span class="num">04</span> Intake</button>
+      <button class="nav-item" data-view="portfolio"><span class="num">05</span> Portfolio</button>
+      <button class="nav-item" data-view="pubwatch"><span class="num">06</span> Publication Watch</button>
+      <button class="nav-item" data-view="practices"><span class="num">07</span> Methodology</button>
     </div>
     <div class="sidebar-foot">
       Prototype for internal CURF review. AI scoring is a first pass heuristic, not a substitute for Technology Commercialization Officer judgment.
@@ -253,8 +266,9 @@
   <div class="main">
 
     <div id="security-banner" style="background:#F7E7E2; border:1px solid #E0B4A6; color:#9C3B2E; padding:12px 16px; border-radius:3px; font-size:12.5px; margin-bottom:20px; max-width:1120px;">
-      <strong>Prototype notice.</strong> This build sends patent text directly from the browser to Anthropic's API with no Zero Data Retention agreement and no backend proxy in place. Do not submit real, unpublished Clemson disclosures here. Use sample or already-published data only until CURF has a signed ZDR arrangement with Anthropic and requests are routed through an institutional backend proxy that holds the API key server side.
+      <strong>Handle with care.</strong> This app is deployed with a backend proxy and does not expose an API key to the browser, but that alone is not clearance to submit real, unpublished Clemson disclosures. Two live requirements still apply: a Zero Data Retention arrangement should be confirmed on the Anthropic account this uses (see SECURITY-AND-PRIVACY.md), and, now that AI evaluation uses live web search to identify acquirer targets, the search queries built from a patent's title and abstract are sent to public web search infrastructure, not just to Anthropic's model. That is a non issue for already published patents, but it means a pending, unfiled disclosure must never be run through evaluation, doing so would push its confidential content out to a public search engine.
     </div>
+    <div id="remote-save-status" style="display:none; background:#FBF0DA; border:1px solid #E4C990; color:#6B4E0E; padding:12px 16px; border-radius:3px; font-size:12.5px; margin-bottom:20px; max-width:1120px;"></div>
 
     <!-- DASHBOARD -->
     <div class="view active" id="view-dashboard">
@@ -269,11 +283,12 @@
         </div>
       </div>
 
-      <div class="stat-row">
-        <div class="stat-card"><div class="label">Patents on docket</div><div class="value" id="stat-total">0</div><div class="sub">total submitted</div></div>
-        <div class="stat-card"><div class="label">License candidates</div><div class="value" id="stat-license">0</div><div class="sub">route to industry</div></div>
-        <div class="stat-card"><div class="label">Venture candidates</div><div class="value" id="stat-venture">0</div><div class="sub">student / faculty path</div></div>
-        <div class="stat-card"><div class="label">Needs maturation</div><div class="value" id="stat-mature">0</div><div class="sub">too early for either</div></div>
+      <div class="stat-row cols-5">
+        <div class="stat-card"><div class="label">Patents on docket</div><div class="value" id="stat-total">0</div><div class="sub">active, not archived</div></div>
+        <div class="stat-card"><div class="label">License candidates</div><div class="value" id="stat-license">0</div><div class="sub">demand fits a corporate</div></div>
+        <div class="stat-card"><div class="label">Venture candidates</div><div class="value" id="stat-venture">0</div><div class="sub">demand fits a new market</div></div>
+        <div class="stat-card"><div class="label">Insufficient demand</div><div class="value" id="stat-no-demand">0</div><div class="sub">no real market pull found</div></div>
+        <div class="stat-card"><div class="label">Needs maturation</div><div class="value" id="stat-mature">0</div><div class="sub">too early technically</div></div>
       </div>
 
       <div class="panel">
@@ -291,17 +306,17 @@
     <div class="view" id="view-registry">
       <div class="page-head">
         <div>
-          <div class="eyebrow">Sourced from USPTO PatentsView</div>
+          <div class="eyebrow">Known Clemson assigned patents, snapshot dated August 29, 2026</div>
           <h1>Clemson Patent Registry</h1>
-          <p>Granted US patents where Clemson University or the Clemson University Research Foundation is the assignee of record, most recent first. This pulls from the official USPTO PatentsView API, not from scraping Google Patents, since PatentsView is the sanctioned way to query this data in bulk.</p>
+          <p>Patents and published applications where Clemson University (or a co-assignee alongside Clemson) is the assignee of record, most recent first. Loaded below by default is a manually pulled snapshot, real, verified, individually sourced patents, not a live feed. A live pull from Google Patents Public Data is also available as a secondary option once Google Cloud credentials are configured. Once a patent has been added to the docket and evaluated, it drops off this list automatically, so working through the backlog over time never re-evaluates or re-bills the same patent twice. That memory stays in this browser, and is shared with other browsers when Supabase is configured.</p>
         </div>
         <div>
-          <button class="btn" id="btn-fetch-registry">Fetch latest from PatentsView</button>
+          <button class="btn" id="btn-load-known-registry">Load known Clemson patents</button>
         </div>
       </div>
 
       <div class="caveat-box" style="margin-bottom:20px;">
-        This registry can only show patents actually assigned to Clemson or CURF. It cannot identify patents by alumni, faculty, or staff assigned to other organizations, patent records carry no education or employment history, so that association is not verifiable from this data and is not attempted here. Sector tags below are a keyword based first pass on the title and abstract, not an official CPC classification, and should be confirmed by a Technology Commercialization Officer before being relied on.
+        This registry can only show patents actually assigned to Clemson or CURF. It cannot identify patents by alumni, faculty, or staff assigned to other organizations, patent records carry no education or employment history, so that association is not verifiable from this data and is not attempted here. Sector tags below are a keyword based first pass on the title and abstract, not an official CPC classification, and should be confirmed by a Technology Commercialization Officer before being relied on. The snapshot below is not exhaustive, it reflects one page of a longer record; ask for it to be regenerated or extended when a fuller or more current list is needed.
       </div>
 
       <div class="panel" id="registry-status-panel" style="display:none;">
@@ -312,13 +327,92 @@
         <div class="panel-body" style="padding:0;">
           <table class="docket">
             <thead>
-              <tr><th>Granted</th><th>Title</th><th>Inventors</th><th>Sector (first pass)</th><th></th></tr>
+              <tr><th>Date</th><th>Title</th><th>Inventors</th><th>Sector (first pass)</th><th></th></tr>
             </thead>
             <tbody id="registry-body"></tbody>
           </table>
           <div class="empty" id="registry-empty">
             <h3>No results yet</h3>
-            <p>Click "Fetch latest from PatentsView" to pull the current Clemson assigned patent record. This requires the app to be deployed with its backend proxy and a PatentsView API key configured, it will not work from this in chat preview.</p>
+            <p>Click "Load known Clemson patents" above for the real, verified snapshot, no API key needed. A live Google Patents pull is also available further down once this loads.</p>
+          </div>
+          <div id="registry-pagination" style="display:none; padding:14px 16px; border-top:1px solid var(--line); align-items:center; justify-content:space-between;">
+            <span id="registry-pagination-label" style="font-size:12.5px; color:var(--slate);"></span>
+            <span>
+              <button class="btn secondary small" id="btn-registry-prev">Previous</button>
+              <button class="btn secondary small" id="btn-registry-next" style="margin-left:8px;">Next</button>
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel" style="margin-top:20px;">
+        <div class="panel-head"><h3>Optional: try a live USPTO pull instead</h3></div>
+        <div class="panel-body">
+          <p style="font-size:13px; color:var(--slate); margin-bottom:12px;">Requires the deployed backend proxy and Google Cloud credentials (GCP_PROJECT_ID and GCP_SERVICE_ACCOUNT_KEY_BASE64). This queries Google Patents Public Data on BigQuery, not the USPTO PatentsView API. It will not work from a local file preview, since there is no server here to hold those credentials.</p>
+          <button class="btn secondary" id="btn-fetch-registry">Try live fetch from Google Patents</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- PROBLEM MATCH -->
+    <div class="view" id="view-problemmatch">
+      <div class="page-head">
+        <div>
+          <div class="eyebrow">Demand side, not supply side</div>
+          <h1>Problem Match</h1>
+          <p>Describe a problem an enterprise actually has. This checks it against Clemson's known patents first, then researches whether a solution already exists elsewhere, so CURF can tell a genuine white space from a problem that's already solved.</p>
+        </div>
+      </div>
+
+      <div class="caveat-box" style="margin-bottom:20px; background:#F7E7E2; border-color:#E0B4A6; color:var(--red);">
+        If the problem description you paste here came from a real company, treat it the same as any other confidential business information: it gets sent to Anthropic's model, and to public web search infrastructure as part of the external landscape check. Do not paste an enterprise's confidential problem statement without their consent to share it this way.
+      </div>
+
+      <div class="panel">
+        <div class="panel-body">
+          <div class="field">
+            <label>Enterprise or industry context (optional)</label>
+            <input type="text" id="problem-context" placeholder="e.g. Mid-size automotive parts supplier">
+          </div>
+          <div class="field">
+            <label>Problem description</label>
+            <textarea id="problem-text" style="min-height:120px;" placeholder="Describe the problem in plain language, the way the enterprise would describe it, not in patent language."></textarea>
+          </div>
+          <button class="btn" id="btn-run-problem-match">Search Clemson IP, then the broader landscape</button>
+        </div>
+      </div>
+
+      <div class="panel" id="problem-match-status-panel" style="display:none;">
+        <div class="panel-body" id="problem-match-status"></div>
+      </div>
+
+      <div id="problem-match-results"></div>
+
+      <div class="panel-head" style="border:none; padding-top:24px; padding-bottom:0;"><h3>Or find and evaluate a specific patent directly</h3></div>
+      <p style="font-size:13px; color:var(--slate); margin:6px 0 16px 0;">Searches the same known Clemson snapshot the Registry tab uses, not a live pull. Finding a match here runs it through the same TRL, demand, and license or venture evaluation as everywhere else in the app.</p>
+
+      <div class="intake-grid">
+        <div class="panel">
+          <div class="panel-head"><h3>By known patent number</h3></div>
+          <div class="panel-body">
+            <div class="field">
+              <label>Patent or application number</label>
+              <input type="text" id="pm-lookup-number" placeholder="e.g. 12602036 or 20260227775">
+            </div>
+            <button class="btn secondary" id="btn-pm-lookup-number">Look up</button>
+            <div id="pm-lookup-number-results" style="margin-top:14px;"></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><h3>By keyword</h3></div>
+          <div class="panel-body">
+            <div class="field">
+              <label>Search title and abstract</label>
+              <input type="text" id="pm-lookup-keyword" placeholder="e.g. sensor, gene transfer, optical fiber">
+            </div>
+            <button class="btn secondary" id="btn-pm-lookup-keyword">Search</button>
+            <div id="pm-lookup-keyword-results" style="margin-top:14px;"></div>
           </div>
         </div>
       </div>
@@ -376,10 +470,9 @@
           <div class="panel">
             <div class="panel-head"><h3>Queued for evaluation</h3></div>
             <div class="panel-body" id="queue-body">
-              <div class="empty" style="padding:24px 10px;">Nothing queued yet.</div>
+              <div class="empty" style="padding:24px 10px;">Nothing queued yet. Adding a file or pasted disclosure below evaluates it automatically.</div>
             </div>
           </div>
-          <button class="btn" id="btn-evaluate-all" style="width:100%;" disabled>Run AI evaluation on queued patents</button>
         </div>
       </div>
     </div>
@@ -388,16 +481,17 @@
     <div class="view" id="view-portfolio">
       <div class="page-head">
         <div>
-          <div class="eyebrow">Full Docket</div>
+          <div class="eyebrow">Full Docket, best scoring first</div>
           <h1>Portfolio</h1>
-          <p>Every patent submitted, with its recommended path. Click a row to open the full case file.</p>
+          <p>Sorted by value score, highest tier first, evaluated ahead of unevaluated. Click a row to open the full case file. Archiving a patent hides it here without deleting anything, it can be brought back at any time.</p>
         </div>
       </div>
+      <div id="portfolio-archive-status" style="margin-bottom:10px; font-size:12.5px; color:var(--slate);"></div>
       <div class="panel">
         <div class="panel-body" style="padding:0;">
           <table class="docket">
             <thead>
-              <tr><th>Case</th><th>Title</th><th>Recommended path</th><th>TRL</th><th>Confidence</th><th></th></tr>
+              <tr><th>Case</th><th>Title</th><th>Recommended path</th><th>TRL</th><th>Value</th><th>Confidence</th><th></th></tr>
             </thead>
             <tbody id="portfolio-body"></tbody>
           </table>
@@ -413,6 +507,43 @@
     <div class="view" id="view-casefile">
       <a href="#" class="back-link" id="back-to-portfolio">&larr; Back to portfolio</a>
       <div id="casefile-body"></div>
+    </div>
+
+    <!-- PUBLICATION WATCH -->
+    <div class="view" id="view-pubwatch">
+      <div class="page-head">
+        <div>
+          <div class="eyebrow">Optional, public search only</div>
+          <h1>Publication Watch</h1>
+          <p>Searches for new Clemson research publications using public web search only, titles, abstracts, press releases, anything already publicly indexed. This cannot get behind Clemson library's paywalled full text subscriptions, that would need a specific integration to Clemson's own library systems that does not exist here, so treat this as a partial, best effort signal, not comprehensive coverage.</p>
+        </div>
+        <div>
+          <button class="btn" id="btn-run-pubwatch-scan">Run scan now</button>
+        </div>
+      </div>
+
+      <div class="caveat-box" style="margin-bottom:20px;">
+        Runs automatically once a week too, on a much tighter budget (scheduled functions get 30 seconds, versus the 15 minutes this button's background run gets), so the weekly automatic scan deliberately does a single, narrower search while this button does a fuller one. An email alert only goes out when a genuinely new finding scores HIGH for commercial relevance, and only if RESEND_API_KEY and CURF_ALERT_EMAIL are both configured, see DEPLOYMENT.md. Clicking the button starts the scan and checks back automatically for about a minute; an open-ended search like this can take longer, if nothing's shown yet, it's still running, just check back or click the button again later.
+      </div>
+
+      <div class="panel" id="pubwatch-status-panel" style="display:none;">
+        <div class="panel-body" id="pubwatch-status"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-body" style="padding:0;">
+          <table class="docket">
+            <thead>
+              <tr><th>Found</th><th>Title</th><th>Relevance</th><th></th></tr>
+            </thead>
+            <tbody id="pubwatch-body"></tbody>
+          </table>
+          <div class="empty" id="pubwatch-empty">
+            <h3>No findings yet</h3>
+            <p>Click "Run scan now" to search once immediately, or wait for the weekly automatic run.</p>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- METHODOLOGY -->
@@ -439,6 +570,38 @@
           <div class="bp-item">
             <div class="who"><span class="key-badge">AUTM</span> The three decision framework</div>
             <div class="what">Technology transfer offices generally evaluate early stage inventions to make three decisions: whether to file a patent, whether to actively market it for licensing, and whether it is better suited to a startup or venture path than an established licensee. This platform mirrors that same fork.</div>
+          </div>
+          <div class="bp-item">
+            <div class="who">Demand first, not technology first</div>
+            <div class="what">The scoring here is deliberately ordered so market demand is checked before a path is chosen, not after. A patent only becomes a license or venture candidate if the evaluator finds real evidence of demand in the disclosure itself, not just technical merit or an inventor's own assertion that a market exists. If demand looks weak or unsupported, the patent is flagged as insufficient demand regardless of how sophisticated the underlying technology is. Only once demand clears that bar does the model decide whether the opportunity is narrow enough to fit an existing corporate's roadmap, which points toward licensing, or broad enough that no incumbent already serves it well, which points toward a new venture. Every evaluation also has to name the single strongest reason it could be wrong, a deliberate check against the model simply agreeing with the disclosure's own framing of itself.</div>
+          </div>
+          <div class="bp-item">
+            <div class="who">Inventor input, funding source, and a marketing abstract</div>
+            <div class="what">Each case file has an optional staff and inventor input panel, known industry contacts, the inventor's own read on feasibility, willingness to engage, and funding source. When filled in, this is weighed as real evidence, stronger than the disclosure's own unsupported claims, but the evaluation still notes it is self reported, not independently verified. A federal funding source triggers a compliance note about the government's retained use license and possible march-in rights under the Bayh-Dole Act. Every evaluation also generates a separate marketing abstract, plain language, non confidential, written for a business audience rather than a patent examiner, modeled on how offices like Stanford's OTL market technology to industry with inventor-informed, non-technical descriptions rather than the legal abstract itself.</div>
+          </div>
+          <div class="bp-item">
+            <div class="who">The value score is computed, not guessed</div>
+            <div class="what">Every patent gets a letter tier (A through D) and a points total out of 13, built entirely from what the evaluation already produced: market demand verdict, technology readiness level, adoption risk, whether a real acquirer was confirmed via search rather than just a sector guess, and whether staff or the inventor confirmed real engagement. It is computed with a fixed formula, not asked of the AI, so the same inputs always produce the same score and every point is traceable back to something already on the page. It deliberately does not produce a dollar figure, there is no comparable licensing deal data or revenue projection behind one, so a specific number would be invented, not estimated. Backward citation counts and patent family IDs are shown for reference on live registry pulls but are not folded into this score, the direction that signal should point wasn't something this could confirm with confidence.</div>
+          </div>
+          <div class="bp-item">
+            <div class="who">Evaluation runs as two calls, not one</div>
+            <div class="what">Every patent first gets a fast, search free core evaluation, TRL, demand, path, risk, marketing abstract, all in one call with no web search involved. Only when that comes back LICENSE does a second, smaller, focused call run just to find acquirer targets. This exists because a combined call, doing full evaluation and web research together, could run long enough on a niche technical topic to exceed Netlify's fixed 60 second execution limit, which cannot be raised through any setting or plan upgrade. Splitting the work means most patents only ever make the fast call, and if the second, smaller acquirer search call does fail, the already successful core evaluation is kept rather than the whole result being thrown away.</div>
+          </div>
+          <div class="bp-item">
+            <div class="who">Portfolio ordering and archiving</div>
+            <div class="what">The Portfolio table sorts by value score, highest tier first, with anything not yet evaluated pushed to the bottom rather than mixed in by recency. Archiving a patent, from its case file or directly from the Portfolio table, removes it from that main view and from the dashboard's active counts without deleting anything, the full evaluation stays exactly as it was. An archived patent remains reachable through "Show archived" on the Portfolio tab, and can be restored to active at any time, which simply reverses the same flag, nothing about its stored evaluation changes either way.</div>
+          </div>
+          <div class="bp-item">
+            <div class="who">Patentability &amp; landscape screen is a pre-attorney triage, not a legal opinion</div>
+            <div class="what">On demand, from any case file, this runs a public web search for similar existing patents, competing commercial products, and anything that looks like a potential blocking concern, then suggests a handful of draft patent claim concepts as discussion starting points, never drafted legal language. It is explicitly not a Freedom to Operate search or a comprehensive prior art search, an AI web search cannot access full patent databases and carries none of a licensed attorney's legal judgment or liability. Its purpose is narrower and more honest: help decide whether a technology is worth the cost of sending to the attorney at all. Staff can leave feedback on a run and re-run it, which the next search takes into account and states plainly in its rationale.</div>
+          </div>
+          <div class="bp-item">
+            <div class="who">Outreach drafts are written from already-verified facts, not new claims</div>
+            <div class="what">Each confirmed acquirer target now also gets a one line pitch angle specific to that company, based on what search actually found about them, not a generic sector pitch reused across all three. A "Draft outreach email" button turns that into a short cold email draft, but that drafting step deliberately uses no web search of its own, it only writes from the company name, sector, and pitch angle the acquirer search already verified, so it cannot introduce a new, unverified claim about the recipient. Every draft is explicitly a starting point for CURF staff to review, personalize, and send themselves, this app never sends anything on its own.</div>
+          </div>
+          <div class="bp-item">
+            <div class="who">Publication Watch is public search only, stated plainly</div>
+            <div class="what">A weekly automatic scan and a manually triggerable one search for new Clemson research publications, using titles, abstracts, press releases, and anything else already publicly indexed, then give each a quick commercial relevance read. It cannot get behind Clemson library's paywalled journal subscriptions, that would need a specific integration with Clemson's own library systems that is not built here, this is a real, stated gap, not an oversight. A finding is only stored and only triggers an email alert once, the first time it appears, re-finding the same publication on a later scan does not repeat the alert. The manual button runs as a genuine Netlify Background Function with a 15 minute execution budget; the automatic weekly run is a scheduled function instead, which Netlify caps at 30 seconds, half of the ordinary 60 second limit the rest of this app is tuned around, so it deliberately runs a single, narrower search rather than risk failing silently every week.</div>
           </div>
         </div>
       </div>
@@ -469,8 +632,8 @@
         <div class="panel-head"><h3>Where the Clemson Registry data comes from, and its limits</h3></div>
         <div class="panel-body">
           <div class="bp-item">
-            <div class="who">USPTO PatentsView, not a Google Patents scraper</div>
-            <div class="what">The Clemson Registry tab queries the official USPTO PatentsView API for patents where Clemson University or the Clemson University Research Foundation is the assignee of record, sorted by grant date. Google Patents has no public bulk query API suited to this, and scraping it at volume sits outside Google's terms of service, so PatentsView, the government run equivalent built from the same underlying grant data, is the sanctioned path.</div>
+            <div class="who">Google Patents Public Data on BigQuery, not a Google Patents scraper</div>
+            <div class="what">The live Clemson Registry pull queries Google's patents-public-data.patents.publications table for US records whose assignee name contains Clemson, most recent first. The default list on this tab is a manually checked snapshot and does not need that query. Google Patents has no public bulk query API suited to this, and scraping it at volume sits outside Google's terms of service, so the published BigQuery dataset is the path this app actually uses.</div>
           </div>
           <div class="bp-item">
             <div class="who">What it cannot do</div>
@@ -494,7 +657,290 @@
   let patents = [];      // {id, title, dept, text, status, evaluation, error}
   let queue = [];        // patents waiting to be evaluated
   let nextId = 1;
-  let registryResults = []; // real patents fetched from PatentsView
+  let registryResults = []; // the filtered page source, after hiding already evaluated patents
+  let registryAll = []; // the unfiltered list for the current registry source (snapshot or live pull)
+  let registryStatusBase = '';
+  let registryPage = 0;
+  const REGISTRY_PAGE_SIZE = 20;
+  let hiddenAlreadyEvaluatedCount = 0;
+  let showAlreadyEvaluated = false;
+  let showArchivedPortfolio = false;
+
+  // Bump this string any time the evaluation schema or the value score
+  // formula changes. Every evaluation stores the version it was
+  // produced under, so a patent evaluated tonight and reopened months
+  // from now, possibly after this file has been revised, still shows
+  // exactly what it showed originally, not a live recomputation under
+  // whatever logic is current by then. See openCaseFile for where the
+  // mismatch gets surfaced to the user rather than hidden.
+  const EVALUATION_SCHEMA_VERSION = 'v1';
+
+  // ---------- full evaluation persistence ----------
+  // Two layers, deliberately redundant. localStorage always works, no
+  // setup, and holds the complete patent record, not just an id, so a
+  // reload of this exact browser shows everything exactly as it was.
+  // Supabase, when configured, is the shared layer across devices, see
+  // DEPLOYMENT.md. Neither layer depends on the other; if Supabase is
+  // never set up, full fidelity persistence still works on this one
+  // browser, which is the actual requirement being solved here, cross
+  // device sharing is the upgrade on top of that, not a prerequisite
+  // for it.
+  const EVALUATED_IDS_KEY = 'curf_docket_evaluated_patent_ids';
+  const PATENT_RECORDS_KEY = 'curf_docket_patent_records';
+  let evaluatedPatentIds = new Set();
+  let localStorageAvailable = true;
+  let openCaseId = null;
+  const evaluationInFlight = new Set();
+
+  // Snapshot numbers are bare ("12602036", "PP36741"). Live BigQuery
+  // ids look like "US-12602036-B2". Treat those as the same patent so
+  // an evaluation from either list hides the other.
+  function normalizePatentKey(id){
+    if(!id) return '';
+    let s = String(id).replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+    if(s.startsWith('us')) s = s.slice(2);
+    // Kind codes are a short suffix (B2, A1, P2), not the digits of the
+    // patent number itself. Plant patents such as PP36741 must keep
+    // their letter prefix.
+    const stripped = s.replace(/[abpseh]\d?$/, '');
+    if(stripped !== s && /\d/.test(stripped)) s = stripped;
+    return s;
+  }
+
+  function isPatentEvaluated(id){
+    if(!id) return false;
+    if(evaluatedPatentIds.has(id)) return true;
+    const key = normalizePatentKey(id);
+    if(!key) return false;
+    for(const stored of evaluatedPatentIds){
+      if(normalizePatentKey(stored) === key) return true;
+    }
+    return false;
+  }
+
+  function docketHasPatent(id){
+    const key = normalizePatentKey(id);
+    if(!key) return false;
+    return patents.some(p => p.sourcePatentId && normalizePatentKey(p.sourcePatentId) === key);
+  }
+
+  function loadEvaluatedIdsFromStorage(){
+    try{
+      const raw = window.localStorage.getItem(EVALUATED_IDS_KEY);
+      if(raw){
+        const arr = JSON.parse(raw);
+        if(Array.isArray(arr)) evaluatedPatentIds = new Set(arr);
+      }
+    }catch(err){
+      localStorageAvailable = false;
+    }
+  }
+
+  function saveEvaluatedIdsToStorage(){
+    try{
+      window.localStorage.setItem(EVALUATED_IDS_KEY, JSON.stringify(Array.from(evaluatedPatentIds)));
+    }catch(err){
+      localStorageAvailable = false;
+    }
+  }
+
+  // Only the fields actually needed to reconstruct a patent's full
+  // case file. Deliberately excludes nothing important: staffInput and
+  // evaluation (which itself carries the frozen value_score_snapshot,
+  // schema_version, and evaluated_at) both travel with the record.
+  function serializePatentForStorage(p){
+    return {
+      id: p.id,
+      title: p.title,
+      dept: p.dept,
+      text: p.text,
+      status: p.status,
+      evaluation: p.evaluation,
+      error: p.error,
+      sourcePatentId: p.sourcePatentId || null,
+      remoteKey: p.remoteKey || null,
+      staffInput: p.staffInput || null,
+      archived: !!p.archived,
+      patentabilityScreen: p.patentabilityScreen || null
+    };
+  }
+
+  function savePatentRecordsToStorage(){
+    try{
+      window.localStorage.setItem(PATENT_RECORDS_KEY, JSON.stringify(patents.map(serializePatentForStorage)));
+    }catch(err){
+      localStorageAvailable = false;
+    }
+  }
+
+  function loadPatentRecordsFromStorage(){
+    try{
+      const raw = window.localStorage.getItem(PATENT_RECORDS_KEY);
+      if(raw){
+        const arr = JSON.parse(raw);
+        if(Array.isArray(arr) && arr.length){
+          patents = arr;
+          const maxId = patents.reduce((m, p) => Math.max(m, p.id || 0), 0);
+          nextId = maxId + 1;
+        }
+      }
+    }catch(err){
+      localStorageAvailable = false;
+    }
+  }
+
+  // Every completed case is saved locally and sent to Supabase.
+  // Registry patents keep their patent number as the key. Intake and
+  // sample cases get a stable remoteKey so a later save updates the
+  // same row instead of being skipped, which is what used to happen.
+  function remotePatentId(p){
+    if(p.sourcePatentId) return String(p.sourcePatentId);
+    if(!p.remoteKey){
+      p.remoteKey = 'docket-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
+    }
+    return p.remoteKey;
+  }
+
+  function sameRemoteRecord(p, patentId){
+    if(!patentId) return false;
+    return p.sourcePatentId === patentId || p.remoteKey === patentId;
+  }
+
+  function noteRemoteSaveFailure(message){
+    const el = document.getElementById('remote-save-status');
+    if(!el) return;
+    el.style.display = 'block';
+    el.textContent = 'Saved in this browser only. Shared save failed: ' + message;
+  }
+
+  function clearRemoteSaveFailure(){
+    const el = document.getElementById('remote-save-status');
+    if(!el) return;
+    el.style.display = 'none';
+    el.textContent = '';
+  }
+
+  function markPatentEvaluatedAndPersist(p){
+    remotePatentId(p);
+    if(p.sourcePatentId){
+      evaluatedPatentIds.add(p.sourcePatentId);
+      saveEvaluatedIdsToStorage();
+    }
+    savePatentRecordsToStorage();
+    pushPatentRecordToRemote(p);
+  }
+
+  // Archiving is reversible by design: it never deletes anything or
+  // clears the evaluation, it only flips a flag that the Portfolio and
+  // Dashboard read to decide what counts as active. An archived patent
+  // remains fully visible from its own case file and from "show
+  // archived" in Portfolio, and un-archiving it is the exact same
+  // action run in reverse, nothing about the stored evaluation changes
+  // either way.
+  function toggleArchive(patentId){
+    const p = patents.find(x => x.id === patentId);
+    if(!p) return;
+    p.archived = !p.archived;
+    remotePatentId(p);
+    savePatentRecordsToStorage();
+    pushPatentRecordToRemote(p);
+    renderAll();
+  }
+
+  // ---------- optional shared backing store (Supabase, via plain REST) ----------
+  // These layer on top of localStorage rather than replace it. If
+  // Supabase isn't configured, /api/evaluated-patents returns
+  // configured: false and both functions below no-op quietly, the app
+  // keeps working exactly as it does with localStorage alone. This is
+  // deliberately fire-and-forget: a failed sync here should never block
+  // or interrupt the evaluation flow itself.
+  async function pushPatentRecordToRemote(p){
+    const patentId = remotePatentId(p);
+    try{
+      const res = await fetch('/api/evaluated-patents', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ patent_id: patentId, record: serializePatentForStorage(p) })
+      });
+      const data = await res.json().catch(() => ({}));
+      if(!res.ok || (data && data.error)){
+        noteRemoteSaveFailure((data && data.error) || ('Shared save failed (' + res.status + ').'));
+        return;
+      }
+      clearRemoteSaveFailure();
+    }catch(err){
+      // localStorage already has the record. The banner says the
+      // shared copy did not update, instead of failing the evaluation.
+      noteRemoteSaveFailure(err.message || 'Could not reach the shared save endpoint.');
+    }
+  }
+
+  async function syncPatentRecordsFromRemote(){
+    try{
+      const res = await fetch('/api/evaluated-patents');
+      if(!res.ok) return;
+      const data = await res.json();
+      if(!data.configured) return; // Supabase not set up, nothing to merge
+      if(data.error){
+        noteRemoteSaveFailure(data.error);
+        return;
+      }
+
+      const remoteIds = Array.isArray(data.patent_ids) ? data.patent_ids : [];
+      let idsChanged = false;
+      remoteIds.forEach(id => {
+        if(!evaluatedPatentIds.has(id)){ evaluatedPatentIds.add(id); idsChanged = true; }
+      });
+      if(idsChanged) saveEvaluatedIdsToStorage();
+
+      // Merge in any full record this browser doesn't already have.
+      // A patent already present locally (matched by its real patent
+      // number) is left as-is rather than overwritten, this browser's
+      // own copy wins; a genuinely different device pulls in whatever
+      // is already known here.
+      const remoteRecords = Array.isArray(data.records) ? data.records : [];
+      let patentsChanged = false;
+      remoteRecords.forEach(r => {
+        if(!r.record) return;
+        const alreadyLocal = patents.some(p => sameRemoteRecord(p, r.patent_id));
+        if(!alreadyLocal){
+          patents.push({ ...r.record, id: nextId++ });
+          patentsChanged = true;
+        }
+      });
+      if(patentsChanged) savePatentRecordsToStorage();
+
+      if(idsChanged || patentsChanged){
+        renderAll();
+        if(registryAll.length){
+          registryResults = applyEvaluatedFilter(registryAll);
+          renderRegistry();
+        }
+      }
+
+      // Evaluations that completed in this browser while shared save
+      // was failing are still in localStorage. Once the server accepts
+      // writes, opening the app uploads those missing rows.
+      const known = new Set(remoteIds);
+      let backfill = false;
+      patents.forEach(p => {
+        if(p.status !== 'evaluated' || !p.evaluation) return;
+        const id = remotePatentId(p);
+        if(!known.has(id)){
+          known.add(id);
+          backfill = true;
+          pushPatentRecordToRemote(p);
+        }
+      });
+      if(backfill) savePatentRecordsToStorage();
+    }catch(err){
+      // No backend proxy yet, or offline, fall back to localStorage only.
+    }
+  }
+
+  loadEvaluatedIdsFromStorage();
+  loadPatentRecordsFromStorage();
+  syncPatentRecordsFromRemote();
 
   // ---------- sector heuristic ----------
   // First pass keyword tagging against a broad five sector split loosely
@@ -519,6 +965,71 @@
       if(hits > bestScore){ bestScore = hits; best = sector; }
     });
     return best || "Unclassified, needs manual review";
+  }
+
+  // ---------- real Clemson patent snapshot ----------
+  // Pulled directly from patents.justia.com's public, maintained index of
+  // patents assigned to Clemson University, most recent first, on
+  // August 29, 2026. This is a manually refreshed snapshot, not a live
+  // feed. The live pull is the BigQuery function behind "Try live fetch
+  // from Google Patents", which needs GCP_PROJECT_ID and
+  // GCP_SERVICE_ACCOUNT_KEY_BASE64. Ask for this list to be regenerated
+  // periodically rather than treating it as always current.
+  // Every entry below is a real, verifiable patent or published
+  // application, not sample or placeholder data.
+  const KNOWN_CLEMSON_PATENTS = [
+    { type: "Application", number: "20260227775", title: "System for predictive operational analysis of a machinery component", date: "2026-08-06", inventors: ["Ethan Wescoat", "Laine Mears"], abstract: "A system of digitally representing equipment failure comprising a testing assembly, sensors, and computer readable instructions for creating a usable lifetime model of a component and predicting anticipated failure and replacement." },
+    { type: "Application", number: "20260133656", title: "Cloud-based user profile system for adaptive GUI modification", date: "2026-05-14", inventors: ["Julian Brinkley"], abstract: "A computer system providing adaptive graphical user interface modifications for users with impairments, calibrating touch input coordinates based on stored accessibility parameters in a user profile." },
+    { type: "Application", number: "20260105712", title: "Mixed reality system for advanced driver assistance systems testing, driver training and driving entertainment", date: "2026-04-16", inventors: ["Yunyi Jia", "Rongyao Wang", "Ardalan Vahidi"], abstract: "A mixed reality system for vehicle testing and validation using a headset to superimpose virtual traffic objects onto a real world driving environment, with pose correction to maintain spatial alignment." },
+    { type: "Grant", number: "12602036", title: "System for predictive operational analysis of a machinery component", date: "2026-04-14", inventors: ["Laine Mears", "Ethan Wescoat"], abstract: "A system for testing manufacturing equipment components, isolating failure data, and creating a usable lifetime model according to sensed testing results." },
+    { type: "Application", number: "20260099817", title: "Immutable ledger enabled automatic procurement system", date: "2026-04-09", inventors: ["Sean McNamara", "Istiqlal Aurangzeb", "Jong Han Yoon"], abstract: "A computerized procurement system using an immutable ledger and blockchain enabled smart contracts to match contractors with subcontractors while maintaining anonymity during evaluation." },
+    { type: "Application", number: "20260096761", title: "System for quantification of human temporomandibular joint mechanics and oral function", date: "2026-04-09", inventors: ["Brooke Damon", "Shuchun Sun", "Hai Yao", "Janice Lee"], abstract: "A wearable sensor system tracking jaw motion, muscle activation, joint sound, and bite force, overlaid on 3D imaging for diagnosis of jaw mechanics." },
+    { type: "Application", number: "20260081905", title: "System and method for social media authenticity analysis and coordinated influence detection", date: "2026-03-19", inventors: ["Darren Linvill", "Patrick Warren"], abstract: "A system analyzing social media accounts and conversation topics to detect coordinated influence operations through statistical analysis of account flag distributions." },
+    { type: "Application", number: "20260054561", title: "Hybrid electric powertrain for tracked vehicles", date: "2026-02-26", inventors: ["Qilun Zhu", "Atharva Ghate", "Robert Prucka"], abstract: "A hybrid electric powertrain for tracked vehicles combining an electric motor and combustion engine through a planetary gear set, allowing a fully electric operating mode." },
+    { type: "Grant", number: "PP36741", title: "Peach tree named 'CaroRes Delight'", date: "2025-06-17", inventors: ["Ksenija Gasic"], abstract: "A new and distinct peach tree cultivar with firm melting yellow flesh, early ripening, large size, high red skin color, and resistance to bacterial spot disease." },
+    { type: "Grant", number: "12410072", title: "Nanostructured ceramic membranes for hydrogen isotope separation", date: "2025-09-09", inventors: ["Jake W. Amoroso", "Kyle S. Brinkman", "Jianhua Tong", "Jun Gao", "Yuqing Meng", "James M. Becnel"], assignees: ["Battelle Savannah River Alliance, LLC", "Clemson University"], abstract: "Methods and systems for separating heavy hydrogen isotopes such as tritium from an aqueous stream using a proton conducting ceramic separation media." },
+    { type: "Grant", number: "12365907", title: "Vector for gene transfer and gene copy proliferation", date: "2025-07-22", inventors: ["Christopher Saski"], abstract: "A circular vector for plant transformation comprising tethering nucleic acids, a polynucleotide of interest, an origin of replication, and replicon proteins." },
+    { type: "Application", number: "20250164851", title: "Tunable orbital angular momentum system", date: "2025-05-22", inventors: ["Eric Johnson", "Jerome Keith Miller", "Evan Robertson", "Tyler Cramer", "Matthew Reid", "Jaxon Wiley"], abstract: "A tunable orbital angular momentum system generating higher order Bessel beams using an acousto-optical deflector, line generator, log-polar optics, and Fourier lens." },
+    { type: "Application", number: "20250144142", title: "Methods of protecting implanted or transplanted cells and tissues from immune rejection", date: "2025-05-08", inventors: ["Leonardo M.R. Ferreira", "Ying Mei", "Dimitrios Chrisovalantou Arhontoulis", "Jaime Valentin-Quiroga"], assignees: ["MUSC Foundation for Research Development", "Clemson University"], abstract: "Methods using engineered CAR regulatory T cells to protect transplanted materials from immune rejection in graft and transplant procedures." },
+    { type: "Grant", number: "12276896", title: "Tunable orbital angular momentum system", date: "2025-04-15", inventors: ["Eric G. Johnson", "Jerome Keith Miller", "Richard Watkins", "Kaitlyn Morgan", "Wenzhe Li", "Yuan Li"], abstract: "A tunable orbital angular momentum system generating higher order Bessel beams using an acousto-optical deflector, line generator, log-polar optics, and Fourier lens." },
+    { type: "Grant", number: "12168252", title: "Environmental bioremediation substrate from animal by-products and use and formation thereof", date: "2024-12-17", inventors: ["Kevin Finneran"], abstract: "Bioremediation substrates made from animal by-products that function as electron donors in microbial respiration, used to restore soil, sediment, and water contaminated by chlorinated solvents and metals." },
+    { type: "Grant", number: "12072521", title: "Optical fiber with low thermo-optic coefficient", date: "2024-08-27", inventors: ["Peter D. Dragic", "John Ballato", "Thomas W. Hawkins"], assignees: ["The Board of Trustees of the University of Illinois", "Clemson University"], abstract: "An optical fiber with a core and cladding selected so that heating above room temperature transitions the fiber from multimode to single mode waveguiding." },
+    { type: "Application", number: "20240112763", title: "System and method adapted for the dynamic prediction of NADES formations", date: "2024-04-04", inventors: ["Carlos D. Garcia Perez", "Lucas de Brito Ayres"], abstract: "A computerized system generating digital representations of natural deep eutectic solvents using a trained and fine tuned language model to classify solvent stability." },
+    { type: "Grant", number: "11880062", title: "Microheater comprising a rare earth-doped optical fiber", date: "2024-01-23", inventors: ["Peter Dragic", "John Ballato", "Andrey Mironov", "Courtney Kucera", "Matthew Tuggle"], assignees: ["The Board of Trustees of the University of Illinois", "Clemson University"], abstract: "A microheater using a rare earth-doped glass core surrounded by cladding, where the dopant concentration is tuned for luminescence quenching converting absorbed pump light into heat." },
+    { type: "Grant", number: "11876337", title: "Three-level system fiber lasers incorporating an all-solid photonic bandgap fiber", date: "2024-01-16", inventors: ["Liang Dong", "Turghun Matniyaz"], abstract: "High power, highly efficient three-level system fiber lasers using an all-solid photonic bandgap fiber with a large core and high core to clad ratio." },
+    { type: "Grant", number: "11840454", title: "Hollow porous silicon-containing structures and method of formation", date: "2023-12-12", inventors: ["Srikanth Pilla", "Morteza Sabet", "Apparao M. Rao", "Nancy Chen"], abstract: "Scalable methods for synthesis of high surface area porous silicon-based materials formed as a 3D network of interconnected arms with multimodal porosity." }
+  ];
+
+  function applyEvaluatedFilter(allResults){
+    if(showAlreadyEvaluated){
+      hiddenAlreadyEvaluatedCount = 0;
+      return allResults;
+    }
+    const visible = allResults.filter(p => !isPatentEvaluated(p.patent_id));
+    hiddenAlreadyEvaluatedCount = allResults.length - visible.length;
+    return visible;
+  }
+
+  function loadKnownRegistry(){
+    registryAll = KNOWN_CLEMSON_PATENTS.map(p => ({
+      patent_id: p.number,
+      title: p.title,
+      date: p.date,
+      abstract: p.abstract,
+      assignees: p.assignees || ["Clemson University"],
+      inventors: p.inventors,
+      record_type: p.type,
+      google_patents_url: "https://patents.justia.com/patent/" + p.number
+    })).sort((a,b)=> (a.date < b.date ? 1 : -1));
+    registryResults = applyEvaluatedFilter(registryAll);
+    registryPage = 0;
+  }
+
+  function refilterRegistry(){
+    registryResults = applyEvaluatedFilter(registryAll);
+    registryPage = 0;
+    renderRegistryStatus(registryStatusBase);
+    renderRegistry();
   }
 
   const SAMPLE_PATENTS = [
@@ -558,6 +1069,8 @@
       b.classList.toggle('active', b.dataset.view === name);
     });
     window.scrollTo(0,0);
+    if(name !== 'casefile') openCaseId = null;
+    if(name === 'pubwatch') loadPublicationWatch();
   }
   document.querySelectorAll('[data-view]').forEach(el=>{
     el.addEventListener('click', (e)=>{ e.preventDefault(); showView(el.dataset.view); });
@@ -568,7 +1081,9 @@
 
   // ---------- sample data ----------
   document.getElementById('btn-load-sample').addEventListener('click', ()=>{
+    let added = 0;
     SAMPLE_PATENTS.forEach(sp=>{
+      if(patents.some(p => p.title === sp.title)) return;
       patents.push({
         id: nextId++,
         title: sp.title,
@@ -578,19 +1093,49 @@
         evaluation: null,
         error: null
       });
+      added++;
     });
+    const btn = document.getElementById('btn-load-sample');
+    if(added === 0){
+      btn.textContent = 'Sample portfolio already loaded';
+      btn.disabled = true;
+      return;
+    }
     renderAll();
     evaluateAllPending();
   });
 
   // ---------- Clemson patent registry ----------
   document.getElementById('btn-fetch-registry').addEventListener('click', fetchClemsonRegistry);
-
-  async function fetchClemsonRegistry(){
+  document.getElementById('btn-load-known-registry').addEventListener('click', ()=>{
+    loadKnownRegistry();
     const statusPanel = document.getElementById('registry-status-panel');
     const statusEl = document.getElementById('registry-status');
     statusPanel.style.display = 'block';
-    statusEl.innerHTML = '<span class="spinner" style="border-color: rgba(107,100,112,0.3); border-top-color: var(--slate);"></span>Querying USPTO PatentsView for Clemson assigned patents...';
+    renderRegistryStatus('Loaded ' + KNOWN_CLEMSON_PATENTS.length + ' known Clemson assigned patents and published applications, most recent first, from a snapshot dated August 29, 2026.');
+    renderRegistry();
+  });
+
+  function renderRegistryStatus(baseMessage){
+    registryStatusBase = baseMessage;
+    const statusEl = document.getElementById('registry-status');
+    let html = escapeHtml(baseMessage);
+    if(hiddenAlreadyEvaluatedCount > 0 && !showAlreadyEvaluated){
+      html += ' <strong>' + hiddenAlreadyEvaluatedCount + ' already evaluated</strong> and hidden so they are not repeated. <button class="btn secondary small" id="btn-show-evaluated" style="margin-left:8px;">Show them anyway</button>';
+    } else if(showAlreadyEvaluated){
+      html += ' Currently showing previously evaluated patents too. <button class="btn secondary small" id="btn-hide-evaluated" style="margin-left:8px;">Hide them again</button>';
+    }
+    statusEl.innerHTML = html;
+    const showBtn = document.getElementById('btn-show-evaluated');
+    if(showBtn) showBtn.addEventListener('click', ()=>{ showAlreadyEvaluated = true; refilterRegistry(); });
+    const hideBtn = document.getElementById('btn-hide-evaluated');
+    if(hideBtn) hideBtn.addEventListener('click', ()=>{ showAlreadyEvaluated = false; refilterRegistry(); });
+  }
+
+  async function fetchClemsonRegistry(){
+    const statusPanel = document.getElementById('registry-status-panel');
+    statusPanel.style.display = 'block';
+    document.getElementById('registry-status').innerHTML = '<span class="spinner" style="border-color: rgba(107,100,112,0.3); border-top-color: var(--slate);"></span>Querying Google Patents Public Data for Clemson assigned patents...';
     try{
       const res = await fetch('/api/clemson-patents');
       if(!res.ok){
@@ -598,12 +1143,17 @@
         throw new Error(body.error || ('Request failed with status ' + res.status));
       }
       const data = await res.json();
-      registryResults = data.patents || [];
-      statusEl.innerHTML = 'Loaded ' + registryResults.length + ' patents from PatentsView, most recent first.';
+      registryAll = data.patents || [];
+      registryResults = applyEvaluatedFilter(registryAll);
+      registryPage = 0;
+      renderRegistryStatus('Loaded ' + registryAll.length + ' patents from Google Patents Public Data, most recent first.');
       renderRegistry();
     }catch(err){
+      registryAll = [];
       registryResults = [];
-      statusEl.innerHTML = '<span style="color:var(--red);">Could not load the registry: ' + escapeHtml(err.message) + '.</span> This feature requires the app to be deployed with its backend proxy (see DEPLOYMENT.md) and a PATENTSVIEW_API_KEY set. It will not work from this in chat preview, since there is no server here to hold that key.';
+      hiddenAlreadyEvaluatedCount = 0;
+      registryPage = 0;
+      document.getElementById('registry-status').innerHTML = '<span style="color:var(--red);">Could not load the registry: ' + escapeHtml(err.message) + '.</span> This feature requires the app to be deployed with its backend proxy (see DEPLOYMENT.md) and Google Cloud credentials set. It will not work from this in chat preview, since there is no server here to hold those credentials.';
       renderRegistry();
     }
   }
@@ -611,19 +1161,41 @@
   function renderRegistry(){
     const body = document.getElementById('registry-body');
     const emptyEl = document.getElementById('registry-empty');
+    const paginationEl = document.getElementById('registry-pagination');
+
     if(registryResults.length === 0){
       body.innerHTML = '';
       emptyEl.style.display = 'block';
+      paginationEl.style.display = 'none';
+      emptyEl.innerHTML = hiddenAlreadyEvaluatedCount > 0
+        ? '<h3>All caught up</h3><p>Every patent in this list has already been evaluated. ' + hiddenAlreadyEvaluatedCount + ' hidden. <button class="btn secondary small" id="btn-show-evaluated-empty">Show them anyway</button></p>'
+        : '<h3>No results yet</h3><p>Click "Load known Clemson patents" above for the real, verified snapshot, no API key needed. A live pull is also available further down once this loads.</p>';
+      const showBtnEmpty = document.getElementById('btn-show-evaluated-empty');
+      if(showBtnEmpty) showBtnEmpty.addEventListener('click', ()=>{ showAlreadyEvaluated = true; refilterRegistry(); });
       return;
     }
     emptyEl.style.display = 'none';
-    body.innerHTML = registryResults.map((p, idx)=>{
+
+    const totalPages = Math.max(1, Math.ceil(registryResults.length / REGISTRY_PAGE_SIZE));
+    if(registryPage >= totalPages) registryPage = totalPages - 1;
+    if(registryPage < 0) registryPage = 0;
+    const start = registryPage * REGISTRY_PAGE_SIZE;
+    const end = Math.min(start + REGISTRY_PAGE_SIZE, registryResults.length);
+    // Keep each row's ORIGINAL index into the full registryResults array,
+    // not its position within this page slice, since the Add to docket
+    // button below looks patents up by that index.
+    const pageItems = registryResults.map((p, idx) => ({ p, idx })).slice(start, end);
+
+    body.innerHTML = pageItems.map(({p, idx})=>{
       const sector = guessSector(p.title, p.abstract);
       const inventorsStr = (p.inventors || []).join(', ') || 'Not listed';
-      const link = p.google_patents_url ? '<a href="' + escapeHtml(p.google_patents_url) + '" target="_blank" rel="noopener">US' + escapeHtml(p.patent_id) + '</a>' : escapeHtml(p.patent_id || '');
+      const typeLabel = p.record_type ? (' <span class="tag ' + (p.record_type === 'Grant' ? 'license' : 'pending') + '" style="margin-left:6px;">' + escapeHtml(p.record_type) + '</span>') : '';
+      const evaluatedLabel = isPatentEvaluated(p.patent_id) ? ' <span class="tag mature">Already evaluated</span>' : '';
+      const citationLabel = (typeof p.backward_citation_count === 'number') ? (' <span class="key-badge" title="Backward citations: prior art this patent cites">' + p.backward_citation_count + ' citations</span>') : '';
+      const link = p.google_patents_url ? '<a href="' + escapeHtml(p.google_patents_url) + '" target="_blank" rel="noopener">' + escapeHtml(p.patent_id) + '</a>' : escapeHtml(p.patent_id || '');
       return '<tr>' +
         '<td class="mono">' + escapeHtml(p.date || '') + '</td>' +
-        '<td><div class="patent-title">' + escapeHtml(p.title || 'Untitled') + '</div><div class="patent-sub">' + link + '</div></td>' +
+        '<td><div class="patent-title">' + escapeHtml(p.title || 'Untitled') + typeLabel + evaluatedLabel + '</div><div class="patent-sub">' + link + citationLabel + '</div></td>' +
         '<td style="font-size:12.5px; color:var(--slate);">' + escapeHtml(inventorsStr) + '</td>' +
         '<td><span class="tag mature">' + escapeHtml(sector) + '</span></td>' +
         '<td><button class="btn secondary small" data-import-registry="' + idx + '">Add to docket</button></td>' +
@@ -633,32 +1205,56 @@
       btn.addEventListener('click', ()=>{
         const p = registryResults[parseInt(btn.dataset.importRegistry)];
         if(!p) return;
+        if(docketHasPatent(p.patent_id) || isPatentEvaluated(p.patent_id)){
+          btn.textContent = 'Already on the docket';
+          btn.disabled = true;
+          return;
+        }
+        const citationNote = (typeof p.backward_citation_count === 'number') ? ('\nBackward citations (prior art cited by this patent): ' + p.backward_citation_count) : '';
         patents.push({
           id: nextId++,
           title: p.title || 'Untitled',
-          dept: 'Sourced from PatentsView, sector: ' + guessSector(p.title, p.abstract),
-          text: (p.abstract || '') + '\n\nInventors: ' + (p.inventors || []).join(', '),
+          dept: 'Sourced from Google Patents Public Data, sector: ' + guessSector(p.title, p.abstract),
+          text: (p.abstract || '') + '\n\nInventors: ' + (p.inventors || []).join(', ') + citationNote,
           status: 'pending',
           evaluation: null,
-          error: null
+          error: null,
+          sourcePatentId: p.patent_id || null
         });
         renderAll();
-        btn.textContent = 'Added';
+        btn.textContent = 'Added, evaluating...';
         btn.disabled = true;
+        evaluateAllPending();
       });
     });
+
+    paginationEl.style.display = 'flex';
+    document.getElementById('registry-pagination-label').textContent =
+      'Showing ' + (start + 1) + '–' + end + ' of ' + registryResults.length;
+    const prevBtn = document.getElementById('btn-registry-prev');
+    const nextBtn = document.getElementById('btn-registry-next');
+    prevBtn.disabled = registryPage === 0;
+    nextBtn.disabled = end >= registryResults.length;
   }
+
+  document.getElementById('btn-registry-prev').addEventListener('click', ()=>{
+    registryPage = Math.max(0, registryPage - 1);
+    renderRegistry();
+  });
+  document.getElementById('btn-registry-next').addEventListener('click', ()=>{
+    registryPage = registryPage + 1;
+    renderRegistry();
+  });
 
   // ---------- file intake ----------
   const fileListEl = document.getElementById('file-list');
   const queueBodyEl = document.getElementById('queue-body');
-  const btnEvaluateAll = document.getElementById('btn-evaluate-all');
   let pendingFiles = [];
 
   document.getElementById('btn-pick-files').addEventListener('click', ()=> document.getElementById('file-input').click());
   document.getElementById('btn-pick-folder').addEventListener('click', ()=> document.getElementById('folder-input').click());
-  document.getElementById('file-input').addEventListener('change', (e)=> handleFiles(e.target.files));
-  document.getElementById('folder-input').addEventListener('change', (e)=> handleFiles(e.target.files));
+  document.getElementById('file-input').addEventListener('change', (e)=>{ handleFiles(e.target.files); e.target.value = ''; });
+  document.getElementById('folder-input').addEventListener('change', (e)=>{ handleFiles(e.target.files); e.target.value = ''; });
 
   const dropZone = document.getElementById('drop-zone');
   ['dragover','dragenter'].forEach(evt => dropZone.addEventListener(evt, (e)=>{ e.preventDefault(); dropZone.classList.add('drag'); }));
@@ -666,7 +1262,11 @@
   dropZone.addEventListener('drop', (e)=>{ handleFiles(e.dataTransfer.files); });
 
   async function handleFiles(fileListRaw){
-    const files = Array.from(fileListRaw).filter(f => /\.(txt|pdf)$/i.test(f.name));
+    const all = Array.from(fileListRaw);
+    const files = all.filter(f => /\.(txt|pdf)$/i.test(f.name));
+    all.filter(f => !/\.(txt|pdf)$/i.test(f.name)).forEach(f=>{
+      pendingFiles.push({ name: f.name, text: '', extractError: 'Use a .txt or .pdf file. Word files need to be exported first.' });
+    });
     for(const file of files){
       let text = '';
       let extractError = null;
@@ -723,6 +1323,7 @@
       pendingFiles = [];
       renderFileList();
       renderAll();
+      evaluateAllPending();
     });
   }
 
@@ -739,30 +1340,65 @@
     document.getElementById('manual-dept').value = '';
     document.getElementById('manual-text').value = '';
     renderAll();
+    evaluateAllPending();
   });
-
-  btnEvaluateAll.addEventListener('click', evaluateAllPending);
 
   // ---------- AI evaluation ----------
   async function evaluateAllPending(){
-    const toRun = patents.filter(p => p.status === 'pending' || p.status === 'error');
+    // Failed patents stay failed until someone explicitly retries from
+    // the case file. Picking them up here re-billed every previous
+    // failure whenever a new disclosure was added.
+    const toRun = patents.filter(p => p.status === 'pending' && !evaluationInFlight.has(p.id));
     if(toRun.length === 0) return;
-    btnEvaluateAll.disabled = true;
     for(const p of toRun){
+      if(evaluationInFlight.has(p.id) || p.status !== 'pending') continue;
+      evaluationInFlight.add(p.id);
       p.status = 'evaluating';
       renderAll();
+      refreshOpenCaseIfShowing(p.id);
       try{
         const result = await callEvaluationAPI(p);
         p.evaluation = result;
         p.status = 'evaluated';
         p.error = null;
+        // Freeze provenance and the value score onto this exact
+        // evaluation, computed once, right now, from the inputs that
+        // actually produced it. Rendering later reads these stored
+        // values rather than recomputing live, so a future change to
+        // the scoring formula (a new EVALUATION_SCHEMA_VERSION) cannot
+        // silently change what this patent shows without it being
+        // re-evaluated on purpose.
+        p.evaluation.schema_version = EVALUATION_SCHEMA_VERSION;
+        p.evaluation.evaluated_at = new Date().toISOString();
+        p.evaluation.value_score_snapshot = computeValueScore(p);
+        markPatentEvaluatedAndPersist(p);
+        if(p.sourcePatentId && registryAll.length){
+          registryResults = applyEvaluatedFilter(registryAll);
+          renderRegistry();
+        }
       }catch(err){
         p.status = 'error';
         p.error = err.message || 'Evaluation failed';
+        savePatentRecordsToStorage();
+      }finally{
+        evaluationInFlight.delete(p.id);
       }
       renderAll();
+      refreshOpenCaseIfShowing(p.id);
     }
-    btnEvaluateAll.disabled = false;
+  }
+
+  function refreshOpenCaseIfShowing(patentId){
+    const view = document.getElementById('view-casefile');
+    if(openCaseId === patentId && view && view.classList.contains('active')){
+      openCaseFile(patentId);
+    }
+  }
+
+  function readApiError(errBody, status){
+    if(errBody && typeof errBody.error === 'string' && errBody.error) return errBody.error;
+    if(errBody && errBody.error && typeof errBody.error.message === 'string') return errBody.error.message;
+    return 'API request failed with status ' + status;
   }
 
   // ---------- backend proxy configuration ----------
@@ -773,51 +1409,643 @@
   // While false, this app calls Anthropic directly from the browser,
   // which is demo-only behavior and must never be used with real,
   // unpublished IP. See SECURITY-AND-PRIVACY.md.
-  const USE_BACKEND_PROXY = false;
+  const USE_BACKEND_PROXY = true;
   const API_ENDPOINT = USE_BACKEND_PROXY ? "/api/evaluate-patent" : "https://api.anthropic.com/v1/messages";
 
-  async function callEvaluationAPI(patent){
-    const systemPrompt = "You are a technology transfer analyst supporting a university research foundation's patent portfolio triage. Score the disclosure using Technology Readiness Level (1 to 9, NASA/DOD scale), and adoption risk factors modeled on the Adoption Readiness Level concept (market pull, supply chain, workforce or regulatory friction). Then recommend exactly one path: LICENSE (best suited to an outside acquirer), VENTURE (best suited to a student or faculty led startup), or MATURE (too early stage for either, needs more development first). Be conservative and skeptical, this is meant to catch overclaimed readiness, not rubber stamp it. Never invent named real companies as acquirers, describe acquirer types by sector and role instead. When recommended_path is LICENSE or MATURE, name exactly the top three acquirer archetypes, ranked first to third by fit, each with a short reason. Respond with ONLY valid JSON, no markdown fences, no commentary, matching exactly this shape: {\"trl\": number, \"trl_rationale\": string, \"adoption_risks\": [{\"factor\": string, \"level\": \"low|medium|high\", \"note\": string}], \"recommended_path\": \"LICENSE|VENTURE|MATURE\", \"path_rationale\": string, \"top_acquirer_targets\": [{\"rank\": number, \"sector\": string, \"rationale\": string}], \"venture_plan\": {\"team\": string, \"next_steps\": [string]}, \"confidence\": \"low|medium|high\", \"caveat\": string}. Keep adoption_risks to at most 4 items. If recommended_path is LICENSE or MATURE, top_acquirer_targets must contain exactly 3 items, ranked 1 through 3. If recommended_path is VENTURE, top_acquirer_targets may be an empty array and venture_plan.next_steps should be filled in instead.";
+  // Netlify's synchronous function timeout is a fixed 60 seconds with
+  // no way to increase it, and a web search heavy call can occasionally
+  // run right up against that. Rather than fail outright on a single
+  // slow run, retry once automatically on a 504 specifically (Gateway
+  // Timeout), the signal that the request itself timed out rather than
+  // Anthropic returning a real error. Other error codes are not
+  // retried, since retrying a genuine 4xx or 401 would just waste time
+  // repeating a failure that a second attempt won't fix.
+  async function fetchWithTimeoutRetry(url, options){
+    let response = await fetch(url, options);
+    if(response.status === 504){
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      response = await fetch(url, options);
+    }
+    return response;
+  }
 
-    const userMsg = "Department: " + patent.dept + "\nTitle: " + patent.title + "\nDisclosure text:\n" + patent.text.slice(0, 6000);
-
-    const response = await fetch(API_ENDPOINT, {
+  // Shared low level caller for both the core evaluation and the
+  // acquirer search, so the timeout, retry, and response parsing logic
+  // lives in exactly one place rather than being duplicated and
+  // potentially drifting between the two calls.
+  async function callAnthropicJson(systemPrompt, userMsg, enableSearch){
+    const response = await fetchWithTimeoutRetry(API_ENDPOINT, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         model: "claude-sonnet-4-6",
-        max_tokens: 1000,
+        max_tokens: enableSearch ? 2500 : 2000,
         system: systemPrompt,
-        messages: [{ role: "user", content: userMsg }]
+        messages: [{ role: "user", content: userMsg }],
+        tools: enableSearch ? [{ type: "web_search_20250305", name: "web_search", max_uses: 2 }] : undefined,
+        enableSearch: enableSearch
       })
     });
 
     if(!response.ok){
-      throw new Error('API request failed with status ' + response.status);
+      const errBody = await response.json().catch(()=>({}));
+      throw new Error(readApiError(errBody, response.status));
     }
     const data = await response.json();
-    const textBlock = (data.content || []).find(b => b.type === 'text');
+    if(data.stop_reason === 'max_tokens'){
+      throw new Error('The model response was cut off before finishing (hit the token limit). Try again, and if it keeps happening the max_tokens limit in the app needs raising further.');
+    }
+    if(data.stop_reason === 'pause_turn'){
+      throw new Error('The web search ran long and was paused mid turn. This app does not yet resume a paused search automatically, just retry.');
+    }
+    // With web search enabled, the response can contain several text
+    // blocks: an early one like "I will search for..." before a search
+    // runs, then the real final answer after it. selectFinalTextBlock
+    // picks the LAST one, not the first.
+    const textBlock = selectFinalTextBlock(data.content);
     if(!textBlock){
       throw new Error('No text response from the model');
     }
-    let cleaned = textBlock.text.trim().replace(/^```json/i,'').replace(/^```/,'').replace(/```$/,'').trim();
-    let parsed;
-    try{
-      parsed = JSON.parse(cleaned);
-    }catch(err){
-      throw new Error('Could not parse the model response as JSON');
+    const parsed = extractJsonObject(textBlock.text);
+    if(!parsed){
+      throw new Error('Could not find a valid JSON object in the model response');
     }
     return parsed;
   }
+
+  // Call one: the core evaluation, deliberately with NO web search tool
+  // at all. This is the part every single patent needs, and it should
+  // be fast and reliable regardless of topic. Splitting this out from
+  // the acquirer search below is the actual fix for evaluations timing
+  // out on niche topics that made a combined search-plus-evaluate call
+  // consistently exceed Netlify's fixed 60 second limit, a second
+  // attempt at the same expensive combined work just timed out twice
+  // instead of once. Isolating the slow, unpredictable part to its own
+  // smaller call means most patents (anything not LICENSE) now only
+  // ever make this one fast call.
+  async function runCoreEvaluation(patent){
+    const systemPrompt = "You are a skeptical technology transfer analyst supporting a university research foundation's patent portfolio triage. Your job is not to describe the disclosure favorably, it is to pressure test it the way a hardnosed licensing officer or investor would, and to catch overclaimed readiness or invented demand rather than rubber stamp it. The central question for every patent is: is there real market demand for what this solves, not just technical novelty. Follow this decision order exactly. Step one, assess market demand critically: look for actual evidence in the disclosure of a real problem someone would pay to solve (named interest, a pilot, a competitor's existing product, a cited pain point), versus mere assertion that something 'could be used for' or 'may have applications in' a market with no supporting evidence. Rate demand as STRONG, MODERATE, WEAK, or NONE, and explicitly say what claim in the disclosure is asserted but not actually backed by evidence in the text, do not skip this even if you have to say 'none, the abstract asserts market need without evidence.' Step two, only if demand is at least MODERATE, decide the path: LICENSE fits when the problem is narrow and specific enough that an existing company would view it as an incremental addition to a product line they already have, VENTURE fits when the opportunity is a broader market problem no single incumbent already serves well, better suited to a new company built around it. If demand is WEAK or NONE, the path is NO_DEMAND regardless of how technically impressive the patent is, do not recommend LICENSE or VENTURE just because the technology is good. If demand is at least MODERATE but the Technology Readiness Level (1 to 9, NASA or DOD scale) is too low for either outside licensing or a venture to move on right now, the path is MATURE. Also score adoption risk factors modeled on the Adoption Readiness Level concept (market pull, supply chain, workforce, or regulatory friction). If the user message includes a section of staff or inventor provided input, treat known industry contacts and the inventor's own feasibility read as real evidence for the market demand assessment, generally stronger than the disclosure text's own unsupported claims, but note in market_demand_rationale that it is self-reported and not independently verified. If a funding source is provided and is federal (NIH, NSF, DOD, or Other federal), add a one sentence compliance note to critical_challenge or caveat that the federal government retains a royalty free use license and possible march-in rights under the Bayh-Dole Act; if the funding source is specifically NIH, also note the NIH affordability mandate adopted in October 2025 may constrain licensing terms. Also write a marketing_abstract: two to three plain language sentences pitching this technology to a business audience, no patent jargon, suitable to send to a prospective licensee, distinct in tone and content from the internal analysis above. Every rationale, note, or reason field must be one short sentence, under 20 words, this is a triage tool, not a full memo. Respond with ONLY valid JSON as your final message, no markdown fences, no commentary, matching exactly this shape: {\"trl\": number, \"trl_rationale\": string, \"market_demand_verdict\": \"STRONG|MODERATE|WEAK|NONE\", \"market_demand_rationale\": string, \"unsupported_claims\": string, \"adoption_risks\": [{\"factor\": string, \"level\": \"low|medium|high\", \"note\": string}], \"recommended_path\": \"LICENSE|VENTURE|NO_DEMAND|MATURE\", \"path_rationale\": string, \"venture_plan\": {\"team\": string, \"next_steps\": [string]}, \"marketing_abstract\": string, \"critical_challenge\": string, \"confidence\": \"low|medium|high\", \"caveat\": string}. Keep adoption_risks to at most 4 items. venture_plan.next_steps should only be filled in when recommended_path is VENTURE, otherwise leave team empty and next_steps an empty array. critical_challenge must state the single strongest reason this specific evaluation could be wrong, a weak assumption, a gap in the disclosure, or a reason a skeptical reviewer would push back, never a generic disclaimer. Do not mention acquirer targets or companies at all, that is handled in a separate step you are not part of.";
+
+    let staffInputText = "";
+    if(patent.staffInput){
+      const si = patent.staffInput;
+      const parts = [];
+      if(si.fundingSource && si.fundingSource !== 'Unknown') parts.push("Funding source: " + si.fundingSource);
+      if(si.inventorWillingness && si.inventorWillingness !== 'Unknown') parts.push("Inventor willingness to engage with a licensee: " + si.inventorWillingness);
+      if(si.industryContacts) parts.push("Known industry contacts or leads (staff/inventor reported): " + si.industryContacts);
+      if(si.feasibilityNote) parts.push("Inventor's own market feasibility read (staff/inventor reported): " + si.feasibilityNote);
+      if(parts.length) staffInputText = "\n\nStaff and inventor provided input, treat as real evidence but self-reported, not independently verified:\n" + parts.join("\n");
+    }
+    const userMsg = "Department: " + patent.dept + "\nTitle: " + patent.title + "\nDisclosure text:\n" + patent.text.slice(0, 6000) + staffInputText;
+
+    const startedAt = Date.now();
+    try{
+      return await callAnthropicJson(systemPrompt, userMsg, false);
+    }catch(err){
+      const elapsedMs = Date.now() - startedAt;
+      // Prefixed explicitly so a failure here is never confused with a
+      // failure in the (separately handled) acquirer search call, and
+      // timed so a near instant failure (a real error) is distinguishable
+      // from one that took close to the full 60 seconds (genuine
+      // exhaustion of Netlify's fixed limit). If this specific prefix
+      // shows up, the problem is in the fast, search free core call,
+      // which should be the least likely of the two to time out, and is
+      // worth treating as a real anomaly, not just "web search is slow
+      // again."
+      throw new Error("Core evaluation call failed after " + elapsedMs + "ms: " + (err.message || "unknown error"));
+    }
+  }
+
+  // Call two: ONLY made when the core evaluation above came back
+  // LICENSE. Deliberately small and focused, just three ranked
+  // acquirer targets, nothing else, so the search heavy part of this
+  // process carries the smallest possible task alongside it.
+  async function runAcquirerSearch(patent){
+    const systemPrompt = "You are researching real, currently operating companies that would plausibly want to license a specific university owned patent. Use the web_search tool to identify exactly three ranked, real, currently operating companies whose existing products or business would plausibly want to license this specific technology, not generic sector guesses. For each ranked target, if search turns up a specific real company that plausibly fits, name it in company_name and put the URL you found it from in source_url. If search does not turn up a clear, specific, currently real company for a given rank, leave company_name, source_url, and pitch_angle as empty strings and rely on the sector field alone. Never invent or recall a company name from your own training data without having actually found it via search in this conversation, an empty company_name is always better than a guessed one. Use at most two searches total, work efficiently, this runs under a strict time limit. When you do name a real company, also write a pitch_angle, one sentence on why THIS specific company's existing business makes this technology relevant to them in particular, based on what you found about them via search, not a generic pitch that could apply to anyone in the sector. Keep every rationale under 20 words. Respond with ONLY valid JSON as your final message, no markdown fences, no commentary, matching exactly this shape: {\"top_acquirer_targets\": [{\"rank\": number, \"company_name\": string, \"source_url\": string, \"sector\": string, \"rationale\": string, \"pitch_angle\": string}]}. Must contain exactly 3 items, ranked 1 through 3.";
+    const userMsg = "Department: " + patent.dept + "\nTitle: " + patent.title + "\nDisclosure or abstract text:\n" + patent.text.slice(0, 3000);
+    const result = await callAnthropicJson(systemPrompt, userMsg, true);
+    return Array.isArray(result.top_acquirer_targets) ? result.top_acquirer_targets : [];
+  }
+
+  // Drafts a cold outreach email for ONE specific, already identified
+  // acquirer target. Deliberately uses NO web search, everything it
+  // needs (company name, sector, why it fits, the marketing abstract)
+  // was already found by the acquirer search step above, this call
+  // only writes based on those already-verified facts, it does not
+  // look anything up itself, so it stays fast and cannot introduce a
+  // new, unverified claim about the recipient company.
+  async function generateOutreachDraft(patent, target, marketingAbstract){
+    const systemPrompt = "Draft a short, professional cold outreach email from a university technology transfer office to a specific company, introducing a patented technology for potential licensing. Use ONLY the facts given below, do not invent or assume anything about the recipient company beyond what is stated. Keep it concise: one short paragraph of context, one sentence on why it's specifically relevant to them using the pitch angle given, and a clear, low pressure call to action to schedule a short call. Sign off generically as a Technology Commercialization Officer at Clemson University Research Foundation (CURF), do not invent a specific person's name. Respond with ONLY valid JSON as your final message, no markdown fences, no commentary: {\"subject\": string, \"body\": string}.";
+    const userMsg = "Recipient company: " + (target.company_name || "Unknown") +
+      "\nRecipient sector: " + (target.sector || "Unknown") +
+      "\nWhy relevant to them specifically: " + (target.pitch_angle || target.rationale || "Not specified") +
+      "\nPatent title: " + patent.title +
+      "\nPlain language marketing abstract: " + (marketingAbstract || "Not available");
+    return await callAnthropicJson(systemPrompt, userMsg, false);
+  }
+
+  async function callEvaluationAPI(patent){
+    const core = await runCoreEvaluation(patent);
+    core.top_acquirer_targets = [];
+    core.acquirer_search_error = "";
+
+    if(core.recommended_path === 'LICENSE'){
+      const searchStartedAt = Date.now();
+      try{
+        core.top_acquirer_targets = await runAcquirerSearch(patent);
+      }catch(err){
+        // The core evaluation already succeeded and is not thrown away
+        // just because this second, smaller call failed. The patent
+        // still gets a full result, with an honest note that acquirer
+        // research specifically did not complete, rather than losing
+        // everything and forcing a full retry from scratch. Timed for
+        // the same reason as the core call: a near instant failure
+        // reads very differently than one that ran close to 60 seconds.
+        const elapsedMs = Date.now() - searchStartedAt;
+        core.acquirer_search_error = "Failed after " + elapsedMs + "ms: " + (err.message || 'Acquirer search failed');
+      }
+    }
+    return core;
+  }
+
+  // Pulls out the first complete top level JSON object from a string,
+  // rather than assuming the response starts and ends exactly at the
+  // JSON boundaries. This is more forgiving of a stray preamble
+  // sentence or trailing note the model might add despite instructions
+  // not to, without silently accepting garbage: it still requires a
+  // balanced, parseable object, it just doesn't require the object to
+  // be the very first and very last characters in the string.
+  // Known limitation: brace counting here is not string aware, so a
+  // text field containing a literal unmatched { or } could in theory
+  // throw off the count. Not expected in practice for natural language
+  // rationale text, but worth knowing if this ever misfires oddly.
+  // ---------- value score ----------
+  // A transparent, deterministic composite score, not another AI
+  // guess. Every component here is something the evaluation already
+  // produced or the user already confirmed, computed with a fixed
+  // formula so the same inputs always give the same score and the math
+  // is fully auditable. Deliberately NOT a dollar estimate: a specific
+  // monetary figure with no comparable licensing deal data or revenue
+  // projections behind it would be pure invention, the same discipline
+  // already applied to acquirer names and citation claims elsewhere in
+  // this app. Backward citation count and family ID, while displayed
+  // in the Registry, are deliberately left OUT of this score: the
+  // academic literature on which direction backward citations should
+  // point (more prior art cited could mean either a crowded field or a
+  // more thoroughly grounded application) wasn't clear enough in what
+  // was checked to build a scoring rule on with confidence, and a
+  // guessed direction would be worse than leaving it out.
+  const VALUE_TIER_INFO = {
+    A: { label: 'A, strong candidate', tagClass: 'license' },
+    B: { label: 'B, solid candidate', tagClass: 'venture' },
+    C: { label: 'C, modest potential', tagClass: 'mature' },
+    D: { label: 'D, low value signal', tagClass: 'error' }
+  };
+
+  function computeValueScore(p){
+    if(!p.evaluation) return null;
+    const ev = p.evaluation;
+    const breakdown = [];
+
+    const demandPoints = { STRONG: 6, MODERATE: 4, WEAK: 2, NONE: 0 }[ev.market_demand_verdict];
+    breakdown.push({ label: 'Market demand (' + (ev.market_demand_verdict || 'unspecified') + ')', points: (demandPoints !== undefined ? demandPoints : 0), max: 6 });
+
+    const trl = ev.trl || 0;
+    const trlPoints = trl >= 7 ? 2 : (trl >= 4 ? 1 : 0);
+    breakdown.push({ label: 'Technology readiness (TRL ' + trl + ')', points: trlPoints, max: 2 });
+
+    const risks = ev.adoption_risks || [];
+    let riskPoints = 1; // neutral default when no risk factors were returned at all
+    if(risks.length){
+      const levelPoints = { low: 2, medium: 1, high: 0 };
+      const sum = risks.reduce((s, r) => {
+        const level = String(r.level || '').toLowerCase();
+        return s + (levelPoints[level] !== undefined ? levelPoints[level] : 1);
+      }, 0);
+      riskPoints = Math.round((sum / risks.length) * 10) / 10;
+    }
+    breakdown.push({ label: 'Adoption risk, lower risk scores higher', points: riskPoints, max: 2 });
+
+    const pathPoints = (ev.recommended_path === 'LICENSE' || ev.recommended_path === 'VENTURE') ? 1 : 0;
+    breakdown.push({ label: 'Clear monetization path (' + (ev.recommended_path || 'none') + ')', points: pathPoints, max: 1 });
+
+    const hasConfirmedTarget = ev.recommended_path === 'LICENSE' && (ev.top_acquirer_targets || []).some(t => t.company_name && t.company_name.trim().length > 0);
+    breakdown.push({ label: 'A real acquirer confirmed via search, not just a sector guess', points: hasConfirmedTarget ? 1 : 0, max: 1 });
+
+    const si = p.staffInput || {};
+    const hasEngagement = (si.industryContacts && si.industryContacts.trim().length > 0) || si.inventorWillingness === 'Willing to engage';
+    breakdown.push({ label: 'Confirmed inventor or industry engagement', points: hasEngagement ? 1 : 0, max: 1 });
+
+    const totalPoints = breakdown.reduce((s, b) => s + b.points, 0);
+    const maxPoints = breakdown.reduce((s, b) => s + b.max, 0);
+
+    let tier;
+    if(totalPoints >= 10) tier = 'A';
+    else if(totalPoints >= 7) tier = 'B';
+    else if(totalPoints >= 4) tier = 'C';
+    else tier = 'D';
+
+    return { totalPoints, maxPoints, tier, breakdown };
+  }
+
+  // Reads the score that was frozen at evaluation time whenever one
+  // exists, only falling back to a live computation for the rare edge
+  // case of a record with no snapshot at all (shouldn't happen going
+  // forward, kept only as a defensive fallback). This is the mechanism
+  // that keeps a patent's displayed grade unchanged if the formula
+  // itself changes later.
+  function getDisplayValueScore(p){
+    if(p.evaluation && p.evaluation.value_score_snapshot) return p.evaluation.value_score_snapshot;
+    return computeValueScore(p);
+  }
+
+  function renderValueScorePanel(p){
+    const score = getDisplayValueScore(p);
+    if(!score) return '';
+    const tierInfo = VALUE_TIER_INFO[score.tier];
+    const rows = score.breakdown.map(b =>
+      '<div class="risk-row"><span class="factor">' + escapeHtml(b.label) + '</span><span class="mono" style="color:var(--slate); font-size:12px;">' + b.points + ' / ' + b.max + '</span></div>'
+    ).join('');
+    return '<div class="panel"><div class="panel-head"><h3>Value score</h3><span class="tag ' + tierInfo.tagClass + '">Tier ' + tierInfo.label + '</span></div><div class="panel-body">' +
+      '<p style="font-size:13px; color:var(--slate); margin-bottom:10px;">' + score.totalPoints + ' of ' + score.maxPoints + ' points. Computed directly from this evaluation\'s own outputs, not a separate AI guess, every line below is auditable against what\'s already on this page. Frozen at the time this evaluation ran, it will not change on its own even if the scoring formula is later revised.</p>' +
+      rows +
+      '<div class="caveat-box" style="margin-top:12px;">This is a relative triage score for comparing patents in this docket, not a dollar valuation. No comparable licensing deal data or revenue projection backs a specific monetary figure, so this deliberately doesn\'t produce one.</div>' +
+    '</div></div>';
+  }
+
+  function extractJsonObject(text){
+    const trimmed = text.trim();
+    const start = trimmed.indexOf('{');
+    if(start === -1) return null;
+    let depth = 0;
+    for(let i = start; i < trimmed.length; i++){
+      if(trimmed[i] === '{') depth++;
+      else if(trimmed[i] === '}'){
+        depth--;
+        if(depth === 0){
+          const candidate = trimmed.slice(start, i + 1);
+          try{ return JSON.parse(candidate); }
+          catch(err){ return null; }
+        }
+      }
+    }
+    return null; // never found a balanced closing brace, likely truncated
+  }
+
+  // Given a full Anthropic Messages API response, returns the text
+  // block that actually holds the final answer. With web search
+  // enabled, the response can contain several text blocks, an early
+  // one like "I will search for..." before a search runs, then the
+  // real final answer after it, so the LAST text block is the correct
+  // one, not the first. Shared by both the patent evaluation and
+  // problem match features, since both use web search the same way.
+  function selectFinalTextBlock(content){
+    const textBlocks = (content || []).filter(b => b.type === 'text');
+    return textBlocks[textBlocks.length - 1];
+  }
+
+  // ---------- Problem Match ----------
+  document.getElementById('btn-run-problem-match').addEventListener('click', runProblemMatch);
+
+  async function runProblemMatch(){
+    const context = document.getElementById('problem-context').value.trim();
+    const problemText = document.getElementById('problem-text').value.trim();
+    const statusPanel = document.getElementById('problem-match-status-panel');
+    const statusEl = document.getElementById('problem-match-status');
+    const resultsEl = document.getElementById('problem-match-results');
+
+    if(!problemText){
+      alert('Describe the problem before running a search.');
+      return;
+    }
+
+    statusPanel.style.display = 'block';
+    resultsEl.innerHTML = '';
+    statusEl.innerHTML = '<span class="spinner" style="border-color: rgba(107,100,112,0.3); border-top-color: var(--slate);"></span>Checking Clemson\'s known patents, then researching the broader landscape...';
+
+    // The Clemson corpus checked here is the same known snapshot the
+    // Registry tab uses by default, not a live pull. If that snapshot
+    // has since been extended or refreshed, this reflects whatever is
+    // currently in KNOWN_CLEMSON_PATENTS in this file.
+    const corpusText = KNOWN_CLEMSON_PATENTS.map(p =>
+      "Patent " + p.number + " (" + p.type + ", " + p.date + "): " + p.title + " — " + p.abstract
+    ).join("\n\n");
+
+    const systemPrompt = "You are helping a university technology transfer office match a described business problem to existing intellectual property. You will receive a problem description and a list of Clemson University patents with their titles and abstracts. Step one, check ONLY the given Clemson patent list. Identify any patents that plausibly address the described problem, even partially. Rate each candidate's fit as STRONG, MODERATE, or WEAK, with a one sentence, skeptical rationale, do not include a patent that is only superficially related by keyword but does not actually address the core problem, and do not force a weak match to look stronger than it is. If nothing in the list fits reasonably well, return an empty list and say so plainly. Step two, use the web_search tool to check whether this problem already has known solutions elsewhere, existing products, published patents, or established approaches outside Clemson, up to two searches, work efficiently, this runs under a strict time limit. This tells the office whether the problem is already commoditized, a weaker case for Clemson IP being valuable here, or represents a genuine gap, a stronger case. For every external example, only include a specific real company, product, or technology you actually found via search in this conversation, with its source URL, never invent one, omit the example instead if search does not turn up something specific and real. Then write one overall_recommendation sentence synthesizing both steps for a CURF staff member deciding whether to pursue this. Keep every rationale and description field to one short sentence, under 20 words. Respond with ONLY valid JSON as your final message, no markdown fences, no commentary, matching exactly this shape: {\"clemson_matches\": [{\"patent_number\": string, \"title\": string, \"fit\": \"STRONG|MODERATE|WEAK\", \"rationale\": string}], \"no_strong_match_note\": string, \"external_landscape_summary\": string, \"external_examples\": [{\"name\": string, \"description\": string, \"source_url\": string}], \"overall_recommendation\": string, \"confidence\": \"low|medium|high\"}. clemson_matches may be an empty array if nothing fits. external_examples may be an empty array if search found nothing specific and real, do not pad it with invented examples. no_strong_match_note should be an empty string only when a STRONG match exists, otherwise explain the gap.";
+
+    const userMsg = "Enterprise or industry context: " + (context || "Not specified") +
+      "\n\nProblem description:\n" + problemText +
+      "\n\nKnown Clemson patents to check first:\n" + corpusText;
+
+    try{
+      const response = await fetchWithTimeoutRetry('/api/solve-problem', {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          system: systemPrompt,
+          messages: [{ role: "user", content: userMsg }]
+        })
+      });
+
+      if(!response.ok){
+        const errBody = await response.json().catch(()=>({}));
+        throw new Error(readApiError(errBody, response.status));
+      }
+      const data = await response.json();
+      if(data.stop_reason === 'max_tokens'){
+        throw new Error('The response was cut off before finishing (hit the token limit), this can happen with a long problem description or several searches. Try again with a shorter description.');
+      }
+      if(data.stop_reason === 'pause_turn'){
+        throw new Error('The web search ran long and was paused mid turn. This app does not yet resume a paused search automatically, just retry.');
+      }
+      const textBlock = selectFinalTextBlock(data.content);
+      if(!textBlock){
+        throw new Error('No text response from the model');
+      }
+      const parsed = extractJsonObject(textBlock.text);
+      if(!parsed){
+        throw new Error('Could not find a valid JSON object in the response');
+      }
+      renderProblemMatchResults(parsed);
+      statusEl.innerHTML = 'Done. Checked ' + KNOWN_CLEMSON_PATENTS.length + ' known Clemson patents, then researched the broader landscape.';
+    }catch(err){
+      statusEl.innerHTML = '<span style="color:var(--red);">Could not complete the search: ' + escapeHtml(err.message) + '.</span> This requires the app\'s backend proxy to be deployed with ANTHROPIC_API_KEY set. It will not work from this in chat preview, since there is no server here to hold that key.';
+    }
+  }
+
+  function renderProblemMatchResults(result){
+    const resultsEl = document.getElementById('problem-match-results');
+    const fitClass = { STRONG: 'license', MODERATE: 'venture', WEAK: 'mature' };
+
+    const matches = result.clemson_matches || [];
+    let matchesHtml;
+    if(matches.length === 0){
+      matchesHtml = '<div class="empty" style="padding:24px 10px;"><h3>No Clemson match found</h3><p>' + escapeHtml(result.no_strong_match_note || 'Nothing in the known Clemson patent list plausibly addresses this problem.') + '</p></div>';
+    } else {
+      matchesHtml = matches.map(m => {
+        const link = 'https://patents.justia.com/patent/' + encodeURIComponent(m.patent_number || '');
+        return '<div class="archetype"><div class="sector"><a href="' + escapeHtml(link) + '" target="_blank" rel="noopener">' + escapeHtml(m.patent_number) + '</a> &middot; ' + escapeHtml(m.title) +
+          ' <span class="tag ' + (fitClass[m.fit] || 'pending') + '" style="margin-left:6px;">' + escapeHtml(m.fit || 'unspecified') + ' fit</span></div>' +
+          '<div class="why">' + escapeHtml(m.rationale) + '</div></div>';
+      }).join('');
+      if(result.no_strong_match_note){
+        matchesHtml += '<div class="caveat-box" style="margin-top:10px;">' + escapeHtml(result.no_strong_match_note) + '</div>';
+      }
+    }
+
+    const examples = result.external_examples || [];
+    let externalHtml;
+    if(examples.length === 0){
+      externalHtml = '<p style="font-size:13px; color:var(--slate);">No specific existing solution was found via search, this does not confirm a gap exists, only that search did not surface one.</p>';
+    } else {
+      externalHtml = examples.map(e => {
+        const nameHtml = e.source_url ? '<a href="' + escapeHtml(e.source_url) + '" target="_blank" rel="noopener">' + escapeHtml(e.name) + '</a>' : escapeHtml(e.name);
+        return '<div class="archetype"><div class="sector">' + nameHtml + '</div><div class="why">' + escapeHtml(e.description) + '</div></div>';
+      }).join('');
+    }
+
+    resultsEl.innerHTML =
+      '<div class="panel"><div class="panel-head"><h3>Clemson patents checked first</h3></div><div class="panel-body">' + matchesHtml + '</div></div>' +
+      '<div class="panel"><div class="panel-head"><h3>Broader landscape, researched via live search</h3></div><div class="panel-body">' +
+        '<p style="font-size:13.5px;">' + escapeHtml(result.external_landscape_summary || '') + '</p>' +
+        externalHtml +
+      '</div></div>' +
+      '<div class="panel"><div class="panel-head"><h3>Overall recommendation</h3></div><div class="panel-body">' +
+        '<p style="font-size:13.5px;">' + escapeHtml(result.overall_recommendation || '') + '</p>' +
+        '<p style="font-size:12px; color:var(--slate); margin-top:8px;">Model confidence: <strong>' + escapeHtml(result.confidence || 'unspecified') + '</strong></p>' +
+      '</div></div>' +
+      '<div class="caveat-box">Named companies and examples above were found through live web search, not invented from memory, but treat every one as a lead to verify, not a confirmed fact. This is a first pass, not a substitute for a Technology Commercialization Officer\'s own review.</div>';
+  }
+
+  // ---------- direct patent lookup and evaluate, on the Problem Match page ----------
+  // Both boxes search only KNOWN_CLEMSON_PATENTS, the same real, verified
+  // snapshot the Registry tab uses by default, not a live pull. Finding
+  // a match here pushes it into the docket and evaluates it the exact
+  // same way the Registry tab's "Add to docket" does, same function,
+  // same behavior, not a separate code path to maintain.
+
+  function addKnownPatentAndEvaluate(knownPatent, buttonEl){
+    if(docketHasPatent(knownPatent.number) || isPatentEvaluated(knownPatent.number)){
+      if(buttonEl){
+        buttonEl.textContent = 'Already on the docket';
+        buttonEl.disabled = true;
+      }
+      return;
+    }
+    patents.push({
+      id: nextId++,
+      title: knownPatent.title,
+      dept: 'Sourced from known Clemson patent snapshot, sector: ' + guessSector(knownPatent.title, knownPatent.abstract),
+      text: (knownPatent.abstract || '') + '\n\nInventors: ' + (knownPatent.inventors || []).join(', '),
+      status: 'pending',
+      evaluation: null,
+      error: null,
+      sourcePatentId: knownPatent.number
+    });
+    renderAll();
+    if(buttonEl){
+      buttonEl.textContent = 'Added, evaluating...';
+      buttonEl.disabled = true;
+    }
+    evaluateAllPending();
+  }
+
+  function renderKnownPatentMatch(container, p){
+    const alreadyDone = isPatentEvaluated(p.number) || docketHasPatent(p.number);
+    const typeLabel = ' <span class="tag ' + (p.type === 'Grant' ? 'license' : 'pending') + '" style="margin-left:6px;">' + escapeHtml(p.type) + '</span>';
+    const doneLabel = alreadyDone ? ' <span class="tag mature">' + (isPatentEvaluated(p.number) ? 'Already evaluated' : 'Already on the docket') + '</span>' : '';
+    const link = 'https://patents.justia.com/patent/' + encodeURIComponent(p.number);
+    const btnHtml = alreadyDone
+      ? '<button class="btn secondary small" disabled>' + (isPatentEvaluated(p.number) ? 'Already evaluated' : 'Already on the docket') + '</button>'
+      : '<button class="btn secondary small" data-eval-known="' + escapeHtml(p.number) + '">Run evaluation</button>';
+    const el = document.createElement('div');
+    el.className = 'archetype';
+    el.innerHTML = '<div class="sector"><a href="' + escapeHtml(link) + '" target="_blank" rel="noopener">' + escapeHtml(p.number) + '</a> &middot; ' + escapeHtml(p.title) + typeLabel + doneLabel + '</div>' +
+      '<div class="why">' + escapeHtml(p.date) + '</div>' +
+      '<div style="margin-top:8px;">' + btnHtml + '</div>';
+    container.appendChild(el);
+    const btn = el.querySelector('[data-eval-known]');
+    if(btn){
+      btn.addEventListener('click', ()=> addKnownPatentAndEvaluate(p, btn));
+    }
+  }
+
+  document.getElementById('btn-pm-lookup-number').addEventListener('click', ()=>{
+    const query = document.getElementById('pm-lookup-number').value.trim();
+    const resultsEl = document.getElementById('pm-lookup-number-results');
+    resultsEl.innerHTML = '';
+    if(!query){
+      resultsEl.innerHTML = '<p style="font-size:13px; color:var(--slate);">Enter a patent or application number.</p>';
+      return;
+    }
+    let normalizedQuery = query.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+    if(normalizedQuery.startsWith('us') && normalizedQuery.length > 2){
+      normalizedQuery = normalizedQuery.slice(2); // strip a leading "US" country prefix, e.g. "US-12,602,036" -> "12602036"
+    }
+    if(!normalizedQuery){
+      resultsEl.innerHTML = '<p style="font-size:13px; color:var(--slate);">Enter a patent or application number.</p>';
+      return;
+    }
+    const matches = KNOWN_CLEMSON_PATENTS.filter(p => {
+      const num = p.number.toLowerCase();
+      // Bidirectional: handles both a bare number matching our stored
+      // format, and a fuller citation like "US12602036B2" that has a
+      // kind code suffix our stored number doesn't include.
+      return num.includes(normalizedQuery) || normalizedQuery.includes(num);
+    });
+    if(matches.length === 0){
+      resultsEl.innerHTML = '<p style="font-size:13px; color:var(--slate);">No match for "' + escapeHtml(query) + '" in the known snapshot. It may still be a real patent, just not one of the ' + KNOWN_CLEMSON_PATENTS.length + ' currently in this list.</p>';
+      return;
+    }
+    matches.forEach(p => renderKnownPatentMatch(resultsEl, p));
+  });
+
+  document.getElementById('btn-pm-lookup-keyword').addEventListener('click', ()=>{
+    const query = document.getElementById('pm-lookup-keyword').value.trim().toLowerCase();
+    const resultsEl = document.getElementById('pm-lookup-keyword-results');
+    resultsEl.innerHTML = '';
+    if(!query){
+      resultsEl.innerHTML = '<p style="font-size:13px; color:var(--slate);">Enter a keyword to search for.</p>';
+      return;
+    }
+    const matches = KNOWN_CLEMSON_PATENTS.filter(p =>
+      p.title.toLowerCase().includes(query) || (p.abstract || '').toLowerCase().includes(query)
+    );
+    if(matches.length === 0){
+      resultsEl.innerHTML = '<p style="font-size:13px; color:var(--slate);">No title or abstract in the known snapshot mentions "' + escapeHtml(query) + '". Try a broader term, or this may just not be in the current ' + KNOWN_CLEMSON_PATENTS.length + '-patent snapshot.</p>';
+      return;
+    }
+    matches.forEach(p => renderKnownPatentMatch(resultsEl, p));
+  });
+
+  // ---------- Publication Watch ----------
+  const pubwatchRelevanceClass = { HIGH: 'license', MODERATE: 'venture', LOW: 'mature' };
+
+  async function loadPublicationWatch(){
+    const statusPanel = document.getElementById('pubwatch-status-panel');
+    const statusEl = document.getElementById('pubwatch-status');
+    try{
+      const res = await fetch('/api/run-publication-scan');
+      const data = await res.json();
+      if(!data.configured){
+        statusPanel.style.display = 'block';
+        statusEl.textContent = 'Shared storage is not configured, so findings cannot be loaded or saved. Set SUPABASE_URL and SUPABASE_SERVICE_KEY, then run supabase-setup.sql.';
+        renderPublicationWatchList([]);
+        return;
+      }
+      if(data.error){
+        statusPanel.style.display = 'block';
+        const detailText = data.detail ? (typeof data.detail === 'string' ? data.detail : JSON.stringify(data.detail)) : '';
+        statusEl.innerHTML = '<span style="color:var(--red);">' + escapeHtml(data.error) + (detailText ? ': ' + escapeHtml(detailText) : '') + '</span>';
+        renderPublicationWatchList([]);
+        return;
+      }
+      renderPublicationWatchList(data.findings || []);
+    }catch(err){
+      renderPublicationWatchList([]);
+    }
+  }
+
+  function renderPublicationWatchList(findings){
+    const body = document.getElementById('pubwatch-body');
+    const emptyEl = document.getElementById('pubwatch-empty');
+    if(findings.length === 0){
+      body.innerHTML = '';
+      emptyEl.style.display = 'block';
+      return;
+    }
+    emptyEl.style.display = 'none';
+    body.innerHTML = findings.map(f=>{
+      const date = f.found_at ? new Date(f.found_at).toLocaleDateString() : '';
+      const relevance = f.commercial_relevance_score || 'Unspecified';
+      return '<tr>' +
+        '<td class="mono">' + escapeHtml(date) + '</td>' +
+        '<td><div class="patent-title"><a href="' + escapeHtml(f.source_url || '#') + '" target="_blank" rel="noopener">' + escapeHtml(f.title || 'Untitled') + '</a></div><div class="patent-sub">' + escapeHtml(f.authors || '') + '</div><div class="patent-sub">' + escapeHtml(f.commercial_rationale || '') + '</div></td>' +
+        '<td><span class="tag ' + (pubwatchRelevanceClass[relevance] || 'pending') + '">' + escapeHtml(relevance) + '</span></td>' +
+        '<td></td>' +
+        '</tr>';
+    }).join('');
+  }
+
+  // Background functions return an HTTP 202 almost immediately and
+  // discard whatever they eventually return, nobody is listening for
+  // it. So triggering a scan and reading its results are two separate
+  // steps: kick off the background function, then poll the plain GET
+  // findings list until the count of stored findings increases, or
+  // give up gracefully after a bounded number of attempts rather than
+  // polling forever.
+  async function pollForNewFindings(countBefore, attemptsLeft){
+    const statusEl = document.getElementById('pubwatch-status');
+    if(attemptsLeft <= 0){
+      statusEl.textContent = 'Scan is still running in the background. This can take a few minutes for an open-ended search like this one. Check back shortly, or click "Run scan now" again later, it will not duplicate anything already found.';
+      return;
+    }
+    try{
+      const res = await fetch('/api/run-publication-scan');
+      const data = await res.json();
+      if(data && data.configured === false){
+        statusEl.textContent = 'The scan cannot store results until SUPABASE_URL and SUPABASE_SERVICE_KEY are set.';
+        return;
+      }
+      if(data && data.error){
+        statusEl.textContent = data.error;
+        return;
+      }
+      const currentCount = (data.findings || []).length;
+      if(currentCount > countBefore){
+        statusEl.textContent = 'New findings appeared.';
+        renderPublicationWatchList(data.findings || []);
+        return;
+      }
+    }catch(err){
+      // Keep polling, a transient failure here shouldn't stop the loop.
+    }
+    setTimeout(()=> pollForNewFindings(countBefore, attemptsLeft - 1), 8000);
+  }
+
+  document.getElementById('btn-run-pubwatch-scan').addEventListener('click', async ()=>{
+    const btn = document.getElementById('btn-run-pubwatch-scan');
+    const statusPanel = document.getElementById('pubwatch-status-panel');
+    const statusEl = document.getElementById('pubwatch-status');
+    btn.disabled = true;
+    statusPanel.style.display = 'block';
+    statusEl.innerHTML = '<span class="spinner" style="border-color: rgba(107,100,112,0.3); border-top-color: var(--slate);"></span>Starting the scan...';
+
+    let countBefore = 0;
+    try{
+      const currentRes = await fetch('/api/run-publication-scan');
+      const currentData = await currentRes.json();
+      countBefore = (currentData.findings || []).length;
+    }catch(err){
+      // If this fails, countBefore just stays 0, the poll loop below
+      // still works, it will just treat any findings at all as new.
+    }
+
+    try{
+      const res = await fetch('/api/run-publication-scan-background', { method: 'POST' });
+      if(!res.ok && res.status !== 202){
+        statusEl.innerHTML = '<span style="color:var(--red);">Could not start the scan (status ' + res.status + ').</span>';
+        btn.disabled = false;
+        return;
+      }
+      statusEl.innerHTML = '<span class="spinner" style="border-color: rgba(107,100,112,0.3); border-top-color: var(--slate);"></span>Scan started in the background, this can take a few minutes for an open-ended search. Checking for results...';
+      pollForNewFindings(countBefore, 8); // roughly 8 x 8s = up to about a minute of active checking before giving up gracefully
+    }catch(err){
+      statusEl.innerHTML = '<span style="color:var(--red);">Could not reach the scan endpoint: ' + escapeHtml(err.message || 'unknown error') + '. This requires the app\'s backend proxy to be deployed with ANTHROPIC_API_KEY and Supabase configured, it will not work from this in chat preview.</span>';
+    }
+    btn.disabled = false;
+  });
 
   // ---------- rendering ----------
   function pathTagHtml(p){
     if(p.status === 'pending') return '<span class="tag pending">Queued</span>';
     if(p.status === 'evaluating') return '<span class="tag pending"><span class="spinner" style="border-color: rgba(107,100,112,0.3); border-top-color: var(--slate);"></span>Evaluating</span>';
     if(p.status === 'error') return '<span class="tag error">Error</span>';
+    if(!p.evaluation) return '<span class="tag pending">Queued</span>';
     const path = p.evaluation.recommended_path;
     if(path === 'LICENSE') return '<span class="tag license">License candidate</span>';
     if(path === 'VENTURE') return '<span class="tag venture">Venture candidate</span>';
+    if(path === 'NO_DEMAND') return '<span class="tag error">Insufficient demand</span>';
     return '<span class="tag mature">Needs maturation</span>';
   }
 
@@ -829,29 +2057,30 @@
 
   function renderQueue(){
     if(patents.length === 0){
-      queueBodyEl.innerHTML = '<div class="empty" style="padding:24px 10px;">Nothing queued yet.</div>';
-      btnEvaluateAll.disabled = true;
+      queueBodyEl.innerHTML = '<div class="empty" style="padding:24px 10px;">Nothing queued yet. Adding a file or pasted disclosure below evaluates it automatically.</div>';
       return;
     }
     queueBodyEl.innerHTML = patents.map(p=>{
       return '<div class="risk-row"><span class="factor"><strong>' + escapeHtml(p.title) + '</strong><br><span style="color:var(--slate); font-size:12px;">' + escapeHtml(p.dept) + '</span></span>' + pathTagHtml(p) + '</div>';
     }).join('');
-    const hasRunnable = patents.some(p => p.status === 'pending' || p.status === 'error');
-    btnEvaluateAll.disabled = !hasRunnable;
   }
 
   function renderDashboard(){
-    document.getElementById('stat-total').textContent = patents.length;
-    document.getElementById('stat-license').textContent = patents.filter(p=>p.evaluation && p.evaluation.recommended_path==='LICENSE').length;
-    document.getElementById('stat-venture').textContent = patents.filter(p=>p.evaluation && p.evaluation.recommended_path==='VENTURE').length;
-    document.getElementById('stat-mature').textContent = patents.filter(p=>p.evaluation && p.evaluation.recommended_path==='MATURE').length;
+    const active = patents.filter(p => !p.archived);
+    document.getElementById('stat-total').textContent = active.length;
+    document.getElementById('stat-license').textContent = active.filter(p=>p.evaluation && p.evaluation.recommended_path==='LICENSE').length;
+    document.getElementById('stat-venture').textContent = active.filter(p=>p.evaluation && p.evaluation.recommended_path==='VENTURE').length;
+    document.getElementById('stat-no-demand').textContent = active.filter(p=>p.evaluation && p.evaluation.recommended_path==='NO_DEMAND').length;
+    document.getElementById('stat-mature').textContent = active.filter(p=>p.evaluation && p.evaluation.recommended_path==='MATURE').length;
 
     const recentEl = document.getElementById('dashboard-recent');
-    if(patents.length === 0){
-      recentEl.innerHTML = '<div class="empty"><h3>No patents on the docket yet</h3><p>Load the sample portfolio or go to Intake to submit real disclosures.</p></div>';
+    if(active.length === 0){
+      recentEl.innerHTML = patents.length > 0
+        ? '<div class="empty"><h3>Everything is archived</h3><p>Every patent currently in the docket has been archived. Visit Portfolio and click "Show archived" to see them.</p></div>'
+        : '<div class="empty"><h3>No patents on the docket yet</h3><p>Load the sample portfolio or go to Intake to submit real disclosures.</p></div>';
       return;
     }
-    const recent = patents.slice(-6).reverse();
+    const recent = active.slice(-6).reverse();
     recentEl.innerHTML = '<table class="docket"><thead><tr><th>Case</th><th>Title</th><th>Path</th><th></th></tr></thead><tbody>' +
       recent.map(p=>{
         return '<tr class="clickable" data-open="'+p.id+'"><td class="case-id">CU-' + String(p.id).padStart(4,'0') + '</td><td><div class="patent-title">' + escapeHtml(p.title) + '</div><div class="patent-sub">' + escapeHtml(p.dept) + '</div></td><td>' + pathTagHtml(p) + '</td><td><button class="btn secondary small" data-open-btn="'+p.id+'">Open</button></td></tr>';
@@ -862,25 +2091,64 @@
   function renderPortfolio(){
     const body = document.getElementById('portfolio-body');
     const emptyEl = document.getElementById('portfolio-empty');
-    if(patents.length === 0){
+    const statusEl = document.getElementById('portfolio-archive-status');
+
+    const archivedCount = patents.filter(p => p.archived).length;
+    statusEl.innerHTML = archivedCount > 0
+      ? archivedCount + ' archived. <button class="btn secondary small" id="btn-toggle-archived-view">' + (showArchivedPortfolio ? 'Hide archived' : 'Show archived') + '</button>'
+      : '';
+    const toggleBtn = document.getElementById('btn-toggle-archived-view');
+    if(toggleBtn) toggleBtn.addEventListener('click', ()=>{ showArchivedPortfolio = !showArchivedPortfolio; renderPortfolio(); });
+
+    const visible = showArchivedPortfolio ? patents.slice() : patents.filter(p => !p.archived);
+
+    if(visible.length === 0){
       body.innerHTML = '';
       emptyEl.style.display = 'block';
+      const allArchived = patents.length > 0 && archivedCount === patents.length;
+      emptyEl.querySelector('h3').textContent = allArchived ? 'Everything here is archived' : 'The docket is empty';
+      emptyEl.querySelector('p').textContent = allArchived
+        ? 'Click "Show archived" above to see it.'
+        : 'Go to Intake to submit patents, or load the sample portfolio from the Dashboard.';
       return;
     }
     emptyEl.style.display = 'none';
-    body.innerHTML = patents.slice().reverse().map(p=>{
+
+    // Best scoring first: patents with a value score sort by points
+    // descending, ahead of anything not yet evaluated. Among patents
+    // that share no score (still pending, evaluating, or errored),
+    // most recently added comes first, the same ordering this table
+    // used before scoring existed.
+    const sorted = visible.slice().sort((a, b) => {
+      const scoreA = getDisplayValueScore(a);
+      const scoreB = getDisplayValueScore(b);
+      if(scoreA && scoreB) return scoreB.totalPoints - scoreA.totalPoints;
+      if(scoreA && !scoreB) return -1;
+      if(!scoreA && scoreB) return 1;
+      return b.id - a.id;
+    });
+
+    body.innerHTML = sorted.map(p=>{
       const trl = (p.evaluation && p.evaluation.trl) ? p.evaluation.trl : '—';
       const conf = (p.evaluation && p.evaluation.confidence) ? p.evaluation.confidence : '—';
+      const score = getDisplayValueScore(p);
+      const valueCell = score ? '<span class="tag ' + VALUE_TIER_INFO[score.tier].tagClass + '">' + score.tier + ' &middot; ' + score.totalPoints + '/' + score.maxPoints + '</span>' : '—';
+      const archivedLabel = p.archived ? ' <span class="tag pending">Archived</span>' : '';
+      const archiveBtnLabel = p.archived ? 'Restore' : 'Archive';
       return '<tr class="clickable" data-open="'+p.id+'">' +
         '<td class="case-id">CU-' + String(p.id).padStart(4,'0') + '</td>' +
-        '<td><div class="patent-title">' + escapeHtml(p.title) + '</div><div class="patent-sub">' + escapeHtml(p.dept) + '</div></td>' +
+        '<td><div class="patent-title">' + escapeHtml(p.title) + archivedLabel + '</div><div class="patent-sub">' + escapeHtml(p.dept) + '</div></td>' +
         '<td>' + pathTagHtml(p) + '</td>' +
         '<td class="mono">' + trl + (trl !== '—' ? '/9' : '') + '</td>' +
+        '<td>' + valueCell + '</td>' +
         '<td>' + conf + '</td>' +
-        '<td><button class="btn secondary small" data-open-btn="'+p.id+'">Open</button></td>' +
+        '<td style="white-space:nowrap;"><button class="btn secondary small" data-open-btn="'+p.id+'">Open</button> <button class="btn secondary small" data-archive-btn="'+p.id+'">' + archiveBtnLabel + '</button></td>' +
         '</tr>';
     }).join('');
     attachOpenHandlers(body);
+    body.querySelectorAll('[data-archive-btn]').forEach(btn=>{
+      btn.addEventListener('click', (e)=>{ e.stopPropagation(); toggleArchive(parseInt(btn.dataset.archiveBtn)); });
+    });
   }
 
   function attachOpenHandlers(container){
@@ -892,14 +2160,216 @@
     });
   }
 
+  // ---------- Patentability & Landscape screen ----------
+  // Deliberately a separate, on-demand call, not part of the automatic
+  // two-call evaluation. This is legally adjacent territory (novelty,
+  // blocking IP, draft claim concepts), and a human should consciously
+  // choose to run it, not have it happen silently as a side effect of
+  // routine evaluation. It is explicitly NOT a Freedom to Operate
+  // opinion or a real prior art search: those require comprehensive
+  // patent database access and a licensed attorney's legal judgment,
+  // neither of which an AI web search provides. Every result panel
+  // says this plainly, not just this comment.
+  async function runPatentabilityScreen(patent, staffFeedback){
+    const systemPrompt = "You are conducting a preliminary patentability and competitive landscape screen for a university owned patent, meant to help decide whether it is worth the time and cost of engaging a patent attorney, not to replace one. You are not a patent attorney, this is not a legal opinion, and you cannot perform a real Freedom to Operate search, that requires comprehensive access to full patent databases across jurisdictions and a licensed attorney's judgment, neither of which you have here, you only have public web search. Use the web_search tool, at most two searches, to look for three things: existing patents or published applications that appear very similar to this technology, commercial products already on the market that do something similar, and anything that looks like it could create a blocking or infringement concern for someone trying to practice this invention. For every item you find, name it specifically with the real source URL you found it at, never invent one. If search does not turn up something specific and real for a category, leave that list empty and say so honestly in the rationale, do not pad it with a vague or generic finding. Rate an overall novelty_signal: STRONG means nothing similar was found, MODERATE means related things exist but this looks differentiated, WEAK means something very similar already exists, UNCLEAR means the search was not conclusive either way, which is a common and legitimate outcome, not a failure to report honestly. Based only on the disclosure text given to you, also suggest 3 to 5 short patent claim CONCEPTS, one sentence descriptions of what a claim might cover, explicitly not drafted legal claim language and not ready to file, meant only as discussion starting points for the inventor and the attorney. If prior staff feedback on an earlier run of this screen is included below, take it into account, and note in novelty_rationale specifically how it changed what you looked for or concluded. Respond with ONLY valid JSON as your final message, no markdown fences, no commentary, matching exactly this shape: {\"novelty_signal\": \"STRONG|MODERATE|WEAK|UNCLEAR\", \"novelty_rationale\": string, \"similar_existing_patents\": [{\"name\": string, \"source_url\": string, \"similarity_note\": string}], \"competing_products\": [{\"name\": string, \"source_url\": string, \"note\": string}], \"potential_blocking_concerns\": [{\"concern\": string, \"source_url\": string, \"note\": string}], \"suggested_claim_concepts\": [string]}. Any of the three list fields may be an empty array when search found nothing specific and real, never pad them to look complete.";
+
+    let feedbackText = "";
+    if(staffFeedback && staffFeedback.trim()){
+      feedbackText = "\n\nStaff feedback on a previous run of this screen, take it into account:\n" + staffFeedback.trim();
+    }
+    const userMsg = "Department: " + patent.dept + "\nTitle: " + patent.title + "\nDisclosure text:\n" + patent.text.slice(0, 4000) + feedbackText;
+
+    const response = await fetchWithTimeoutRetry('/api/solve-problem', {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ system: systemPrompt, messages: [{ role: "user", content: userMsg }] })
+    });
+    if(!response.ok){
+      const errBody = await response.json().catch(()=>({}));
+      throw new Error(readApiError(errBody, response.status));
+    }
+    const data = await response.json();
+    if(data.stop_reason === 'max_tokens') throw new Error('The response was cut off before finishing (hit the token limit). Try again.');
+    if(data.stop_reason === 'pause_turn') throw new Error('The web search ran long and was paused mid turn. Just retry.');
+    const textBlock = selectFinalTextBlock(data.content);
+    if(!textBlock) throw new Error('No text response from the model');
+    const parsed = extractJsonObject(textBlock.text);
+    if(!parsed) throw new Error('Could not find a valid JSON object in the response');
+    return parsed;
+  }
+
+  function renderPatentabilityPanel(p){
+    const ps = p.patentabilityScreen;
+    const novelSignalClass = { STRONG: 'license', MODERATE: 'venture', WEAK: 'error', UNCLEAR: 'pending' };
+
+    let body;
+    if(!ps){
+      body = '<p style="font-size:13px; color:var(--slate); margin-bottom:12px;">Not yet run for this patent.</p>' +
+        '<button class="btn secondary small" id="btn-run-patentability" data-patent-id="' + p.id + '">Run patentability &amp; landscape screen</button>';
+    } else {
+      const listBlock = (items, emptyMsg, renderItem) => items.length
+        ? items.map(renderItem).join('')
+        : '<p style="font-size:12.5px; color:var(--slate); font-style:italic;">' + emptyMsg + '</p>';
+
+      const similarHtml = listBlock(ps.similar_existing_patents || [], 'Search did not turn up a specific, similar existing patent.', it =>
+        '<div class="archetype"><div class="sector"><a href="' + escapeHtml(it.source_url||'#') + '" target="_blank" rel="noopener">' + escapeHtml(it.name) + '</a></div><div class="why">' + escapeHtml(it.similarity_note) + '</div></div>');
+      const competingHtml = listBlock(ps.competing_products || [], 'Search did not turn up a specific, existing competing product.', it =>
+        '<div class="archetype"><div class="sector"><a href="' + escapeHtml(it.source_url||'#') + '" target="_blank" rel="noopener">' + escapeHtml(it.name) + '</a></div><div class="why">' + escapeHtml(it.note) + '</div></div>');
+      const blockingHtml = listBlock(ps.potential_blocking_concerns || [], 'Search did not turn up a specific blocking or infringement concern.', it =>
+        '<div class="archetype" style="border-color:#E0B4A6;"><div class="sector" style="color:var(--red);">' + escapeHtml(it.concern) + (it.source_url ? ' &middot; <a href="' + escapeHtml(it.source_url) + '" target="_blank" rel="noopener">source</a>' : '') + '</div><div class="why">' + escapeHtml(it.note) + '</div></div>');
+      const claimsHtml = (ps.suggested_claim_concepts || []).length
+        ? '<ul style="margin:6px 0 0 0; padding-left:20px; font-size:13px;">' + (ps.suggested_claim_concepts||[]).map(c => '<li>' + escapeHtml(c) + '</li>').join('') + '</ul>'
+        : '<p style="font-size:12.5px; color:var(--slate); font-style:italic;">None suggested.</p>';
+
+      const runDate = ps.run_at ? new Date(ps.run_at).toLocaleString() : null;
+
+      body =
+        '<div class="caveat-box" style="background:var(--red-bg); border-color:#E0B4A6; color:var(--red); margin-bottom:14px;"><strong>Not a legal opinion.</strong> This is a public web search screen, not a Freedom to Operate search or prior art search a licensed patent attorney would perform, and it cannot access full patent databases. Use this only to help decide whether the technology is worth sending to the attorney, never as the basis for a filing or business decision on its own.</div>' +
+        (runDate ? '<p style="font-size:11.5px; color:var(--slate); margin-bottom:12px;">Last run ' + escapeHtml(runDate) + '.</p>' : '') +
+        '<p style="font-size:13.5px; margin-bottom:6px;"><strong>Novelty signal:</strong> <span class="tag ' + (novelSignalClass[ps.novelty_signal] || 'pending') + '">' + escapeHtml(ps.novelty_signal || 'Unspecified') + '</span></p>' +
+        '<p style="font-size:13.5px; margin-bottom:14px;">' + escapeHtml(ps.novelty_rationale || '') + '</p>' +
+        '<p style="font-size:12.5px; font-weight:600; color:var(--slate); text-transform:uppercase; letter-spacing:0.04em; margin-bottom:6px;">Similar existing patents</p>' + similarHtml +
+        '<p style="font-size:12.5px; font-weight:600; color:var(--slate); text-transform:uppercase; letter-spacing:0.04em; margin:14px 0 6px 0;">Competing products</p>' + competingHtml +
+        '<p style="font-size:12.5px; font-weight:600; color:var(--slate); text-transform:uppercase; letter-spacing:0.04em; margin:14px 0 6px 0;">Potential blocking concerns</p>' + blockingHtml +
+        '<p style="font-size:12.5px; font-weight:600; color:var(--slate); text-transform:uppercase; letter-spacing:0.04em; margin:14px 0 6px 0;">Suggested claim concepts, discussion starting points only, not drafted legal language</p>' + claimsHtml +
+        '<div class="field" style="margin-top:16px;"><label>Staff feedback to refine the next run</label><textarea id="pat-screen-feedback" placeholder="e.g. the second similar patent is not actually related, or search specifically for X"></textarea></div>' +
+        '<button class="btn secondary small" id="btn-run-patentability" data-patent-id="' + p.id + '">Re-run with this feedback</button>' +
+        '<span id="patentability-status" style="margin-left:10px; font-size:12.5px; color:var(--slate);"></span>';
+    }
+
+    return '<div class="panel"><div class="panel-head"><h3>Patentability &amp; landscape screen</h3></div><div class="panel-body" id="patentability-panel-body">' + body + '</div></div>';
+  }
+
+  function attachPatentabilityHandler(){
+    const btn = document.getElementById('btn-run-patentability');
+    if(!btn) return;
+    btn.addEventListener('click', async ()=>{
+      const patentId = parseInt(btn.dataset.patentId);
+      const p = patents.find(x => x.id === patentId);
+      if(!p) return;
+      const feedbackEl = document.getElementById('pat-screen-feedback');
+      const feedback = feedbackEl ? feedbackEl.value : '';
+      const statusEl = document.getElementById('patentability-status');
+      btn.disabled = true;
+      if(statusEl) statusEl.innerHTML = '<span class="spinner" style="border-color: rgba(107,100,112,0.3); border-top-color: var(--slate);"></span>Running screen...';
+      try{
+        const result = await runPatentabilityScreen(p, feedback);
+        p.patentabilityScreen = { ...result, run_at: new Date().toISOString(), staff_feedback_used: feedback || '' };
+        remotePatentId(p);
+        savePatentRecordsToStorage();
+        pushPatentRecordToRemote(p);
+        openCaseFile(patentId);
+      }catch(err){
+        if(statusEl) statusEl.innerHTML = '<span style="color:var(--red);">Failed: ' + escapeHtml(err.message || 'unknown error') + '</span>';
+        btn.disabled = false;
+      }
+    });
+  }
+
+  // ---------- staff & inventor input panel, shared across all case file states ----------
+  const FUNDING_SOURCE_OPTIONS = ['Unknown', 'Unfunded / Internal', 'Federal - NIH', 'Federal - NSF', 'Federal - DOD', 'Federal - Other', 'Industry-sponsored'];
+  const WILLINGNESS_OPTIONS = ['Not yet asked', 'Willing to engage', 'Declined to engage', 'Unknown'];
+
+  function renderStaffInputPanel(p){
+    const si = p.staffInput || {};
+    const fundingOpts = FUNDING_SOURCE_OPTIONS.map(opt =>
+      '<option value="' + escapeHtml(opt) + '"' + (si.fundingSource === opt ? ' selected' : '') + '>' + escapeHtml(opt) + '</option>'
+    ).join('');
+    const willingOpts = WILLINGNESS_OPTIONS.map(opt =>
+      '<option value="' + escapeHtml(opt) + '"' + (si.inventorWillingness === opt ? ' selected' : '') + '>' + escapeHtml(opt) + '</option>'
+    ).join('');
+    const buttonSuffix = p.status === 'evaluated' ? ' and re-evaluate' : (p.status === 'error' ? ' and retry evaluation' : '');
+    const reEvalNote = p.status === 'evaluated' ? '<p style="font-size:11.5px; color:var(--slate); margin-top:8px;">Saving re-runs the evaluation incorporating this input.</p>'
+      : (p.status === 'error' ? '<p style="font-size:11.5px; color:var(--slate); margin-top:8px;">This is also the retry button for a failed evaluation, saving with no changes still retries it.</p>' : '');
+    return '<div class="panel"><div class="panel-head"><h3>Staff and inventor input (optional)</h3></div><div class="panel-body">' +
+      '<div class="field"><label>Funding source</label><select id="si-funding">' + fundingOpts + '</select></div>' +
+      '<div class="field"><label>Inventor willingness to engage with a licensee</label><select id="si-willingness">' + willingOpts + '</select></div>' +
+      '<div class="field"><label>Known industry contacts or leads</label><textarea id="si-contacts" placeholder="e.g. inventor mentioned a contact at a specific company">' + escapeHtml(si.industryContacts || '') + '</textarea></div>' +
+      '<div class="field"><label>Inventor\'s own market feasibility read</label><textarea id="si-feasibility" placeholder="What does the inventor think about real world demand for this?">' + escapeHtml(si.feasibilityNote || '') + '</textarea></div>' +
+      '<button class="btn secondary small" id="btn-save-staff-input" data-patent-id="' + p.id + '">Save' + buttonSuffix + '</button>' +
+      reEvalNote +
+    '</div></div>';
+  }
+
+  function renderArchiveControl(p){
+    const label = p.archived ? '<span class="tag pending">Archived</span> ' : '';
+    const btnLabel = p.archived ? 'Restore to active' : 'Archive this patent';
+    return '<div style="margin:-10px 0 18px 0; display:flex; align-items:center; gap:10px;">' +
+      label +
+      '<button class="btn secondary small" data-archive-btn-casefile="' + p.id + '">' + btnLabel + '</button>' +
+      '</div>';
+  }
+
+  function attachArchiveButtonHandler(){
+    const btn = document.querySelector('[data-archive-btn-casefile]');
+    if(!btn) return;
+    btn.addEventListener('click', ()=>{
+      const patentId = parseInt(btn.dataset.archiveBtnCasefile);
+      toggleArchive(patentId);
+      openCaseFile(patentId);
+    });
+  }
+
+  function attachOutreachDraftHandlers(p, targets){
+    document.querySelectorAll('[data-draft-outreach]').forEach(btn=>{
+      btn.addEventListener('click', async ()=>{
+        const idx = parseInt(btn.dataset.draftOutreach);
+        const target = targets[idx];
+        if(!target) return;
+        const container = document.querySelector('[data-draft-container="' + idx + '"]');
+        btn.disabled = true;
+        btn.textContent = 'Drafting...';
+        try{
+          const draft = await generateOutreachDraft(p, target, p.evaluation.marketing_abstract);
+          target.outreach_draft = draft;
+          remotePatentId(p);
+          savePatentRecordsToStorage();
+          pushPatentRecordToRemote(p);
+          openCaseFile(p.id);
+        }catch(err){
+          if(container) container.innerHTML = '<p style="font-size:12px; color:var(--red); margin-top:6px;">Could not generate a draft: ' + escapeHtml(err.message || 'unknown error') + '</p>';
+          btn.disabled = false;
+          btn.textContent = 'Draft outreach email';
+        }
+      });
+    });
+  }
+
+  function attachStaffInputHandler(){
+    const btn = document.getElementById('btn-save-staff-input');
+    if(!btn) return;
+    btn.addEventListener('click', ()=>{
+      const patentId = parseInt(btn.dataset.patentId);
+      const p = patents.find(x => x.id === patentId);
+      if(!p) return;
+      p.staffInput = {
+        fundingSource: document.getElementById('si-funding').value,
+        inventorWillingness: document.getElementById('si-willingness').value,
+        industryContacts: document.getElementById('si-contacts').value.trim(),
+        feasibilityNote: document.getElementById('si-feasibility').value.trim()
+      };
+      if(p.status === 'evaluated' || p.status === 'error'){
+        p.status = 'pending';
+        p.evaluation = null;
+        p.error = null;
+      }
+      renderAll();
+      evaluateAllPending();
+      openCaseFile(patentId);
+    });
+  }
+
   function openCaseFile(id){
     const p = patents.find(x => x.id === id);
     if(!p) return;
+    openCaseId = id;
     const el = document.getElementById('casefile-body');
 
     if(p.status === 'pending'){
-      el.innerHTML = '<h2>' + escapeHtml(p.title) + '</h2><p style="color:var(--slate);">Not yet evaluated. Run the evaluation from Intake or Dashboard first.</p>';
+      el.innerHTML = '<h2>' + escapeHtml(p.title) + '</h2>' + renderArchiveControl(p) + '<p style="color:var(--slate);">Not yet evaluated. Run the evaluation from Intake or Dashboard first, or add staff input below before running it.</p>' + renderStaffInputPanel(p);
       showView('casefile');
+      attachStaffInputHandler();
+      attachArchiveButtonHandler();
       return;
     }
     if(p.status === 'evaluating'){
@@ -908,30 +2378,57 @@
       return;
     }
     if(p.status === 'error'){
-      el.innerHTML = '<h2>' + escapeHtml(p.title) + '</h2><div class="caveat-box" style="background:var(--red-bg); border-color:#E0B4A6; color:var(--red);">Evaluation failed: ' + escapeHtml(p.error) + '. You can retry from the Dashboard or Intake screen.</div>';
+      el.innerHTML = '<h2>' + escapeHtml(p.title) + '</h2>' + renderArchiveControl(p) + '<div class="caveat-box" style="background:var(--red-bg); border-color:#E0B4A6; color:var(--red);">Evaluation failed: ' + escapeHtml(p.error) + '. Use "Save and retry evaluation" below to try again. Adding another disclosure will not retry this one.</div>' + renderStaffInputPanel(p);
       showView('casefile');
+      attachStaffInputHandler();
+      attachArchiveButtonHandler();
       return;
     }
 
     const ev = p.evaluation;
-    const stampClass = ev.recommended_path === 'LICENSE' ? 'license' : (ev.recommended_path === 'VENTURE' ? 'venture' : 'mature');
-    const stampLabel = ev.recommended_path === 'LICENSE' ? 'License Candidate' : (ev.recommended_path === 'VENTURE' ? 'Venture Candidate' : 'Further Maturation Needed');
+    const pathMeta = {
+      LICENSE: { stampClass: 'license', stampLabel: 'License Candidate' },
+      VENTURE: { stampClass: 'venture', stampLabel: 'Venture Candidate' },
+      NO_DEMAND: { stampClass: 'mature', stampLabel: 'Insufficient Demand Found' },
+      MATURE: { stampClass: 'mature', stampLabel: 'Further Maturation Needed' }
+    };
+    const meta = pathMeta[ev.recommended_path] || pathMeta.MATURE;
 
     let trlCells = '';
     for(let i=1;i<=9;i++){
       trlCells += '<div class="trl-cell' + (i <= ev.trl ? ' filled' : '') + '">' + i + '</div>';
     }
 
+    const demandColor = { STRONG: 'license', MODERATE: 'venture', WEAK: 'mature', NONE: 'error' };
+    const demandTagClass = demandColor[ev.market_demand_verdict] || 'pending';
+
     let risksHtml = (ev.adoption_risks || []).map(r=>{
-      return '<div class="risk-row"><span class="risk-dot ' + escapeHtml(r.level) + '"></span><span class="factor"><strong>' + escapeHtml(r.factor) + '</strong> — ' + escapeHtml(r.note) + '</span></div>';
+      const level = String(r.level || '').toLowerCase();
+      return '<div class="risk-row"><span class="risk-dot ' + escapeHtml(level) + '"></span><span class="factor"><strong>' + escapeHtml(r.factor) + '</strong> — ' + escapeHtml(r.note) + '</span></div>';
     }).join('') || '<p style="color:var(--slate); font-size:13px;">No adoption risk factors returned.</p>';
 
     let archetypesHtml = '';
     const targets = (ev.top_acquirer_targets || []).slice().sort((a,b)=> (a.rank||99) - (b.rank||99));
-    if(ev.recommended_path !== 'VENTURE' && targets.length){
+    if(ev.recommended_path === 'LICENSE' && targets.length){
       archetypesHtml = '<div class="panel"><div class="panel-head"><h3>Top three acquirer targets</h3></div><div class="panel-body">' +
-        targets.map(a => '<div class="archetype"><div class="sector">#' + (a.rank || '?') + ' &middot; ' + escapeHtml(a.sector) + '</div><div class="why">' + escapeHtml(a.rationale) + '</div></div>').join('') +
-        '<div class="caveat-box">These are ranked sector level archetypes, not named companies. Verify actual prospects with CURF business development contacts before outreach.</div>' +
+        targets.map((a, idx) => {
+          const hasCompany = a.company_name && a.company_name.trim().length > 0;
+          const nameLine = hasCompany
+            ? escapeHtml(a.company_name) + ' <span style="font-weight:400; color:var(--slate);">&middot; ' + escapeHtml(a.sector) + '</span>'
+            : '<span style="color:var(--slate); font-style:italic;">No specific company identified via search</span> <span style="font-weight:400; color:var(--slate);">&middot; ' + escapeHtml(a.sector) + '</span>';
+          const sourceLine = (hasCompany && a.source_url) ? '<div style="margin-top:4px;"><a href="' + escapeHtml(a.source_url) + '" target="_blank" rel="noopener" style="font-size:11.5px;">source</a></div>' : '';
+          const pitchLine = (hasCompany && a.pitch_angle) ? '<div class="why" style="font-style:italic; margin-top:4px;">Pitch angle: ' + escapeHtml(a.pitch_angle) + '</div>' : '';
+          const draftBtn = hasCompany ? '<button class="btn secondary small" data-draft-outreach="' + idx + '" style="margin-top:8px;">Draft outreach email</button>' : '';
+          const draftBox = a.outreach_draft
+            ? '<div class="panel" style="margin-top:10px; background:var(--paper);"><div class="panel-body"><p style="font-size:12px; font-weight:600; color:var(--slate); text-transform:uppercase; letter-spacing:0.04em;">Draft, review before sending</p><p style="font-size:13px; font-weight:600; margin-top:6px;">' + escapeHtml(a.outreach_draft.subject || '') + '</p><p style="font-size:13px; white-space:pre-wrap; margin-top:4px;">' + escapeHtml(a.outreach_draft.body || '') + '</p></div></div>'
+            : '<div data-draft-container="' + idx + '"></div>';
+          return '<div class="archetype"><div class="sector">#' + (a.rank || '?') + ' &middot; ' + nameLine + '</div><div class="why">' + escapeHtml(a.rationale) + '</div>' + pitchLine + sourceLine + draftBtn + draftBox + '</div>';
+        }).join('') +
+        '<div class="caveat-box">Company names above were identified through live web search, not invented from memory, but a name here is a lead to check, not confirmed interest. When no specific company is shown, search did not turn up a clear enough fit, only the sector suggestion is offered rather than a guessed name. Outreach drafts are a starting point for CURF staff to review, personalize, and send themselves, this app never sends anything on its own. Verify every prospect with CURF business development contacts before outreach.</div>' +
+        '</div></div>';
+    } else if(ev.recommended_path === 'LICENSE' && ev.acquirer_search_error){
+      archetypesHtml = '<div class="panel"><div class="panel-head"><h3>Top three acquirer targets</h3></div><div class="panel-body">' +
+        '<div class="caveat-box" style="background:var(--red-bg); border-color:#E0B4A6; color:var(--red);">Acquirer target research did not complete for this patent: ' + escapeHtml(ev.acquirer_search_error) + '. The evaluation above is unaffected and complete, only this specific search step failed. Use "Save and re-evaluate" below with no changes to retry just this patent.</div>' +
         '</div></div>';
     }
 
@@ -945,8 +2442,27 @@
         '</ul></div></div>';
     }
 
+    const evaluatedDate = ev.evaluated_at ? new Date(ev.evaluated_at).toLocaleString() : null;
+    const versionMismatch = ev.schema_version && ev.schema_version !== EVALUATION_SCHEMA_VERSION;
+    const provenanceLine = evaluatedDate
+      ? '<p style="font-size:11.5px; color:var(--slate); margin:-8px 0 16px 0;">Evaluated ' + escapeHtml(evaluatedDate) + (ev.schema_version ? ' under methodology ' + escapeHtml(ev.schema_version) : '') + '.' +
+        (versionMismatch ? ' The methodology has changed since (currently ' + escapeHtml(EVALUATION_SCHEMA_VERSION) + '). This is shown exactly as originally produced, re-run evaluation from the case file if you want it updated to the current methodology.' : '') +
+        '</p>'
+      : '';
+
     el.innerHTML =
-      '<div class="page-head"><div><div class="eyebrow">CU-' + String(p.id).padStart(4,'0') + ' &middot; ' + escapeHtml(p.dept) + '</div><h1>' + escapeHtml(p.title) + '</h1></div><div class="stamp ' + stampClass + '">' + stampLabel + '</div></div>' +
+      '<div class="page-head"><div><div class="eyebrow">CU-' + String(p.id).padStart(4,'0') + ' &middot; ' + escapeHtml(p.dept) + '</div><h1>' + escapeHtml(p.title) + '</h1></div><div class="stamp ' + meta.stampClass + '">' + meta.stampLabel + '</div></div>' +
+
+      renderArchiveControl(p) +
+
+      provenanceLine +
+
+      renderValueScorePanel(p) +
+
+      '<div class="panel"><div class="panel-head"><h3>Market demand, the gating question</h3><span class="tag ' + demandTagClass + '">' + escapeHtml(ev.market_demand_verdict || 'Unspecified') + '</span></div><div class="panel-body">' +
+        '<p style="font-size:13.5px;">' + escapeHtml(ev.market_demand_rationale || '') + '</p>' +
+        '<div class="caveat-box" style="background:#F7E7E2; border-color:#E0B4A6; color:var(--red);"><strong>What the disclosure asserts but does not actually back up:</strong> ' + escapeHtml(ev.unsupported_claims || 'Not specified.') + '</div>' +
+      '</div></div>' +
 
       '<div class="panel"><div class="panel-head"><h3>Technology Readiness Level</h3></div><div class="panel-body">' +
         '<div class="trl-scale">' + trlCells + '</div>' +
@@ -955,16 +2471,33 @@
 
       '<div class="panel"><div class="panel-head"><h3>Adoption risk factors</h3></div><div class="panel-body">' + risksHtml + '</div></div>' +
 
-      '<div class="panel"><div class="panel-head"><h3>Recommendation</h3></div><div class="panel-body">' +
+      '<div class="panel"><div class="panel-head"><h3>Recommendation: license a specific corporate, or venture a larger market</h3></div><div class="panel-body">' +
         '<p style="font-size:13.5px;">' + escapeHtml(ev.path_rationale || '') + '</p>' +
         '<p style="font-size:12px; color:var(--slate); margin-top:8px;">Model confidence: <strong>' + escapeHtml(ev.confidence || 'unspecified') + '</strong></p>' +
       '</div></div>' +
 
       archetypesHtml + venturePlanHtml +
 
+      '<div class="panel"><div class="panel-head"><h3>Marketing abstract, for outside audiences</h3></div><div class="panel-body">' +
+        '<p style="font-size:13.5px;">' + escapeHtml(ev.marketing_abstract || 'Not generated.') + '</p>' +
+        '<p style="font-size:11.5px; color:var(--slate); margin-top:8px;">Plain language, non confidential, written for a business audience, not a patent examiner. Have a Technology Commercialization Officer review before sending it externally.</p>' +
+      '</div></div>' +
+
+      '<div class="panel"><div class="panel-head"><h3>Where this evaluation could be wrong</h3></div><div class="panel-body">' +
+        '<p style="font-size:13.5px;">' + escapeHtml(ev.critical_challenge || 'No specific challenge returned.') + '</p>' +
+      '</div></div>' +
+
+      renderPatentabilityPanel(p) +
+
+      renderStaffInputPanel(p) +
+
       '<div class="caveat-box">' + escapeHtml(ev.caveat || 'This is an automated first pass and should be checked by a Technology Commercialization Officer before any decision is finalized.') + '</div>';
 
     showView('casefile');
+    attachStaffInputHandler();
+    attachPatentabilityHandler();
+    attachArchiveButtonHandler();
+    attachOutreachDraftHandlers(p, targets);
   }
 
   function escapeHtml(str){
