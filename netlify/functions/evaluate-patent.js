@@ -28,6 +28,15 @@
 // top_acquirer_targets list. A core evaluation that leaves the list
 // empty is not rewritten. The fields travel inside the evaluation
 // object stored in evaluated_patents.record_json. No new table.
+// PILOT TARGETS: a request with task "pilot_targets" asks where to
+// pilot or prove the invention. The prompt and the pilot_targets
+// schema live in netlify/lib/pilot-targets.js. That task turns search
+// on itself (max_uses 3). Every returned target needs an http(s)
+// source for previous work in the same technical area. A prior pilot
+// without a link is dropped. A target with no such link is kept only
+// as unverified and sorted last. The fields travel inside the
+// evaluation object stored in evaluated_patents.record_json, beside
+// licensing_targets. No new table.
 // When on, this uses Anthropic's server side web search tool
 // (web_search_20250305, the basic non-agentic version, confirmed
 // current against Anthropic's own tool reference docs) so the model
@@ -58,16 +67,19 @@
 // runs the full allowed searches plus model reasoning can
 // realistically approach or exceed that ceiling, especially on a
 // niche technical topic that takes the model longer to research. This
-// is exactly why the client now splits patent evaluation into two
+// is exactly why the client now splits patent evaluation into
 // separate calls: a fast, search free core evaluation every patent
-// needs, and a separate licensing-target search (max_uses 3) for any
-// patent that is not already a no-demand hard pass. If timeouts persist even with that split, lowering
+// needs, a licensing-target search (max_uses 3) for any patent that
+// is not already a no-demand hard pass, and a pilot-target search
+// (max_uses 3) only when that licensing search found 3 or more
+// destinations. If timeouts persist even with that split, lowering
 // max_uses further, or moving the acquirer search specifically to a
 // genuinely asynchronous background function with a polling endpoint,
 // a real architecture change, are the only remaining paths. Asking
 // Netlify for more time is not one of them.
 
 import { buildLicensingSearchRequest, rewriteLicensingInResponse } from "../lib/licensing-targets.js";
+import { buildPilotSearchRequest, rewritePilotInResponse } from "../lib/pilot-targets.js";
 
 export default async (req, context) => {
   if (req.method !== "POST") {
@@ -97,6 +109,7 @@ export default async (req, context) => {
 
   const { system, messages, enableSearch, task } = body || {};
   const licensingTask = task === "licensing_targets";
+  const pilotTask = task === "pilot_targets";
   let systemPrompt = system;
   let messageList = messages;
   let searchOn = enableSearch === true;
@@ -105,6 +118,13 @@ export default async (req, context) => {
 
   if (licensingTask) {
     const built = buildLicensingSearchRequest(body.patent);
+    systemPrompt = built.system;
+    messageList = built.messages;
+    searchOn = true;
+    maxTokens = built.max_tokens;
+    tools = built.tools;
+  } else if (pilotTask) {
+    const built = buildPilotSearchRequest(body.patent);
     systemPrompt = built.system;
     messageList = built.messages;
     searchOn = true;
@@ -141,7 +161,11 @@ export default async (req, context) => {
     });
 
     const data = await upstream.json();
-    const payload = upstream.ok ? rewriteLicensingInResponse(data, { enforce: licensingTask }) : data;
+    let payload = data;
+    if (upstream.ok) {
+      payload = rewriteLicensingInResponse(payload, { enforce: licensingTask });
+      payload = rewritePilotInResponse(payload, { enforce: pilotTask });
+    }
     return new Response(JSON.stringify(payload), {
       status: upstream.status,
       headers: { "Content-Type": "application/json" }

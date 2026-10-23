@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test netlify/lib/licensing-targets.test.js netlify/lib/licensing-page.test.js netlify/lib/portfolio-new.test.js"
+    "test": "node --test netlify/lib/licensing-targets.test.js netlify/lib/licensing-page.test.js netlify/lib/portfolio-new.test.js netlify/lib/pilot-targets.test.js netlify/lib/pilot-page.test.js"
   },
   "devDependencies": {
     "jsdom": "^25.0.1"
