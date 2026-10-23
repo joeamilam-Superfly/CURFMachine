@@ -4,7 +4,7 @@
   root.CURF_VALUE = factory();
 })(typeof window !== "undefined" ? window : globalThis, function(){
 
-  const METHOD_NOTE = "Computed directly from this evaluation's own outputs, not a separate AI guess. Every line below is auditable against what's already on this page. Frozen at the time this evaluation ran, it will not change on its own even if the scoring formula is later revised. This is a relative triage score for comparing items in this docket, not a dollar valuation. Letter thresholds stay at 10, 7, and 4 out of 15. The dollar figure in the South Carolina alignment note is a typical PitchBook check size, not a sum of capital invested and not a value for this patent.";
+  const METHOD_NOTE = "This score is added up from the lines already on this page. It is not a second guess by the AI. It was saved when this review ran, so it stays the same even if the formula changes later. Use it to compare patents in this list. It is not a dollar value. Letter grades stay at 10, 7, and 4 out of 15. The dollar figure in the South Carolina note is a typical deal size, not the value of this patent.";
 
   const ACTION_ORDER = ["trl", "licensee", "engagement", "path", "demand", "adoption", "alignment", "other"];
 
@@ -211,10 +211,10 @@
   }
 
   function earnedSentence(component){
-    if(component.key === "demand") return "Market demand is " + (component.verdict || "unspecified") + " (" + pointsOf(component) + ").";
-    if(component.key === "trl") return "Technology readiness is TRL " + (component.trl == null ? "unspecified" : component.trl) + " (" + pointsOf(component) + ").";
-    if(component.key === "adoption") return "Adoption risk scores " + pointsOf(component) + ".";
-    if(component.key === "path") return "The monetization path is " + (component.path || "unspecified") + " (" + pointsOf(component) + ").";
+    if(component.key === "demand") return "Market interest is " + (component.verdict || "unspecified") + " (" + pointsOf(component) + ").";
+    if(component.key === "trl") return "How far along: level " + (component.trl == null ? "unspecified" : component.trl) + " (" + pointsOf(component) + ").";
+    if(component.key === "adoption") return "How hard it is to adopt scores " + pointsOf(component) + ".";
+    if(component.key === "path") return "The path to money is " + (component.path || "unspecified") + " (" + pointsOf(component) + ").";
     if(component.key === "licensee"){
       if(component.count === 1) return "1 named licensee with a source (" + pointsOf(component) + ").";
       if(typeof component.count === "number" && component.count > 1) return component.count + " named licensees with a source (" + pointsOf(component) + ").";
@@ -231,7 +231,7 @@
     if(component.key === "alignment"){
       const group = component.group || "not classified";
       const score = component.alignScore == null ? "" : ", score " + component.alignScore;
-      return "SC investment alignment is " + group + score + " (" + pointsOf(component) + ").";
+      return "South Carolina fit is " + group + score + " (" + pointsOf(component) + ").";
     }
     return (component.label || "A scored component") + " (" + pointsOf(component) + ").";
   }
@@ -239,17 +239,17 @@
   function costSentence(component){
     const gap = formatPts(gapOf(component));
     if(component.key === "trl"){
-      const trl = component.trl == null ? "" : " TRL " + component.trl;
-      if(component.points <= 0) return "No prototype yet: technology readiness is" + trl + " (" + pointsOf(component) + ").";
-      return "Technology readiness is still early at" + trl + " (" + pointsOf(component) + ").";
+      const trl = component.trl == null ? "" : " level " + component.trl;
+      if(component.points <= 0) return "No prototype yet. How far along:" + trl + " (" + pointsOf(component) + ").";
+      return "Still early. How far along:" + trl + " (" + pointsOf(component) + ").";
     }
-    if(component.key === "demand") return "Market demand is " + (component.verdict || "unspecified") + ", " + gap + " short of the top of this component (" + pointsOf(component) + ").";
-    if(component.key === "path") return "The monetization path is " + (component.path || "unspecified") + " (" + pointsOf(component) + ").";
-    if(component.key === "licensee") return "No licensee is named with a source (" + pointsOf(component) + ").";
-    if(component.key === "engagement") return "No confirmed inventor or industry engagement (" + pointsOf(component) + ").";
-    if(component.key === "adoption") return "Adoption risk leaves " + gap + " on the table (" + pointsOf(component) + ").";
-    if(component.key === "alignment") return "SC investment alignment is " + (component.group || "not classified") + " (" + pointsOf(component) + ").";
-    return (component.label || "A scored component") + " leaves " + gap + " (" + pointsOf(component) + ").";
+    if(component.key === "demand") return "Market interest is " + (component.verdict || "unspecified") + ", " + gap + " short of the top (" + pointsOf(component) + ").";
+    if(component.key === "path") return "The path to money is " + (component.path || "unspecified") + " (" + pointsOf(component) + ").";
+    if(component.key === "licensee") return "No buyer is named with a source (" + pointsOf(component) + ").";
+    if(component.key === "engagement") return "No inventor or company contact is confirmed (" + pointsOf(component) + ").";
+    if(component.key === "adoption") return "Adoption risk leaves " + gap + " points unused (" + pointsOf(component) + ").";
+    if(component.key === "alignment") return "South Carolina fit is " + (component.group || "not classified") + " (" + pointsOf(component) + ").";
+    return (component.label || "A scored part") + " leaves " + gap + " (" + pointsOf(component) + ").";
   }
 
   function headlineEarned(components){
@@ -267,7 +267,7 @@
     const trl = components.find(component => component.key === "trl");
     if(phrases.length < 2 && trl && trl.points >= 2) phrases.push("a working prototype");
     const alignment = components.find(component => component.key === "alignment");
-    if(phrases.length < 2 && alignment && alignment.points >= 2) phrases.push("full SC alignment");
+    if(phrases.length < 2 && alignment && alignment.points >= 2) phrases.push("a strong South Carolina fit");
     const path = components.find(component => component.key === "path");
     if(phrases.length < 2 && path && path.points > 0 && path.path === "LICENSE") phrases.push("a license path");
     if(phrases.length < 2 && path && path.points > 0 && path.path === "VENTURE") phrases.push("a venture path");
@@ -286,11 +286,11 @@
       if(component.verdict === "MODERATE") return "demand short of strong";
       return "market demand short of the top";
     }
-    if(component.key === "path") return "no clear monetization path";
-    if(component.key === "licensee") return "no named licensee";
-    if(component.key === "engagement") return "no confirmed engagement";
+    if(component.key === "path") return "no clear path to money";
+    if(component.key === "licensee") return "no named buyer";
+    if(component.key === "engagement") return "no confirmed contact";
     if(component.key === "adoption") return "adoption risk";
-    if(component.key === "alignment") return "thin SC alignment";
+    if(component.key === "alignment") return "a weak South Carolina fit";
     return "";
   }
 
@@ -303,31 +303,31 @@
 
   function addPts(gap){
     const text = formatPts(gap);
-    return "~" + text + (text === "1" ? " pt" : " pts");
+    return "about " + text + (text === "1" ? " point" : " points");
   }
 
   function leverFor(components, ev){
     const gaps = components.filter(component => gapOf(component) > 0).sort(byGap);
-    if(!gaps.length) return { text: "Every scored component is already at its maximum.", seePilotTargets: false };
+    if(!gaps.length) return { text: "Every part of the score is already as high as it can go.", seePilotTargets: false };
     const top = gaps[0];
     const add = addPts(gapOf(top));
     if(top.key === "trl"){
       if(pilotsRecommended(ev)){
         const proving = top.points <= 0 ? "this works beyond the lab" : "field performance";
-        return { text: "A pilot proving " + proving + " would add " + add + "; see Pilot targets.", seePilotTargets: true };
+        return { text: "A pilot proving " + proving + " would add " + add + ". See Pilot targets.", seePilotTargets: true };
       }
-      const from = top.trl == null ? "" : " from TRL " + top.trl;
-      return { text: "A demonstrated prototype" + from + " would add " + add + ".", seePilotTargets: false };
+      const from = top.trl == null ? "" : " from level " + top.trl;
+      return { text: "A working prototype" + from + " would add " + add + ".", seePilotTargets: false };
     }
     if(top.key === "demand"){
-      const aim = top.max === 6 ? "Evidence that would move market demand to STRONG would add " : "Stronger market demand would add ";
+      const aim = top.max === 6 ? "Proof that would make market interest strong would add " : "Stronger market interest would add ";
       return { text: aim + add + ".", seePilotTargets: false };
     }
-    if(top.key === "licensee") return { text: "Naming a licensee with a source would add " + add + ".", seePilotTargets: false };
-    if(top.key === "engagement") return { text: "Confirmed inventor willingness or an industry contact would add " + add + ".", seePilotTargets: false };
-    if(top.key === "path") return { text: "A license or venture path would add " + add + ".", seePilotTargets: false };
+    if(top.key === "licensee") return { text: "Naming a buyer with a source would add " + add + ".", seePilotTargets: false };
+    if(top.key === "engagement") return { text: "A willing inventor or a company contact would add " + add + ".", seePilotTargets: false };
+    if(top.key === "path") return { text: "A license or startup path would add " + add + ".", seePilotTargets: false };
     if(top.key === "adoption") return { text: "Lower adoption risk would add " + add + ".", seePilotTargets: false };
-    if(top.key === "alignment") return { text: "Closer South Carolina investment alignment would add " + add + ".", seePilotTargets: false };
+    if(top.key === "alignment") return { text: "A closer South Carolina fit would add " + add + ".", seePilotTargets: false };
     return { text: "Closing the largest gap would add " + add + ".", seePilotTargets: false };
   }
 
@@ -357,12 +357,12 @@
 
   function viableWhy(subject){
     if(subject.archived) return "it is archived";
-    if(subject.cachedOnly) return "only the id is stored";
+    if(subject.cachedOnly) return "only the id was saved";
     const demand = String(subject.demand || "").toUpperCase();
-    if(demand !== "STRONG" && demand !== "MODERATE") return "demand is " + (demand || "unspecified");
-    if(String(subject.path || "").toUpperCase() === "NO_DEMAND") return "the path is no demand";
-    if(subject.status !== "evaluated") return "it is not evaluated";
-    return "it is outside the viable set";
+    if(demand !== "STRONG" && demand !== "MODERATE") return "market interest is " + (demand || "unspecified").toLowerCase();
+    if(String(subject.path || "").toUpperCase() === "NO_DEMAND") return "there is no real market";
+    if(subject.status !== "evaluated") return "the review is not finished";
+    return "it is outside the comparison";
   }
 
   function rankCopy(patent, score, peers){
@@ -377,21 +377,21 @@
     const viable = sameKind.filter(peerIsViable);
     if(!peerIsViable(subject)){
       const why = viableWhy(subject);
-      if(!viable.length) return "Not in the viable set (" + why + "). No viable " + plural + " are in the portfolio.";
+      if(!viable.length) return "Not in the comparison (" + why + "). No " + plural + " with real demand are in the portfolio.";
       const word = viable.length === 1 ? noun : plural;
       const verb = viable.length === 1 ? "has" : "have";
-      return "Not in the viable set (" + why + "). " + viable.length + " portfolio " + word + " " + verb + " moderate or strong demand.";
+      return "Not in the comparison (" + why + "). " + viable.length + " portfolio " + word + " " + verb + " moderate or strong market interest.";
     }
-    if(viable.length === 1) return "The only viable " + noun + " in the portfolio.";
+    if(viable.length === 1) return "The only " + noun + " with real demand in the portfolio.";
     const mine = Number(subject.totalPoints);
     const above = viable.filter(peer => Number(peer.totalPoints) > mine).length;
     const equal = viable.filter(peer => Number(peer.totalPoints) === mine).length;
     const below = viable.length - above - equal;
     const lead = (equal > 1 ? "Tied for " : "Ranks ") + ordinal(above + 1);
-    let sentence = lead + " of " + viable.length + " viable " + (viable.length === 1 ? noun : plural) + ".";
+    let sentence = lead + " of " + viable.length + " " + (viable.length === 1 ? noun : plural) + " with real demand.";
     if(below > 0){
       const pct = Math.round((100 * below) / viable.length);
-      sentence += " Ahead of " + pct + "% of viable " + plural + ".";
+      sentence += " Ahead of " + pct + "%.";
     }
     return sentence;
   }
@@ -416,8 +416,8 @@
     return {
       headline: headline,
       rank: rankCopy(patent || {}, score || {}, peers || []),
-      earned: earnedRows.length ? earnedRows.map(earnedSentence).join(" ") : "None of the scored components earned points.",
-      cost: costRows.length ? costRows.map(costSentence).join(" ") : "Nothing in the formula was left on the table.",
+      earned: earnedRows.length ? earnedRows.map(earnedSentence).join(" ") : "None of the scored parts earned points.",
+      cost: costRows.length ? costRows.map(costSentence).join(" ") : "Nothing in the score was left unused.",
       lever: lever.text,
       seePilotTargets: lever.seePilotTargets,
       methodNote: METHOD_NOTE

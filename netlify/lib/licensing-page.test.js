@@ -122,14 +122,14 @@ test("the page renders licensing targets without script errors", async () => {
   assert.deepEqual(errors, [], errors.join("\n"));
 
   const portfolio = document.querySelector("#portfolio-body").textContent;
-  assert.match(portfolio, /Licensing targets were not stored/);
+  assert.match(portfolio, /Buyer names were not saved/);
   assert.match(portfolio, /Sell or license: Milliken & Company, BMW Manufacturing, Toray Composite Materials, Innova SC/);
-  assert.match(portfolio, /Hard pass: no viable market/);
+  assert.match(portfolio, /No real market for a sale or license/);
 
   openCase(document, 1);
   const oldSection = document.querySelector("#licensing-targets");
   assert.ok(oldSection);
-  assert.match(oldSection.textContent, /does not include licensing targets/);
+  assert.match(oldSection.textContent, /does not include buyer names/);
   assert.match(oldSection.textContent, /Sealed Air/);
   assert.ok(document.querySelector("[data-reevaluate]"));
   assert.ok(document.querySelector("[data-download-report]"));
@@ -148,7 +148,7 @@ test("the page renders licensing targets without script errors", async () => {
   document.querySelector("[data-download-report]").click();
   const oldReport = await report.text();
   assert.match(oldReport, /Who to sell or license this to/);
-  assert.match(oldReport, /does not include licensing targets/);
+  assert.match(oldReport, /does not include buyer names/);
   assert.match(oldReport, /Sealed Air/);
 
   openCase(document, 2);
@@ -171,13 +171,13 @@ test("the page renders licensing targets without script errors", async () => {
 
   openCase(document, 3);
   const hardPass = document.querySelector("#licensing-targets");
-  assert.match(hardPass.textContent, /Hard pass/);
-  assert.match(hardPass.textContent, /no viable market/);
+  assert.match(hardPass.textContent, /No real market/);
+  assert.match(hardPass.textContent, /Only 1 real destination/);
   assert.match(hardPass.textContent, /One Diagnostics/);
   assert.equal(document.querySelectorAll("#licensing-targets .archetype").length, 1);
   document.querySelector("[data-download-report]").click();
   const passReport = await report.text();
-  assert.match(passReport, /Hard pass: no viable market/);
+  assert.match(passReport, /No real market/);
 
   await new Promise(resolve => setTimeout(resolve, 30));
   assert.deepEqual(errors, [], errors.join("\n"));

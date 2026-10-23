@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CURF Docket — IP Evaluation Platform</title>
+<title>CURF Docket — Patent and publication review</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
 
@@ -300,7 +300,7 @@
     <div class="sidebar-brand">
       <div class="seal">CU</div>
       <div class="name">CURF Docket</div>
-      <div class="tag">IP Evaluation Platform</div>
+      <div class="tag">Patent and publication review</div>
     </div>
     <div class="nav">
       <div class="nav-label">Workflow</div>
@@ -310,17 +310,17 @@
       <div class="nav-label">Also</div>
       <button class="nav-item" data-view="tools"><span class="num"></span> Tools</button>
       <button class="nav-item" data-view="intake"><span class="num"></span> Intake</button>
-      <button class="nav-item" data-view="practices"><span class="num"></span> Methodology</button>
+      <button class="nav-item" data-view="practices"><span class="num"></span> How we score</button>
     </div>
     <div class="sidebar-foot">
-      Prototype for internal CURF review. AI scoring is a first pass heuristic, not a substitute for Technology Commercialization Officer judgment.
+      A first draft for CURF staff. The scores help you sort. A technology manager still makes the call.
     </div>
   </div>
 
   <div class="main">
 
     <div id="security-banner" style="background:#F7E7E2; border:1px solid #E0B4A6; color:#9C3B2E; padding:12px 16px; border-radius:3px; font-size:12.5px; margin-bottom:20px; max-width:1120px;">
-      <strong>Handle with care.</strong> This app is deployed with a backend proxy and does not expose an API key to the browser, but that alone is not clearance to submit real, unpublished Clemson disclosures. Two live requirements still apply: a Zero Data Retention arrangement should be confirmed on the Anthropic account this uses (see SECURITY-AND-PRIVACY.md), and, now that AI evaluation uses live web search to identify acquirer targets, the search queries built from a patent's title and abstract are sent to public web search infrastructure, not just to Anthropic's model. That is a non issue for already published patents, but it means a pending, unfiled disclosure must never be run through evaluation, doing so would push its confidential content out to a public search engine.
+      <strong>Be careful with unpublished work.</strong> This app keeps the AI key on the server. That does not make a secret disclosure safe. Confirm the AI account does not keep the text you send (see SECURITY-AND-PRIVACY.md). A review also searches the public web using the title and summary. That is fine for patents that are already public. Do not review a secret, unfiled disclosure here. The search would send that text to the public web.
     </div>
     <div id="remote-save-status" style="display:none; background:#FBF0DA; border:1px solid #E4C990; color:#6B4E0E; padding:12px 16px; border-radius:3px; font-size:12.5px; margin-bottom:20px; max-width:1120px;"></div>
     <div id="eval-progress" style="display:none; background:#E4E9F7; border:1px solid #C5D0EA; color:#243056; padding:12px 16px; border-radius:3px; font-size:12.5px; margin-bottom:20px; max-width:1120px;"></div>
@@ -336,36 +336,36 @@
         <div>
           <div class="eyebrow">Step 1</div>
           <h1>Triage</h1>
-          <p>Scan USPTO and Google Patents, then rank what is not already cached. An application and its later grant stay separate. Until a scan is stored, the August 29, 2026 snapshot is shown so triage can still start. Rank skips anything already in the triage cache. Evaluate selected runs the full model only for patents that are not already in the portfolio. A patent already evaluated opens the stored result.</p>
+          <p>Find new Clemson patents, then rank them so you can see which ones look most promising. Pick the ones you want and click Evaluate for a full review. Patents you've already reviewed open right away, so nothing gets reviewed twice. A patent application and the patent it later becomes are listed separately.</p>
         </div>
       </div>
 
       <div class="panel" id="scan-patents-panel">
         <div class="panel-head"><h3>Scan for new patents</h3></div>
         <div class="panel-body">
-          <p style="margin-top:0;">Scan USPTO and Google Patents for Clemson filings, then keep one row when both sources name the same document. The table below is that catalog.</p>
+          <p style="margin-top:0;">Look up new Clemson patents from USPTO and Google Patents. If both name the same document, you see one row. The table below is that list.</p>
           <div style="display:flex; gap:8px; flex-wrap:wrap;">
-            <button class="btn" id="btn-scan-patents">Scan USPTO and Google Patents</button>
-            <button class="btn secondary" id="btn-load-known-registry">Reload known snapshot</button>
+            <button class="btn" id="btn-scan-patents">Scan for new patents</button>
+            <button class="btn secondary" id="btn-load-known-registry">Show the Aug 29, 2026 list</button>
           </div>
-          <p id="scan-summary" style="font-size:13.5px; margin:14px 0 0;">No scan has been stored yet. Showing the August 29, 2026 snapshot so triage can start.</p>
+          <p id="scan-summary" style="font-size:13.5px; margin:14px 0 0;">Showing patents from the last scan on Aug 29, 2026. Click Scan for new patents to update.</p>
           <div id="discover-status-panel" style="display:none; margin-top:10px;">
             <div id="discover-status" style="font-size:12.5px; color:var(--slate);"></div>
           </div>
-          <div class="caveat-box" style="margin-top:14px; margin-bottom:0;">Google Patents uses the public BigQuery dataset (GCP_PROJECT_ID and GCP_SERVICE_ACCOUNT_KEY_BASE64). USPTO uses the Open Data Portal (USPTO_ODP_API_KEY). A missing USPTO key still stores the Google list. Run supabase-workflow.sql once before the first scan. That file does not change evaluations already stored.</div>
+          <div class="caveat-box" style="margin-top:14px; margin-bottom:0;">Google Patents and USPTO each need their own key. If the USPTO key is missing, the Google list still saves. The first scan needs shared storage turned on. That setup does not change reviews you already saved.</div>
         </div>
       </div>
 
       <div class="next-action">
         <div>
           <div class="eyebrow">Next</div>
-          <p id="triage-next">Rank unranked patents, filter to a tier, select the ones worth a full read, then evaluate them.</p>
+          <p id="triage-next">Rank the patents that have no rank yet. Filter the list. Pick the ones you want. Then click Evaluate selected.</p>
         </div>
         <button class="btn" id="btn-evaluate-selected">Evaluate selected</button>
       </div>
 
       <div class="caveat-box" style="margin-bottom:20px;">
-        This list is patents assigned to Clemson or CURF. It cannot identify patents by alumni or staff assigned to other organizations. Sector tags are a keyword first pass, not an official classification.
+        This list is patents owned by Clemson or CURF. It cannot find patents owned by a company, even if an alumnus or staff member is an inventor. The sector tag is a keyword guess. Check it before you rely on it.
       </div>
 
       <div class="panel" id="registry-status-panel" style="display:none;">
@@ -375,7 +375,7 @@
       <div class="panel" id="registry-rank-panel">
         <div class="panel-body">
           <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end;">
-            <button class="btn" id="btn-rank-registry">Rank unranked</button>
+            <button class="btn" id="btn-rank-registry">Rank patents with no rank yet</button>
             <div class="field" style="margin:0; min-width:140px;">
               <label for="registry-new-filter">New</label>
               <select id="registry-new-filter">
@@ -384,9 +384,9 @@
               </select>
             </div>
             <div class="field" style="margin:0; min-width:140px;">
-              <label for="registry-tier-filter">Tier</label>
+              <label for="registry-tier-filter">Rank</label>
               <select id="registry-tier-filter">
-                <option value="all">All tiers</option>
+                <option value="all">All ranks</option>
                 <option value="High">High</option>
                 <option value="Medium">Medium</option>
                 <option value="Low">Low</option>
@@ -395,25 +395,25 @@
               </select>
             </div>
             <div class="field" style="margin:0; min-width:180px;">
-              <label for="registry-align-filter">SC investment alignment</label>
+              <label for="registry-align-filter">South Carolina fit</label>
               <select id="registry-align-filter">
-                <option value="all">All technologies</option>
-                <option value="focus">Stated CURF focus only</option>
+                <option value="all">All industries</option>
+                <option value="focus">CURF focus areas only</option>
                 <option value="gte70">Score 70 or higher</option>
                 <option value="gte55">Score 55 or higher</option>
-                <option value="unmatched">Unmatched</option>
+                <option value="unmatched">No industry match</option>
               </select>
             </div>
             <div class="field" style="margin:0; min-width:160px;">
               <label for="registry-sort">Sort</label>
               <select id="registry-sort">
                 <option value="priority">Priority</option>
-                <option value="alignment">SC alignment</option>
+                <option value="alignment">South Carolina fit</option>
                 <option value="date">Newest</option>
               </select>
             </div>
           </div>
-          <p id="registry-rank-status" style="font-size:12.5px; color:var(--slate); margin:12px 0 0;">SC alignment is computed on this page from CPC codes and keywords, using South Carolina deal counts since 2023. Rank unranked adds the model’s licensing tier and skips patents already cached. Ranking is not a full evaluation. Evaluate selected is the full evaluation, and it checks the stored portfolio first.</p>
+          <p id="registry-rank-status" style="font-size:12.5px; color:var(--slate); margin:12px 0 0;">The South Carolina fit score on this page uses the patent classes and words in the title, plus South Carolina deals since 2023. Rank adds a first-look grade and skips patents you already ranked. Ranking is not a full review. Evaluate selected is the full review. Patents you already reviewed open right away.</p>
         </div>
       </div>
 
@@ -421,13 +421,13 @@
         <div class="panel-body" style="padding:0;">
           <table class="docket">
             <thead>
-              <tr><th><input type="checkbox" id="triage-select-page" aria-label="Select this page"></th><th>Tier</th><th>Date</th><th>Title</th><th>SC alignment</th><th>Sector</th><th></th></tr>
+              <tr><th><input type="checkbox" id="triage-select-page" aria-label="Select this page"></th><th>Rank</th><th>Date</th><th>Title</th><th>South Carolina fit</th><th>Sector</th><th></th></tr>
             </thead>
             <tbody id="registry-body"></tbody>
           </table>
           <div class="empty" id="registry-empty">
             <h3>No patents in this view</h3>
-            <p>Change the New, tier, or SC alignment filter, reload the known snapshot, or run a scan.</p>
+            <p>Change the New, grade, or South Carolina filter, show the Aug 29, 2026 list, or scan for new patents.</p>
           </div>
           <div id="registry-pagination" style="display:none; padding:14px 16px; border-top:1px solid var(--line); align-items:center; justify-content:space-between;">
             <span id="registry-pagination-label" style="font-size:12.5px; color:var(--slate);"></span>
@@ -447,25 +447,25 @@
         <div>
           <div class="eyebrow">Separate from the main workflow</div>
           <h1>Tools</h1>
-          <p>Look up one Clemson patent by number or keyword, or describe a problem and see whether Clemson IP and the broader landscape already address it. A lookup that is already evaluated opens the stored result.</p>
+          <p>Look up one Clemson patent by number or keyword. Or describe a problem and see whether Clemson patents, and other work, already cover it. If you already reviewed that patent, it opens right away.</p>
         </div>
       </div>
 
       <div class="caveat-box" style="margin-bottom:20px; background:#F7E7E2; border-color:#E0B4A6; color:var(--red);">
-        If the problem description you paste here came from a real company, treat it the same as any other confidential business information: it gets sent to Anthropic's model, and to public web search infrastructure as part of the external landscape check. Do not paste an enterprise's confidential problem statement without their consent to share it this way.
+        If a company wrote this problem, treat it as private. The text goes to the AI and to a public web search. Do not paste a company's private problem unless they said you may share it this way.
       </div>
 
       <div class="panel">
         <div class="panel-body">
           <div class="field">
-            <label>Enterprise or industry context (optional)</label>
-            <input type="text" id="problem-context" placeholder="e.g. Mid-size automotive parts supplier">
+            <label>Company or industry (optional)</label>
+            <input type="text" id="problem-context" placeholder="Example: mid-size auto parts supplier">
           </div>
           <div class="field">
             <label>Problem description</label>
-            <textarea id="problem-text" style="min-height:120px;" placeholder="Describe the problem in plain language, the way the enterprise would describe it, not in patent language."></textarea>
+            <textarea id="problem-text" style="min-height:120px;" placeholder="Describe the problem the way the company would say it, not in patent language."></textarea>
           </div>
-          <button class="btn" id="btn-run-problem-match">Search Clemson IP, then the broader landscape</button>
+          <button class="btn" id="btn-run-problem-match">Search Clemson patents, then the wider field</button>
         </div>
       </div>
 
@@ -476,7 +476,7 @@
       <div id="problem-match-results"></div>
 
       <div class="panel-head" style="border:none; padding-top:24px; padding-bottom:0;"><h3>Specific patent search</h3></div>
-      <p style="font-size:13px; color:var(--slate); margin:6px 0 16px 0;">Searches the catalog loaded on Triage. If that catalog is still the August 2026 snapshot, the search stays inside the snapshot. A match that is already evaluated opens the stored case instead of running the model again.</p>
+      <p style="font-size:13px; color:var(--slate); margin:6px 0 16px 0;">This searches the list on Triage. If that list is still the Aug 29, 2026 scan, the search stays inside that list. A patent you already reviewed opens that review. It is not reviewed again.</p>
 
       <div class="intake-grid">
         <div class="panel">
@@ -484,7 +484,7 @@
           <div class="panel-body">
             <div class="field">
               <label>Patent or application number</label>
-              <input type="text" id="pm-lookup-number" placeholder="e.g. 12602036 or 20260227775">
+              <input type="text" id="pm-lookup-number" placeholder="Example: 12602036 or 20260227775">
             </div>
             <button class="btn secondary" id="btn-pm-lookup-number">Look up</button>
             <div id="pm-lookup-number-results" style="margin-top:14px;"></div>
@@ -496,7 +496,7 @@
           <div class="panel-body">
             <div class="field">
               <label>Search title and abstract</label>
-              <input type="text" id="pm-lookup-keyword" placeholder="e.g. sensor, gene transfer, optical fiber">
+              <input type="text" id="pm-lookup-keyword" placeholder="Example: sensor, gene transfer, optical fiber">
             </div>
             <button class="btn secondary" id="btn-pm-lookup-keyword">Search</button>
             <div id="pm-lookup-keyword-results" style="margin-top:14px;"></div>
@@ -509,9 +509,9 @@
     <div class="view" id="view-intake">
       <div class="page-head">
         <div>
-          <div class="eyebrow">Step Two</div>
-          <h1>Submit Patents</h1>
-          <p>Drop a .txt or PDF and it is added to the docket. One file starts evaluation immediately. More than three files asks before the deep evaluation runs, because each one uses the full model. For Word files, export to PDF or text first.</p>
+          <div class="eyebrow">Add a patent by hand</div>
+          <h1>Submit patents</h1>
+          <p>Drop a .txt or PDF file. It is added to your list and the review starts. If you add more than three files, we ask first, because each review takes about a minute. For Word files, save as PDF or text first.</p>
         </div>
       </div>
 
@@ -538,26 +538,26 @@
             <div class="panel-body">
               <div class="field">
                 <label>Title</label>
-                <input type="text" id="manual-title" placeholder="e.g. Fiber reinforced polymer coupling for HVAC ductwork">
+                <input type="text" id="manual-title" placeholder="Example: fiber coupling for HVAC ductwork">
               </div>
               <div class="field">
                 <label>College / Department</label>
-                <input type="text" id="manual-dept" placeholder="e.g. Materials Science and Engineering">
+                <input type="text" id="manual-dept" placeholder="Example: Materials Science and Engineering">
               </div>
               <div class="field">
                 <label>Abstract, claims, or full disclosure text</label>
                 <textarea id="manual-text" placeholder="Paste the abstract and key claims here"></textarea>
               </div>
-              <button class="btn" id="btn-add-manual">Add to docket</button>
+              <button class="btn" id="btn-add-manual">Add and review</button>
             </div>
           </div>
         </div>
 
         <div>
           <div class="panel">
-            <div class="panel-head"><h3>Queued for evaluation</h3></div>
+            <div class="panel-head"><h3>Waiting for review</h3></div>
             <div class="panel-body" id="queue-body">
-              <div class="empty" style="padding:24px 10px;">Nothing in progress. Add a file or paste a disclosure and the case shows up here, with a status and an Open button.</div>
+              <div class="empty" style="padding:24px 10px;">Nothing is in progress. Add a file or paste a disclosure. The case shows up here with a status and an Open button.</div>
             </div>
           </div>
         </div>
@@ -575,18 +575,18 @@
         <div>
           <div class="eyebrow">Step 2</div>
           <h1>Portfolio</h1>
-          <p>Full evaluations land here and stay here. Patents and publications are separate lists, each with its own count, New badge, and view filter. Each row is the stored result, including the demand read, who to sell or license it to, and the marketing abstract. Opening a case does not run the model again. Re-evaluate, on the case file, is the only way to replace a stored result. An older result that has no licensing list says so on the case file. Sorted by value score, then South Carolina alignment. A row added in the last 7 days wears a New badge until that case is opened, or until Mark all seen on that list. The view menu starts on New when any of those are waiting in the list you are looking at.</p>
+          <p>Finished reviews stay here. Patents and publications are separate lists. Each list has its own count, New badge, and view filter. Open a case to read the market note, who might buy or license it, and a short summary for outside readers. Opening a case does not run the review again. Re-evaluate, on the case, is the only button that replaces a review. Patents sort by score, then South Carolina fit. A row added in the last 7 days shows New until you open it, or until you click Mark all seen. If any new rows are waiting, the view starts on New.</p>
         </div>
         <div>
-          <button class="btn secondary" id="btn-load-sample">Load sample portfolio</button>
+          <button class="btn secondary" id="btn-load-sample">Load sample cases</button>
         </div>
       </div>
       <div class="stat-row cols-5">
-        <div class="stat-card"><div class="label">Patents on docket</div><div class="value" id="stat-total">0</div><div class="sub">active, not archived</div></div>
-        <div class="stat-card"><div class="label">License candidates</div><div class="value" id="stat-license">0</div><div class="sub">demand fits a corporate</div></div>
-        <div class="stat-card"><div class="label">Venture candidates</div><div class="value" id="stat-venture">0</div><div class="sub">demand fits a new market</div></div>
-        <div class="stat-card"><div class="label">Insufficient demand</div><div class="value" id="stat-no-demand">0</div><div class="sub">no real market pull found</div></div>
-        <div class="stat-card"><div class="label">Needs maturation</div><div class="value" id="stat-mature">0</div><div class="sub">too early technically</div></div>
+        <div class="stat-card"><div class="label">Patents in the list</div><div class="value" id="stat-total">0</div><div class="sub">active, not archived</div></div>
+        <div class="stat-card"><div class="label">License candidates</div><div class="value" id="stat-license">0</div><div class="sub">a company could license this</div></div>
+        <div class="stat-card"><div class="label">Startup candidates</div><div class="value" id="stat-venture">0</div><div class="sub">a new company could use this</div></div>
+        <div class="stat-card"><div class="label">Weak market</div><div class="value" id="stat-no-demand">0</div><div class="sub">no real buyer found</div></div>
+        <div class="stat-card"><div class="label">Too early</div><div class="value" id="stat-mature">0</div><div class="sub">the technology needs more work</div></div>
       </div>
       <div class="portfolio-kinds" role="tablist" aria-label="Portfolio lists">
         <button type="button" class="btn secondary" id="portfolio-kind-patents" role="tab" aria-pressed="true" aria-controls="portfolio-body">Patents <span class="tag" id="portfolio-patents-count">0</span> <span class="tag new" id="portfolio-patents-new" hidden>New (0)</span></button>
@@ -605,25 +605,25 @@
         <button class="btn secondary" id="btn-mark-portfolio-seen" type="button">Mark all seen</button>
         <div id="publication-score-filters" hidden style="flex-wrap:wrap; gap:10px; align-items:flex-end;">
           <div class="field" style="margin:0; min-width:200px;">
-            <label for="publication-band-filter">Band</label>
+            <label for="publication-band-filter">Rating</label>
             <select id="publication-band-filter">
-              <option value="all">All bands</option>
-              <option value="venture_ready">Venture-ready candidate</option>
-              <option value="promising">Promising, needs de-risking</option>
-              <option value="early">Early/exploratory</option>
-              <option value="not_commercial">Not commercial now</option>
+              <option value="all">All ratings</option>
+              <option value="venture_ready">Ready to pursue</option>
+              <option value="promising">Promising, lower the risk first</option>
+              <option value="early">Early research</option>
+              <option value="not_commercial">Not ready to sell</option>
             </select>
           </div>
           <div class="field" style="margin:0; min-width:240px;">
-            <label for="publication-path-filter">Path</label>
+            <label for="publication-path-filter">Next step</label>
             <select id="publication-path-filter">
-              <option value="all">All paths</option>
-              <option value="file_disclosure">File invention disclosure now</option>
-              <option value="explore_startup">Explore startup</option>
-              <option value="gap_funding">Seek gap/proof-of-concept funding</option>
-              <option value="sponsored_research">Sponsored research / industry partner</option>
-              <option value="license_knowhow">License know-how/software/materials</option>
-              <option value="not_ready">Not ready yet / monitor</option>
+              <option value="all">All next steps</option>
+              <option value="file_disclosure">File with CURF now</option>
+              <option value="explore_startup">Look at a startup</option>
+              <option value="gap_funding">Ask for early funding</option>
+              <option value="sponsored_research">Find a company partner</option>
+              <option value="license_knowhow">License the know-how</option>
+              <option value="not_ready">Check back later</option>
             </select>
           </div>
         </div>
@@ -633,16 +633,16 @@
         <div class="panel-body" style="padding:0;">
           <table class="docket">
             <thead>
-              <tr><th>Case</th><th>Title</th><th>Recommended path</th><th>TRL</th><th>Value</th><th>SC alignment</th><th>Confidence</th><th></th></tr>
+              <tr><th>Case</th><th>Title</th><th>Next step</th><th>How ready</th><th>Score</th><th>South Carolina fit</th><th>How sure</th><th></th></tr>
             </thead>
             <tbody id="portfolio-body"></tbody>
           </table>
           <div class="empty" id="portfolio-empty">
-            <h3>The docket is empty</h3>
-            <p>Triage a discovered patent and choose Evaluate selected, or submit a disclosure from Intake.</p>
+            <h3>No patents yet</h3>
+            <p>On Triage, pick a patent and click Evaluate selected. Or add one from Submit patents.</p>
             <div style="margin-top:12px; display:flex; gap:8px; justify-content:center; flex-wrap:wrap;">
-              <button class="btn small" data-view="triage">Open triage</button>
-              <button class="btn secondary small" data-view="intake">Submit a disclosure</button>
+              <button class="btn small" data-view="triage">Open Triage</button>
+              <button class="btn secondary small" data-view="intake">Submit a patent</button>
             </div>
           </div>
         </div>
@@ -666,16 +666,16 @@
         <div>
           <div class="eyebrow">Step 3</div>
           <h1>Publications</h1>
-          <p>Scan public Clemson research, read the quick relevance score, then run a deeper review only on the rows you select. The same source URL is stored once. A review already saved is shown again and is not sent back to the model unless you choose Re-review.</p>
+          <p>Scan public Clemson research. Read the quick score. Then review only the rows you pick. The same paper is saved once. A review you already saved opens again. It is not sent back to the AI unless you click Re-review selected.</p>
         </div>
         <div>
-          <button class="btn" id="btn-run-pubwatch-scan">Scan publications</button>
+          <button class="btn" id="btn-run-pubwatch-scan">Scan for new papers</button>
         </div>
       </div>
       <div class="next-action">
         <div>
           <div class="eyebrow">Next</div>
-          <p>Scan, filter by the quick score, then review the ones that look worth a closer look. Up to five at a time.</p>
+          <p>Scan, filter by the quick score, then review the papers that look worth a closer look. Up to five at a time.</p>
         </div>
         <span style="display:flex; gap:8px; flex-wrap:wrap;">
           <button class="btn" id="btn-review-publications">Review selected</button>
@@ -684,7 +684,7 @@
       </div>
 
       <div class="caveat-box" style="margin-bottom:20px;">
-        Sources are the Clemson news feed, PubMed, OpenAlex, and arXiv. The weekly run has 30 seconds, so it may leave items as "Not scored". The deeper review uses the stored title and summary only. It does not search again and cannot read paywalled full text. Run supabase-workflow.sql once so review text can be saved on the existing publication rows.
+        Sources are the Clemson news feed, PubMed, OpenAlex, and arXiv. The weekly scan has 30 seconds, so some rows may stay "Not scored". A closer review uses the saved title and summary only. It does not search again, and it cannot read paid journal text. Shared storage has to be on once, so review notes can be saved on the papers you already have.
       </div>
 
       <div class="panel" id="pubwatch-status-panel" style="display:none;">
@@ -713,8 +713,8 @@
             <tbody id="pubwatch-body"></tbody>
           </table>
           <div class="empty" id="pubwatch-empty">
-            <h3>No findings stored yet</h3>
-            <p>Run a scan, or read the status above. If it names the Supabase key, the scan cannot save until that key is the service_role key.</p>
+            <h3>No papers yet</h3>
+            <p>Click Scan for new papers. If the message above says shared storage is off, the scan cannot save until that is turned on.</p>
           </div>
         </div>
       </div>
@@ -725,65 +725,65 @@
       <div class="page-head">
         <div>
           <div class="eyebrow">How the scoring works</div>
-          <h1>Methodology &amp; Precedent</h1>
-          <p>This platform's rubric is built from published technology transfer frameworks and how peer institutions structure the same decision, not a made up scoring model.</p>
+          <h1>How we score</h1>
+          <p>The scores follow published technology-transfer guides and the same choices other universities make. They are not a made-up grade.</p>
         </div>
       </div>
 
       <div class="panel">
-        <div class="panel-head"><h3>The core frameworks behind each score</h3></div>
+        <div class="panel-head"><h3>Where each score comes from</h3></div>
         <div class="panel-body">
           <div class="bp-item">
             <div class="who"><span class="key-badge">TRL</span> Technology Readiness Level</div>
-            <div class="what">A nine point scale, originally developed at NASA in the 1970s, describing how far a technology has progressed from basic principle toward a demonstrated, market ready product. Used broadly across NSF's I Corps program and university tech transfer offices to gauge technical maturity before a licensing or venture decision is made.</div>
+            <div class="what">A 1 to 9 scale from NASA. 1 is an idea. 9 is a product that works in the real world. Universities use it to see how far along a technology is before they license it or start a company.</div>
           </div>
           <div class="bp-item">
             <div class="who"><span class="key-badge">ARL</span> Adoption Readiness Level</div>
-            <div class="what">A newer companion framework, piloted through U.S. Department of Energy programs, built specifically because TRL does not capture commercialization risk such as product market fit, demand pull, supply chain readiness, workforce, or permitting. This platform's adoption risk factors are modeled on that gap.</div>
+            <div class="what">A companion to the 1 to 9 scale. It covers risks the scale misses, such as whether anyone will buy it, whether the supply chain is ready, and whether people and permits are in place. The adoption risks on a case follow that idea.</div>
           </div>
           <div class="bp-item">
             <div class="who"><span class="key-badge">AUTM</span> The three decision framework</div>
-            <div class="what">Technology transfer offices generally evaluate early stage inventions to make three decisions: whether to file a patent, whether to actively market it for licensing, and whether it is better suited to a startup or venture path than an established licensee. This platform mirrors that same fork.</div>
+            <div class="what">University offices usually make three calls: file a patent or not, try to license it or not, and start a company or license to a company that already exists. This app follows that same fork.</div>
           </div>
           <div class="bp-item">
             <div class="who">Demand first, not technology first</div>
-            <div class="what">The scoring here is deliberately ordered so market demand is checked before a path is chosen, not after. A patent only becomes a license or venture candidate if the evaluator finds real evidence of demand in the disclosure itself, not just technical merit or an inventor's own assertion that a market exists. If demand looks weak or unsupported, the patent is flagged as insufficient demand regardless of how sophisticated the underlying technology is. Only once demand clears that bar does the model decide whether the opportunity is narrow enough to fit an existing corporate's roadmap, which points toward licensing, or broad enough that no incumbent already serves it well, which points toward a new venture. Every evaluation also has to name the single strongest reason it could be wrong, a deliberate check against the model simply agreeing with the disclosure's own framing of itself.</div>
+            <div class="what">We look for a real buyer before we pick a path. A patent becomes a license or startup candidate only when the text itself shows demand. The inventor saying a market exists is not enough. If demand is weak, the case is marked weak market, even if the science is strong. After that, a narrow fit with one company points to a license. A wide gap no company already fills points to a startup. Every review also names the strongest reason it could be wrong.</div>
           </div>
           <div class="bp-item">
             <div class="who">Inventor input, funding source, and a marketing abstract</div>
-            <div class="what">Each case file has an optional staff and inventor input panel, known industry contacts, the inventor's own read on feasibility, willingness to engage, and funding source. When filled in, this is weighed as real evidence, stronger than the disclosure's own unsupported claims, but the evaluation still notes it is self reported, not independently verified. A federal funding source triggers a compliance note about the government's retained use license and possible march-in rights under the Bayh-Dole Act. Every evaluation also generates a separate marketing abstract, plain language, non confidential, written for a business audience rather than a patent examiner, modeled on how offices like Stanford's OTL market technology to industry with inventor-informed, non-technical descriptions rather than the legal abstract itself.</div>
+            <div class="what">Each case can include staff notes: company contacts, whether the inventor will help, how they see the market, and who paid for the work. Those notes count as evidence, and the review still says they come from the inventor, not from an outside check. Federal funding adds a note that the government keeps some rights under the Bayh-Dole Act. Every review also writes a short public summary for a business reader, not for a patent examiner.</div>
           </div>
           <div class="bp-item">
-            <div class="who">Publications use a separate venture readiness score</div>
-            <div class="what">A publication is not graded on the patent value score and is not a hard pass when fewer than three licensees are named. The model only extracts evidence from the abstract or paper. Points, the 0 to 100 total, the band, the recommended path, the advice to the authors, and the public-disclosure flag are computed afterward with a fixed formula. The weights are novelty and technical advantage 20, NASA TRL 15, protectability and IP status 20, problem and market pull 20, path to a product 10, team or founder signal 10, and an SC and Clemson fit bonus of up to 5 from the same investment alignment used on patents. Bands are 75 to 100 venture-ready candidate, 55 to 74 promising and needs de-risking, 35 to 54 early or exploratory, and below 35 not commercial now. The path can be file an invention disclosure, explore a startup through NSF I-Corps and then SCRA or SC Launch, seek gap or proof-of-concept funding, sponsored research, license know-how or software or materials, or monitor. The disclosure flag is red when the publication date is more than a year ago, amber during the US grace period with a countdown to that date plus one year, and green before publication. A missing exact date stays unknown. Licensing destinations and pilot targets are still searched and stored. They are optional. This is not legal advice, and the case says to confirm it with CURF or patent counsel. Patents keep the value score and the hard-pass rule.</div>
+            <div class="who">Papers use a separate company-readiness score</div>
+            <div class="what">A paper is not graded like a patent. It does not fail just because fewer than three buyers are named. The AI only pulls facts from the abstract. The app then adds the points. The score is 0 to 100. What is new is 20. How far along it is, is 15. Whether it can be protected is 20. Who needs it is 20. The path to a product is 10. Signs of a founding team are 10. Fit with South Carolina is up to 5. 75 to 100 is ready to pursue. 55 to 74 is promising, but lower the risk first. 35 to 54 is early research. Below 35 is not ready to sell. The next step can be file with CURF, look at a startup (NSF I-Corps, then SCRA or SC Launch), ask for early funding, find a company partner, license the know-how, or check back later. The filing clock is red when the paper is more than a year old, amber during the one-year US window, and green before publication. If there is no exact date, the clock stays unknown. Buyer names and pilot sites are still looked up. A paper does not need them to stay in review. This is not legal advice. Check with CURF or a patent lawyer. Patents keep their own score.</div>
           </div>
           <div class="bp-item">
             <div class="who">The value score is computed, not guessed</div>
-            <div class="what">Every patent gets a letter tier (A through D) and a points total out of 15. Thirteen points come from the evaluation itself: market demand verdict, technology readiness level, adoption risk, whether a real licensee or buyer was named with a source rather than just a sector guess, and whether staff or the inventor confirmed real engagement. Up to two more points come from South Carolina investment alignment, described below. The letter thresholds stay at 10, 7, and 4, so alignment can raise a grade and cannot raise the bar for A. It is computed with a fixed formula, not asked of the AI, so the same inputs always produce the same score and every point is traceable back to something already on the page. It deliberately does not produce a licensing-value dollar figure. The dollar amount in the alignment note is PitchBook's reported median check size, not a sum of capital and not a valuation of the patent. Backward citation counts and patent family IDs are shown for reference on live registry pulls but are not folded into this score. Evaluations stored before this change keep the score they were given. Re-run one to include the alignment points.</div>
+            <div class="what">Every patent gets a letter, A through D, and a score out of 15. Thirteen points come from the review: market interest, how far along the technology is, adoption risk, whether a real buyer is named with a link, and whether the inventor or a company contact is confirmed. Up to two more points come from South Carolina fit, below. The letter lines stay at 10, 7, and 4, so fit can raise a grade and cannot raise the line for A. The math is fixed. The AI does not pick the number. The same inputs always give the same score, and every point is on the page. The score is not a dollar value. The dollar in the South Carolina note is a typical deal size, not the value of this patent. Citation counts are shown for reference and are not in the score. Older reviews keep the score they were given. Run the review again to add the fit points.</div>
           </div>
           <div class="bp-item">
             <div class="who">South Carolina investment alignment</div>
-            <div class="what">A separate reference table counts completed South Carolina deals from 2023 through 2026 year to date, by PitchBook industry group, with the focus-area labels already on that export. Software and IT, medical devices, life sciences, advanced materials, agriculture, and energy and grid are the stated focus areas. Each patent is mapped to one industry group from its CPC codes and from keywords in the title and abstract. When that local read is uncertain, the ranking model or the full evaluation may pick a group from the same closed list. The score is 0 to 100: deal volume on a log scale, the share of those deals in 2025 or 2026, and 40 points when the group is a stated focus. Seventy or higher adds two value-score points. Fifty-five or higher adds one. In the quick rank, 75 or higher can lift Low or Needs work to Medium, and 80 or higher can lift Medium to High, but only when an abstract is present and the estimated term has not run out. A High tier is never lowered because the match is weak. Investor names are not sent to the model. The registry can filter to a focus area, a score band, or an unmatched technology.</div>
+            <div class="what">A table counts finished South Carolina deals from 2023 through 2026, by industry. Focus areas are software and IT, medical devices, life sciences, advanced materials, agriculture, and energy and the grid. Each patent is matched to one industry from its patent classes and from words in the title and summary. If that match is unsure, the rank or the full review may pick a group from the same list. The fit score is 0 to 100: how many deals, how many are recent, and 40 points if the group is a focus area. 70 or higher adds two score points. 55 or higher adds one. In the quick rank, 75 or higher can lift Low or Needs work to Medium, and 80 or higher can lift Medium to High, but only when a summary is present and the patent term has not run out. A High grade is never lowered because the match is weak. Investor names are not sent to the AI. You can filter the list by focus area, score, or no match.</div>
           </div>
           <div class="bp-item">
-            <div class="who">Evaluation runs as two calls, not one</div>
-            <div class="what">Every patent first gets a fast, search free core evaluation, TRL, demand, path, risk, marketing abstract, all in one call with no web search involved. Unless that read is already a no-demand hard pass, a second call searches for who to sell or license the patent to and stores that list on the evaluation. The list aims for as many real organizations as the search supports, and a marketable patent needs at least three. Fewer than three is a hard pass, not a padded list. This split exists because a combined call, doing full evaluation and web research together, could run long enough on a niche technical topic to exceed Netlify's fixed 60 second execution limit, which cannot be raised through any setting or plan upgrade. If the licensing search fails, the already successful core evaluation is kept rather than the whole result being thrown away. Results stored before this list existed say so, and Re-evaluate is what adds it.</div>
+            <div class="who">A review is two steps, not one</div>
+            <div class="what">First the app reads the patent with no web search: how far along it is, whether anyone wants it, the path, the risks, and a short public summary. Unless that read already finds no market, a second step searches for who might buy or license it and saves that list. A patent with a real market needs at least three named organizations. Fewer than three is marked no real market. The list is not padded. The steps are split because one long search can hit the 60 second server limit. If the buyer search fails, the first read is kept. Older reviews that have no buyer list say so. Re-evaluate is what adds the list.</div>
           </div>
           <div class="bp-item">
             <div class="who">Portfolio ordering and archiving</div>
-            <div class="what">The Portfolio table sorts by value score, highest tier first, with anything not yet evaluated pushed to the bottom rather than mixed in by recency. Archiving a patent, from its case file or directly from the Portfolio table, removes it from that main view and from the dashboard's active counts without deleting anything, the full evaluation stays exactly as it was. An archived patent remains reachable through "Show archived" on the Portfolio tab, and can be restored to active at any time, which simply reverses the same flag, nothing about its stored evaluation changes either way.</div>
+            <div class="what">The patent list sorts by score, highest first. Patents that are not reviewed yet sit at the bottom. Archive hides a case from the main list and from the counts. It does not delete the review. Choose Archived or All to see it again. Restore puts it back. The review itself does not change.</div>
           </div>
           <div class="bp-item">
-            <div class="who">Patentability &amp; landscape screen is a pre-attorney triage, not a legal opinion</div>
-            <div class="what">On demand, from any case file, this runs a public web search for similar existing patents, competing commercial products, and anything that looks like a potential blocking concern, then suggests a handful of draft patent claim concepts as discussion starting points, never drafted legal language. It is explicitly not a Freedom to Operate search or a comprehensive prior art search, an AI web search cannot access full patent databases and carries none of a licensed attorney's legal judgment or liability. Its purpose is narrower and more honest: help decide whether a technology is worth the cost of sending to the attorney at all. Staff can leave feedback on a run and re-run it, which the next search takes into account and states plainly in its rationale.</div>
+            <div class="who">The patent screen is a first look, not legal advice</div>
+            <div class="what">From a case, you can search the public web for similar patents, products already for sale, and anything that might block use. It also suggests a few claim ideas to discuss. Those are not legal claims you can file. This is not a freedom-to-operate opinion and not a full prior-art search. A web search cannot see every patent database, and it is not a lawyer. Use it to decide whether the technology is worth sending to a lawyer. You can leave a note and run it again. The next search says how that note changed the result.</div>
           </div>
           <div class="bp-item">
             <div class="who">Outreach drafts are written from already-verified facts, not new claims</div>
-            <div class="what">Each named licensing destination can get a "Draft outreach email" button. That drafting step uses no web search of its own. It writes only from the organization name, the role, and why it fits, which the licensing search already returned, so it cannot introduce a new, unverified claim about the recipient. Every draft is a starting point for CURF staff to review, personalize, and send themselves. This app never sends anything on its own.</div>
+            <div class="what">Each named buyer can get a Draft outreach email button. That step does not search the web. It writes only from the name, the role, and why it fits, which the buyer search already found. It cannot add a new claim about the company. Every draft is a start for CURF staff to edit and send. This app never sends email.</div>
           </div>
           <div class="bp-item">
-            <div class="who">Publication Watch is public search only, stated plainly</div>
-            <div class="what">A weekly automatic scan and a manually triggerable one search for new Clemson research publications, using titles, abstracts, press releases, and anything else already publicly indexed, then give each a quick commercial relevance read. It cannot get behind Clemson library's paywalled journal subscriptions, that would need a specific integration with Clemson's own library systems that is not built here, this is a real, stated gap, not an oversight. A finding is only stored and only triggers an email alert once, the first time it appears, re-finding the same publication on a later scan does not repeat the alert. The manual button runs as a genuine Netlify Background Function with a 15 minute execution budget; the automatic weekly run is a scheduled function instead, which Netlify caps at 30 seconds, half of the ordinary 60 second limit the rest of this app is tuned around, so it deliberately runs a single, narrower search rather than risk failing silently every week.</div>
+            <div class="who">The paper scan uses public sources only</div>
+            <div class="what">A weekly scan, and a button you can click, look for new Clemson papers in public titles, summaries, and news. Each one gets a quick "is this commercial?" read. The scan cannot open paid journal articles. That would need the Clemson library, and that link is not built. A paper is saved once and emailed once. Finding it again does not send another email. The button can run for up to 15 minutes. The weekly scan has 30 seconds, so it runs a smaller search on purpose.</div>
           </div>
         </div>
       </div>
@@ -793,37 +793,37 @@
         <div class="panel-body">
           <div class="bp-item">
             <div class="who">CURF itself, today</div>
-            <div class="what">Clemson University Research Foundation already runs a searchable catalog of technologies available for licensing and pairs graduate interns with Technology Commercialization Officers to do early market opportunity evaluations by hand. This platform is meant to sit upstream of that work as a faster first pass across the whole portfolio, not to replace the judgment CURF staff already apply.</div>
+            <div class="what">CURF already lists technologies for license and has graduate interns work with technology managers on early market reviews by hand. This app is a faster first sort before that work. It does not replace the judgment CURF staff already use.</div>
           </div>
           <div class="bp-item">
             <div class="who">Flintbox, originally built at the University of British Columbia</div>
-            <div class="what">A public marketplace where universities post available IP for outside companies to browse, later acquired by Wellspring and now used by hundreds of institutions, with tens of thousands of licenses executed through it. This is the outward facing catalog half of the problem; this platform focuses on the inward facing triage step that should happen before something is worth listing there.</div>
+            <div class="what">A public marketplace where universities post inventions companies can browse. Wellspring later bought it. Hundreds of schools use it. This app does the earlier step: decide what is worth listing there.</div>
           </div>
           <div class="bp-item">
             <div class="who">NSF I Corps, including Clemson's own Southeast Hub</div>
-            <div class="what">A federally funded program, which Clemson recently joined as a regional hub, that trains researchers to test commercial viability directly with customers before committing to a startup path. The venture recommendation track in this platform is meant to feed candidates toward exactly that kind of program rather than send every patent straight to a cold licensing pitch.</div>
+            <div class="what">A federal program Clemson joined as a regional hub. It trains researchers to test an idea with customers before they start a company. A startup recommendation here is meant to point people toward that kind of program, not to send every patent into a cold license pitch.</div>
           </div>
         </div>
       </div>
 
       <div class="caveat-box">
-        I do not have a verified, current source for the exact licensing revenue or deal counts these platforms report today, since figures like that change year to year. Treat any number in this section as approximate and confirm against CURF's own reporting or the vendor's current materials before citing it externally.
+        I do not have a checked, current source for the license revenue or deal counts these tools report today. Those numbers change every year. Treat any number here as a rough figure. Confirm it with CURF or the vendor before you quote it outside.
       </div>
 
       <div class="panel">
-        <div class="panel-head"><h3>Where the Clemson Registry data comes from, and its limits</h3></div>
+        <div class="panel-head"><h3>Where the Clemson patent list comes from, and what it cannot do</h3></div>
         <div class="panel-body">
           <div class="bp-item">
-            <div class="who">Google Patents Public Data on BigQuery, not a Google Patents scraper</div>
-            <div class="what">The live Clemson Registry pull queries Google's patents-public-data.patents.publications table for US records whose assignee name contains Clemson, most recent first. The default list on this tab is a manually checked snapshot and does not need that query. Google Patents has no public bulk query API suited to this, and scraping it at volume sits outside Google's terms of service, so the published BigQuery dataset is the path this app actually uses.</div>
+            <div class="who">Google's public patent table, not a scrape of the website</div>
+            <div class="what">A live scan asks Google's public patent table for US patents whose owner name contains Clemson, newest first. The list you see before a scan is the checked Aug 29, 2026 list and does not need that query. Google Patents has no public bulk search that fits this job, and copying the website at volume breaks Google's terms. The published data table is what this app uses.</div>
           </div>
           <div class="bp-item">
             <div class="who">What it cannot do</div>
-            <div class="what">This registry only surfaces patents Clemson or CURF actually holds. It cannot identify patents by alumni, faculty, or staff assigned to other companies, since patent records carry no education or employment history field. That kind of association has to be verified by a person who already knows it, which is why the app supports tagging a patent as staff verified Clemson affiliated rather than guessing at it automatically.</div>
+            <div class="what">This list only shows patents Clemson or CURF owns. It cannot find patents owned by another company, even if a Clemson graduate or employee is an inventor. Patent records do not list school or job history. A person who already knows that link has to confirm it. The app can mark a patent as staff-checked. It does not guess.</div>
           </div>
           <div class="bp-item">
             <div class="who">Sector tags are a first pass, not a classification</div>
-            <div class="what">Each patent's sector tag is generated from keywords in its title and abstract, loosely grouped along the same five sector split WIPO uses in its own technology concordance work (Electrical Engineering, Instruments, Chemistry, Mechanical Engineering, and an Other Fields catch all). It is not a lookup against official CPC or IPC classification codes, and should be confirmed, not assumed, before it drives a real licensing or venture decision.</div>
+            <div class="what">Each sector tag comes from words in the title and summary. The groups follow the five buckets WIPO uses: electrical engineering, instruments, chemistry, mechanical engineering, and other. It is not an official patent-class lookup. Check the tag before you use it to license or start a company.</div>
           </div>
         </div>
       </div>
@@ -863,8 +863,8 @@
   let publicationBandFilter = 'all';
   let publicationPathFilter = 'all';
   const PUBLICATION_SCHEMA_VERSION = 'publication-venture-v1';
-  const PORTFOLIO_PATENT_HEAD = '<tr><th>Case</th><th>Title</th><th>Recommended path</th><th>TRL</th><th>Value</th><th>SC alignment</th><th>Confidence</th><th></th></tr>';
-  const PORTFOLIO_PUBLICATION_HEAD = '<tr><th>Case</th><th>Title</th><th>Path</th><th>Band</th><th>Venture readiness</th><th>Disclosure</th><th>SC alignment</th><th></th></tr>';
+  const PORTFOLIO_PATENT_HEAD = '<tr><th>Case</th><th>Title</th><th>Next step</th><th>How ready</th><th>Score</th><th>South Carolina fit</th><th>How sure</th><th></th></tr>';
+  const PORTFOLIO_PUBLICATION_HEAD = '<tr><th>Case</th><th>Title</th><th>Next step</th><th>Rating</th><th>Score</th><th>Filing clock</th><th>South Carolina fit</th><th></th></tr>';
   const portfolioViewTouchedByKind = { patents: false, publications: false };
   const PORTFOLIO_NEW_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -1151,7 +1151,7 @@
     const el = document.getElementById('remote-save-status');
     if(!el) return;
     el.style.display = 'block';
-    el.textContent = 'Saved in this browser only. Shared save failed: ' + message;
+    el.textContent = 'Saved on this browser only. The shared save failed: ' + message;
   }
 
   function clearRemoteSaveFailure(){
@@ -1218,7 +1218,7 @@
     }catch(err){
       // localStorage already has the record. The banner says the
       // shared copy did not update, instead of failing the evaluation.
-      noteRemoteSaveFailure(err.message || 'Could not reach the shared save endpoint.');
+      noteRemoteSaveFailure(err.message || 'Could not reach the shared save.');
     }
   }
 
@@ -1495,7 +1495,7 @@
     });
     const btn = document.getElementById('btn-load-sample');
     if(added === 0){
-      btn.textContent = 'Sample portfolio already loaded';
+      btn.textContent = 'Sample cases already loaded';
       btn.disabled = true;
       return;
     }
@@ -1550,8 +1550,8 @@
     const scan = lastDiscoveryScan;
     if(!scan){
       el.textContent = registrySource === 'snapshot'
-        ? 'No scan has been stored yet. Showing the August 29, 2026 snapshot so triage can start.'
-        : 'No scan has been stored yet.';
+        ? 'Showing patents from the last scan on Aug 29, 2026. Click Scan for new patents to update.'
+        : 'No scan has been saved yet. Click Scan for new patents to update.';
       return;
     }
     const when = scan.finished_at || scan.started_at;
@@ -1568,9 +1568,9 @@
     registryResults = applyEvaluatedFilter(registryAll);
     registryPage = 0;
     if(source === 'snapshot'){
-      renderRegistryStatus('Showing the August 29, 2026 snapshot.');
+      renderRegistryStatus('Showing patents from the last scan on Aug 29, 2026. Click Scan for new patents to update.');
     } else {
-      renderRegistryStatus((patents || []).length + ' patents from the stored catalog. A New badge marks patents first seen in the latest scan, and patents that are not ranked yet.');
+      renderRegistryStatus((patents || []).length + ' patents from the latest list. New means first seen in the latest scan, or not ranked yet.');
     }
     renderRegistry();
     renderScanSummary();
@@ -1585,7 +1585,7 @@
     if(scan){
       const when = scan.finished_at || scan.started_at;
       parts.push('Last scan ' + (scan.status || 'unknown') + (when ? ' at ' + new Date(when).toLocaleString() : '') + '.');
-      parts.push('Google ' + (scan.google_count == null ? '—' : scan.google_count) + ', USPTO ' + (scan.uspto_count == null ? '—' : scan.uspto_count) + ', stored ' + (scan.stored_count == null ? '—' : scan.stored_count) + '.');
+      parts.push('Google ' + (scan.google_count == null ? '—' : scan.google_count) + ', USPTO ' + (scan.uspto_count == null ? '—' : scan.uspto_count) + ', saved ' + (scan.stored_count == null ? '—' : scan.stored_count) + '.');
       if(scan.error) parts.push(scan.error);
       const detail = scan.detail || {};
       if(detail.google_error) parts.push('Google: ' + detail.google_error);
@@ -1600,7 +1600,7 @@
       if(!res.ok) return;
       const data = await res.json();
       if(!data.configured){
-        setDiscoverStatus('Shared storage is not configured. Showing the August 29, 2026 snapshot. Set SUPABASE_URL and SUPABASE_SERVICE_KEY, then run supabase-workflow.sql.', false);
+        setDiscoverStatus('Shared storage is not set up. Showing patents from the last scan on Aug 29, 2026. Click Scan for new patents to update. Ask the person who hosts this app to turn on shared storage.', false);
         renderScanSummary();
         return;
       }
@@ -1626,7 +1626,7 @@
 
   async function pollDiscovery(startedMs, attemptsLeft){
     if(attemptsLeft <= 0){
-      setDiscoverStatus('The scan is still running. Stored rows appear here when it finishes. Reload this page in a few minutes if this message stays.', false);
+      setDiscoverStatus('The scan is still running. New patents show up here when it finishes. Reload this page in a few minutes if this message stays.', false);
       return;
     }
     await new Promise(resolve => setTimeout(resolve, 5000));
@@ -1634,7 +1634,7 @@
       const res = await fetch('/api/discover-patents');
       const data = await res.json();
       if(data && data.configured === false){
-        setDiscoverStatus('The scan cannot store results until SUPABASE_URL and SUPABASE_SERVICE_KEY are set.', true);
+        setDiscoverStatus('The scan cannot save results until shared storage is turned on.', true);
         return;
       }
       if(scanFinished(data, startedMs) || (data.error && !(data.last_scan && data.last_scan.status === 'running'))){
@@ -1646,7 +1646,7 @@
         if(Array.isArray(data.patents) && data.patents.length) applyCatalog(data.patents, 'catalog');
         return;
       }
-      setDiscoverStatus('Scanning USPTO and Google Patents. Check ' + (40 - attemptsLeft + 1) + ' of 40.', false);
+      setDiscoverStatus('Looking through USPTO and Google Patents. Check ' + (40 - attemptsLeft + 1) + ' of 40.', false);
     }catch(err){
       // Keep polling. One failed status read should not hide a scan that is still writing.
     }
@@ -1666,7 +1666,7 @@
       }
       await pollDiscovery(startedMs, 40);
     }catch(err){
-      setDiscoverStatus(escapeHtml(err.message || 'The scan could not be started.') + ' The snapshot stays on this page.', true);
+      setDiscoverStatus(escapeHtml(err.message || 'The scan could not be started.') + ' The Aug 29, 2026 list stays on this page.', true);
     }finally{
       if(btn) btn.disabled = false;
     }
@@ -1675,8 +1675,8 @@
   document.getElementById('btn-scan-patents').addEventListener('click', scanPatentSources);
   document.getElementById('btn-load-known-registry').addEventListener('click', ()=>{
     loadKnownRegistry();
-    setDiscoverStatus('Loaded ' + KNOWN_CLEMSON_PATENTS.length + ' known Clemson patents from the snapshot dated August 29, 2026. This replaces the on-screen list. A later scan loads the stored catalog again.', false);
-    renderRegistryStatus('Showing the August 29, 2026 snapshot.');
+    setDiscoverStatus('Loaded ' + KNOWN_CLEMSON_PATENTS.length + ' Clemson patents from the Aug 29, 2026 list. This replaces what is on screen. A later scan loads the newer list again.', false);
+    renderRegistryStatus('Showing patents from the last scan on Aug 29, 2026. Click Scan for new patents to update.');
     renderRegistry();
     renderScanSummary();
   });
@@ -1686,9 +1686,9 @@
     const statusEl = document.getElementById('registry-status');
     let html = escapeHtml(baseMessage);
     if(hiddenAlreadyEvaluatedCount > 0 && !showAlreadyEvaluated){
-      html += ' <strong>' + hiddenAlreadyEvaluatedCount + ' already evaluated</strong> and hidden so they are not repeated. <button class="btn secondary small" id="btn-show-evaluated" style="margin-left:8px;">Show them anyway</button>';
+      html += ' <strong>' + hiddenAlreadyEvaluatedCount + ' already reviewed</strong> and hidden so they are not reviewed again. <button class="btn secondary small" id="btn-show-evaluated" style="margin-left:8px;">Show them</button>';
     } else if(showAlreadyEvaluated){
-      html += ' Currently showing previously evaluated patents too. <button class="btn secondary small" id="btn-hide-evaluated" style="margin-left:8px;">Hide them again</button>';
+      html += ' Showing patents you already reviewed. <button class="btn secondary small" id="btn-hide-evaluated" style="margin-left:8px;">Hide them</button>';
     }
     statusEl.innerHTML = html;
     const showBtn = document.getElementById('btn-show-evaluated');
@@ -1787,8 +1787,8 @@
       emptyEl.style.display = 'block';
       paginationEl.style.display = 'none';
       emptyEl.innerHTML = hiddenAlreadyEvaluatedCount > 0 && registryResults.length === 0
-        ? '<h3>All caught up</h3><p>Every patent in this list has already been evaluated. ' + hiddenAlreadyEvaluatedCount + ' hidden. <button class="btn secondary small" id="btn-show-evaluated-empty">Show them anyway</button></p>'
-        : '<h3>No patents in this view</h3><p>Change the New, tier, or SC alignment filter, reload the known snapshot, or run a scan.</p>';
+        ? '<h3>All caught up</h3><p>Every patent in this list has already been reviewed. ' + hiddenAlreadyEvaluatedCount + ' hidden. <button class="btn secondary small" id="btn-show-evaluated-empty">Show them</button></p>'
+        : '<h3>No patents in this view</h3><p>Change the New, rank, or South Carolina fit filter, show the Aug 29, 2026 list, or scan for new patents.</p>';
       const showBtnEmpty = document.getElementById('btn-show-evaluated-empty');
       if(showBtnEmpty) showBtnEmpty.addEventListener('click', ()=>{ showAlreadyEvaluated = true; refilterRegistry(); });
       return;
@@ -1807,15 +1807,15 @@
       const inventorsStr = (p.inventors || []).join(', ') || 'Not listed';
       const newLabel = isNewPatent(p) ? ' <span class="tag new" title="' + escapeHtml(newBadgeTitle(p)) + '">New</span>' : '';
       const typeLabel = p.record_type ? (' <span class="tag ' + (p.record_type === 'Grant' ? 'license' : 'pending') + '" style="margin-left:6px;">' + escapeHtml(p.record_type) + '</span>') : '';
-      const evaluatedLabel = isPatentEvaluated(p.patent_id) ? ' <span class="tag mature">Already evaluated</span>' : '';
-      const citationLabel = (typeof p.backward_citation_count === 'number') ? (' <span class="key-badge" title="Backward citations: prior art this patent cites">' + p.backward_citation_count + ' citations</span>') : '';
+      const evaluatedLabel = isPatentEvaluated(p.patent_id) ? ' <span class="tag mature">Already reviewed</span>' : '';
+      const citationLabel = (typeof p.backward_citation_count === 'number') ? (' <span class="key-badge" title="Older patents this one cites">' + p.backward_citation_count + ' citations</span>') : '';
       const link = p.google_patents_url ? '<a href="' + escapeHtml(p.google_patents_url) + '" target="_blank" rel="noopener">' + escapeHtml(p.patent_id) + '</a>' : escapeHtml(p.patent_id || '');
       const onDocket = docketHasPatent(p.patent_id) || isPatentEvaluated(p.patent_id);
       const tier = registryTier(p);
       const cached = triageById.get(p.patent_id);
-      const tierTitle = cached && cached.reason ? cached.reason : "Not ranked yet. The SC alignment score is already available.";
+      const tierTitle = cached && cached.reason ? cached.reason : "Not ranked yet. The South Carolina fit score is already here.";
       const actionBtn = onDocket
-        ? '<button class="btn secondary small" data-open-source="' + escapeHtml(p.patent_id || '') + '">' + (isPatentEvaluated(p.patent_id) ? 'Open stored result' : 'Open case') + '</button>'
+        ? '<button class="btn secondary small" data-open-source="' + escapeHtml(p.patent_id || '') + '">' + (isPatentEvaluated(p.patent_id) ? 'Open review' : 'Open case') + '</button>'
         : '<button class="btn secondary small" data-import-registry="' + escapeHtml(p.patent_id || '') + '">Evaluate</button>';
       const checked = triageSelected.has(normalizePatentKey(p.patent_id)) ? ' checked' : '';
       return '<tr>' +
@@ -1837,7 +1837,7 @@
           return;
         }
         renderAll();
-        btn.textContent = 'On the docket';
+        btn.textContent = 'Added';
         btn.disabled = true;
         evaluateAllPending();
       });
@@ -1897,7 +1897,7 @@
       if(res.status === 404) return;
       const data = await res.json().catch(() => ({}));
       if(!res.ok){
-        triageError = data.error || ('Triage cache request failed with status ' + res.status);
+        triageError = data.error || ('Could not load saved ranks (status ' + res.status + ').');
         return;
       }
       if(data.error){
@@ -1943,7 +1943,7 @@
       renderRegistry();
       const pending = ids.filter(id => !triageById.has(id));
       if(pending.length === 0) return;
-      setRankStatus('Ranking. ' + (done + ids.length - pending.length) + ' of ' + total + ' stored. This page checks every few seconds.');
+      setRankStatus('Ranking. ' + (done + ids.length - pending.length) + ' of ' + total + ' saved. This page checks every few seconds.');
       await new Promise(resolve => setTimeout(resolve, 4000));
     }
   }
@@ -1957,7 +1957,7 @@
       return;
     }
     if(attempt > 96){
-      setRankStatus('Still waiting after about 8 minutes. Reload this tab in a moment. Patents already stored will not be sent to the model again.');
+      setRankStatus('Still waiting after about 8 minutes. Reload this tab in a moment. Patents already ranked will not be ranked again.');
       rankInFlight = false;
       const btn = document.getElementById('btn-rank-registry');
       if(btn) btn.disabled = false;
@@ -1967,13 +1967,13 @@
     renderRegistry();
     const pending = ids.filter(id => !triageById.has(id));
     if(pending.length === 0){
-      setRankStatus('Rank stored for this list. Another click skips patents already in the cache.');
+      setRankStatus('Ranks are saved for this list. Another click skips patents that already have a rank.');
       rankInFlight = false;
       const btn = document.getElementById('btn-rank-registry');
       if(btn) btn.disabled = false;
       return;
     }
-    setRankStatus('Ranking. ' + (ids.length - pending.length) + ' of ' + ids.length + ' stored. This page checks every few seconds.');
+    setRankStatus('Ranking. ' + (ids.length - pending.length) + ' of ' + ids.length + ' saved. This page checks every few seconds.');
     await new Promise(resolve => setTimeout(resolve, 5000));
     return pollTriage(ids, attempt + 1);
   }
@@ -1993,7 +1993,7 @@
       setRankStatus('Every patent in this list is already ranked. Change the filters to read the tiers.');
       return;
     }
-    const ok = window.confirm('Rank ' + uncached.length + ' patents that are not already cached (' + registryAll.length + ' in this list). Ranking is the cheap first pass. It does not run a full evaluation.');
+    const ok = window.confirm('Rank ' + uncached.length + ' patents that do not have a rank yet (' + registryAll.length + ' in this list). Ranking is the first pass. It does not run a full review.');
     if(!ok) return;
     rankInFlight = true;
     const btn = document.getElementById('btn-rank-registry');
@@ -2019,7 +2019,7 @@
     }catch(err){
       rankInFlight = false;
       if(btn) btn.disabled = false;
-      setRankStatus(err.message || 'The rank could not be started. Deploy the app with the triage functions and a service_role Supabase key.');
+      setRankStatus(err.message || 'The rank could not be started. Ask the person who hosts this app to turn on ranking.');
     }
   }
 
@@ -2037,7 +2037,7 @@
   async function evaluateSelected(){
     const chosen = registryAll.filter(p => triageSelected.has(normalizePatentKey(p.patent_id)));
     if(chosen.length === 0){
-      setRankStatus('Select at least one patent, then choose Evaluate selected.');
+      setRankStatus('Select at least one patent, then click Evaluate selected.');
       return;
     }
     await syncPatentRecordsFromRemote();
@@ -2060,12 +2060,12 @@
     renderAll();
     renderRegistry();
     if(queued > 0){
-      setRankStatus('Full evaluation started for ' + queued + ' patent' + (queued === 1 ? '' : 's') + '. ' + cached + ' already evaluated and left on the stored result.');
+      setRankStatus('Full review started for ' + queued + ' patent' + (queued === 1 ? '' : 's') + '. ' + cached + ' already reviewed, so those open the saved review.');
       evaluateAllPending();
       showView('portfolio');
       return;
     }
-    setRankStatus(cached + ' selected patent' + (cached === 1 ? ' is' : 's are') + ' already evaluated. Nothing was sent to the model.');
+    setRankStatus(cached + ' selected patent' + (cached === 1 ? ' is' : 's are') + ' already reviewed. Nothing new was sent for review.');
     if(opened && chosen.length === 1) openCaseFile(opened.id);
     else showView('portfolio');
   }
@@ -2113,7 +2113,7 @@
     addDocketPatent({
       id: nextId++,
       title: p.title || 'Untitled',
-      dept: 'Sourced from the Clemson registry, sector: ' + guessSector(p.title, p.abstract),
+      dept: 'From the Clemson patent list. Sector: ' + guessSector(p.title, p.abstract),
       text: (p.abstract || '') + '\n\nInventors: ' + (p.inventors || []).join(', ') + citationNote + cpcNote + filingNote,
       status: 'pending',
       evaluation: null,
@@ -2158,7 +2158,7 @@
     renderFileList();
     const readable = pendingFiles.filter(f => f.text && f.text.trim().length > 0 && !f.extractError);
     if(readable.length > 3){
-      const ok = window.confirm('Full evaluation uses the deep model on each disclosure and can take about a minute each. Add and evaluate ' + readable.length + ' files?');
+      const ok = window.confirm('A full review of each file can take about a minute. Add and review ' + readable.length + ' files?');
       if(!ok) return;
     }
     if(readable.length > 0) queueReadableFiles();
@@ -2211,9 +2211,9 @@
     if(pendingFiles.length === 0){ fileListEl.innerHTML = ''; return; }
     const readableLeft = pendingFiles.some(f => f.text && f.text.trim().length > 0 && !f.extractError);
     fileListEl.innerHTML = pendingFiles.map((f,i)=>{
-      const status = f.extractError ? '<span style="color:var(--red);">' + escapeHtml(f.extractError) + '</span>' : (f.text.length + ' chars read');
+      const status = f.extractError ? '<span style="color:var(--red);">' + escapeHtml(f.extractError) + '</span>' : (f.text.length + ' characters read');
       return '<div class="f"><span>' + escapeHtml(f.name) + '</span><span>' + status + '</span></div>';
-    }).join('') + (readableLeft ? '<button class="btn small" style="margin-top:10px;" id="btn-queue-files">Add readable files and evaluate</button>' : '');
+    }).join('') + (readableLeft ? '<button class="btn small" style="margin-top:10px;" id="btn-queue-files">Add readable files and review</button>' : '');
     const queueBtn = document.getElementById('btn-queue-files');
     if(queueBtn) queueBtn.addEventListener('click', queueReadableFiles);
   }
@@ -2223,7 +2223,7 @@
     const dept = document.getElementById('manual-dept').value.trim() || 'Unspecified';
     const text = document.getElementById('manual-text').value.trim();
     if(!title || !text){
-      alert('Add at least a title and some disclosure text before adding to the docket.');
+      alert('Add a title and some text before you add this case.');
       return;
     }
     addDocketPatent({ id: nextId++, title, dept, text, status:'pending', evaluation:null, error:null });
@@ -2257,8 +2257,8 @@
           cached_only: true,
           recommended_path: 'MATURE',
           market_demand_verdict: 'Unspecified',
-          market_demand_rationale: 'This patent is already marked evaluated in the shared store. The full writeup was not on this browser, so the model was not run again. Use Re-evaluate only if you intend to replace the stored result.',
-          caveat: 'Cached id only. The full evaluation record was not in this response.',
+          market_demand_rationale: 'This patent is already marked reviewed in the shared list. The full write-up was not on this browser, so it was not reviewed again. Click Re-evaluate only if you want a new review.',
+          caveat: 'Only the id was saved here. The full review was not in this response.',
           schema_version: EVALUATION_SCHEMA_VERSION,
           evaluated_at: new Date().toISOString()
         };
@@ -2270,7 +2270,7 @@
     p.forceReevaluate = false;
     evaluationInFlight.add(p.id);
     p.status = 'evaluating';
-    p.evalStage = 'Core read';
+    p.evalStage = 'Reading the patent';
     renderAll();
     refreshOpenCaseIfShowing(p.id);
     try{
@@ -2335,16 +2335,16 @@
     if(current && evaluationBatch){
       const stage = current.evalStage || 'Starting';
       el.style.display = 'block';
-      el.innerHTML = '<span class="spinner" style="border-color: rgba(36,48,86,0.25); border-top-color: #243056;"></span>Evaluating ' +
+      el.innerHTML = '<span class="spinner" style="border-color: rgba(36,48,86,0.25); border-top-color: #243056;"></span>Reviewing ' +
         evaluationBatch.index + ' of ' + evaluationBatch.total + ' — ' + escapeHtml(current.title) + ' — ' + escapeHtml(stage) +
-        '. This is the full evaluation. The registry rank is the cheap first pass.';
+        '. This is the full review. The rank on Triage is only the first pass.';
       return;
     }
     const pending = patents.filter(p => p.status === 'pending' && !evaluationInFlight.has(p.id));
     if(pending.length > 0){
       el.style.display = 'block';
-      el.innerHTML = pending.length + ' disclosure' + (pending.length === 1 ? ' is' : 's are') +
-        ' queued and not running. <button class="btn small" id="btn-resume-eval" style="margin-left:8px;">Resume evaluation</button>';
+      el.innerHTML = pending.length + ' case' + (pending.length === 1 ? ' is' : 's are') +
+        ' waiting and not running. <button class="btn small" id="btn-resume-eval" style="margin-left:8px;">Resume review</button>';
       const resume = document.getElementById('btn-resume-eval');
       if(resume) resume.addEventListener('click', ()=> evaluateAllPending());
       return;
@@ -2418,10 +2418,10 @@
     }
     const data = await response.json();
     if(data.stop_reason === 'max_tokens'){
-      throw new Error('The model response was cut off before finishing (hit the token limit). Try again, and if it keeps happening the max_tokens limit in the app needs raising further.');
+      throw new Error('The answer was cut off before it finished. Try again. If it keeps happening, the app needs a higher limit.');
     }
     if(data.stop_reason === 'pause_turn'){
-      throw new Error('The web search ran long and was paused mid turn. This app does not yet resume a paused search automatically, just retry.');
+      throw new Error('The web search ran long and stopped. Try again.');
     }
     // With web search enabled, the response can contain several text
     // blocks: an early one like "I will search for..." before a search
@@ -2429,11 +2429,11 @@
     // picks the LAST one, not the first.
     const textBlock = selectFinalTextBlock(data.content);
     if(!textBlock){
-      throw new Error('No text response from the model');
+      throw new Error('No text came back from the review.');
     }
     const parsed = extractJsonObject(textBlock.text);
     if(!parsed){
-      throw new Error('Could not find a valid JSON object in the model response');
+      throw new Error('Could not read the review answer.');
     }
     return parsed;
   }
@@ -2479,7 +2479,7 @@
       // which should be the least likely of the two to time out, and is
       // worth treating as a real anomaly, not just "web search is slow
       // again."
-      throw new Error("Core evaluation call failed after " + elapsedMs + "ms: " + (err.message || "unknown error"));
+      throw new Error("The first read failed after " + elapsedMs + "ms: " + (err.message || "unknown error"));
     }
   }
 
@@ -2510,15 +2510,15 @@
     }
     const data = await response.json();
     if(data.stop_reason === 'max_tokens'){
-      throw new Error('The model response was cut off before finishing (hit the token limit). Try again, and if it keeps happening the max_tokens limit in the app needs raising further.');
+      throw new Error('The answer was cut off before it finished. Try again. If it keeps happening, the app needs a higher limit.');
     }
     if(data.stop_reason === 'pause_turn'){
-      throw new Error('The web search ran long and was paused mid turn. This app does not yet resume a paused search automatically, just retry.');
+      throw new Error('The web search ran long and stopped. Try again.');
     }
     const textBlock = selectFinalTextBlock(data.content);
-    if(!textBlock) throw new Error('No text response from the model');
+    if(!textBlock) throw new Error('No text came back from the review.');
     const parsed = extractJsonObject(textBlock.text);
-    if(!parsed) throw new Error('Could not find a valid JSON object in the model response');
+    if(!parsed) throw new Error('Could not read the review answer.');
     return parsed;
   }
 
@@ -2550,15 +2550,15 @@
     }
     const data = await response.json();
     if(data.stop_reason === 'max_tokens'){
-      throw new Error('The model response was cut off before finishing (hit the token limit). Try again, and if it keeps happening the max_tokens limit in the app needs raising further.');
+      throw new Error('The answer was cut off before it finished. Try again. If it keeps happening, the app needs a higher limit.');
     }
     if(data.stop_reason === 'pause_turn'){
-      throw new Error('The web search ran long and was paused mid turn. This app does not yet resume a paused search automatically, just retry.');
+      throw new Error('The web search ran long and stopped. Try again.');
     }
     const textBlock = selectFinalTextBlock(data.content);
-    if(!textBlock) throw new Error('No text response from the model');
+    if(!textBlock) throw new Error('No text came back from the review.');
     const parsed = extractJsonObject(textBlock.text);
-    if(!parsed) throw new Error('Could not find a valid JSON object in the model response');
+    if(!parsed) throw new Error('Could not read the review answer.');
     return parsed;
   }
 
@@ -2610,9 +2610,9 @@
       throw new Error('The model response was cut off before finishing (hit the token limit). Try again.');
     }
     const textBlock = selectFinalTextBlock(data.content);
-    if(!textBlock) throw new Error('No text response from the model');
+    if(!textBlock) throw new Error('No text came back from the review.');
     const parsed = extractJsonObject(textBlock.text);
-    if(!parsed) throw new Error('Could not find a valid JSON object in the model response');
+    if(!parsed) throw new Error('Could not read the review answer.');
     return parsed.evidence || parsed;
   }
 
@@ -2659,13 +2659,13 @@
   }
 
   async function callPublicationEvaluation(patent){
-    patent.evalStage = 'Venture readiness';
+    patent.evalStage = 'Reading the paper';
     renderAll();
     refreshOpenCaseIfShowing(patent.id);
     const rawEvidence = await runPublicationEvidence(patent);
     const core = publicationEvaluationShell(patent, rawEvidence);
 
-    patent.evalStage = 'Licensing targets';
+    patent.evalStage = 'Looking for buyers';
     renderAll();
     refreshOpenCaseIfShowing(patent.id);
     const searchStartedAt = Date.now();
@@ -2689,7 +2689,7 @@
       delete core.licensing_targets;
     }
 
-    patent.evalStage = 'Pilot targets';
+    patent.evalStage = 'Looking for pilot sites';
     renderAll();
     refreshOpenCaseIfShowing(patent.id);
     const pilotStartedAt = Date.now();
@@ -2710,7 +2710,7 @@
 
   async function callEvaluationAPI(patent){
     if(isPortfolioPublication(patent)) return callPublicationEvaluation(patent);
-    patent.evalStage = 'Core read';
+    patent.evalStage = 'Reading the patent';
     renderAll();
     refreshOpenCaseIfShowing(patent.id);
     const core = await runCoreEvaluation(patent);
@@ -2735,7 +2735,7 @@
       core.licensing_recommendation = 'hard pass';
       core.hard_pass_reason = 'Hard pass: no viable market. Demand was ' + (core.market_demand_verdict || 'not supported') + ', so there are not 3 credible buyers or licensees to name.';
     }else{
-      patent.evalStage = 'Licensing targets';
+      patent.evalStage = 'Looking for buyers';
       renderAll();
       refreshOpenCaseIfShowing(patent.id);
       const searchStartedAt = Date.now();
@@ -2778,7 +2778,7 @@
     }else if(licensingHardPass){
       markPilotsNotRecommended(core);
     }else{
-      patent.evalStage = 'Pilot targets';
+      patent.evalStage = 'Looking for pilot sites';
       renderAll();
       refreshOpenCaseIfShowing(patent.id);
       const pilotStartedAt = Date.now();
@@ -2808,8 +2808,8 @@
         is_focus: false,
         alignment_score: 0,
         value_points: 0,
-        short: "SC alignment data did not load.",
-        note: "SC alignment data did not load.",
+        short: "South Carolina fit data did not load.",
+        note: "South Carolina fit data did not load.",
         source: "unmatched",
         confidence: "none"
       };
@@ -2850,10 +2850,10 @@
   // was checked to build a scoring rule on with confidence, and a
   // guessed direction would be worse than leaving it out.
   const VALUE_TIER_INFO = {
-    A: { label: 'A, strong candidate', tagClass: 'license' },
-    B: { label: 'B, solid candidate', tagClass: 'venture' },
-    C: { label: 'C, modest potential', tagClass: 'mature' },
-    D: { label: 'D, low value signal', tagClass: 'error' }
+    A: { label: 'A, strong', tagClass: 'license' },
+    B: { label: 'B, solid', tagClass: 'venture' },
+    C: { label: 'C, modest', tagClass: 'mature' },
+    D: { label: 'D, low', tagClass: 'error' }
   };
 
   function computeValueScore(p){
@@ -2975,14 +2975,14 @@
     const secondaryLine = secondary
       ? '<p style="font-size:13.5px;"><strong>Also consider.</strong> ' + escapeHtml(secondary.label) + (secondary.detail ? '. ' + escapeHtml(secondary.detail) : '') + '</p>'
       : '';
-    return '<div class="panel" id="venture-readiness"><div class="panel-head"><h3>Venture readiness</h3><span class="tag ' + (flagClass[flag.level] || 'pending') + '">' + escapeHtml(flag.label || 'Disclosure date unknown') + '</span></div><div class="panel-body">' +
+    return '<div class="panel" id="venture-readiness"><div class="panel-head"><h3>Venture readiness</h3><span class="tag ' + (flagClass[flag.level] || 'pending') + '">' + escapeHtml(flag.label || 'Publication date unknown') + '</span></div><div class="panel-body">' +
       '<p class="score-headline">' + scored.total + ' / ' + scored.max + '. ' + escapeHtml(scored.bandLabel) + '.</p>' +
-      '<p style="font-size:13.5px;"><strong>Recommended path.</strong> ' + escapeHtml(primary ? primary.label : 'Not ready yet / monitor') + (primary && primary.detail ? '. ' + escapeHtml(primary.detail) : '') + '</p>' +
+      '<p style="font-size:13.5px;"><strong>Next step.</strong> ' + escapeHtml(primary ? primary.label : 'Check back later') + (primary && primary.detail ? '. ' + escapeHtml(primary.detail) : '') + '</p>' +
       secondaryLine +
-      '<p style="font-size:13.5px;"><strong>Advice for the authors.</strong> ' + escapeHtml(scored.advice || '') + '</p>' +
+      '<p style="font-size:13.5px;"><strong>What to tell the authors.</strong> ' + escapeHtml(scored.advice || '') + '</p>' +
       '<p style="font-size:13px; color:var(--slate);">' + escapeHtml(flag.detail || '') + '</p>' +
       rows +
-      '<div class="caveat-box" style="margin-top:12px;">' + escapeHtml(scored.caveat || 'Not legal advice; confirm with CURF / patent counsel.') + '</div>' +
+      '<div class="caveat-box" style="margin-top:12px;">' + escapeHtml(scored.caveat || 'This is not legal advice. Check with CURF or a patent lawyer.') + '</div>' +
     '</div></div>';
   }
 
@@ -2996,15 +2996,15 @@
     const copy = window.CURF_VALUE && window.CURF_VALUE.buildValueScoreCopy
       ? window.CURF_VALUE.buildValueScoreCopy(p, score, valueScorePeers())
       : null;
-    const method = (copy && copy.methodNote) || 'Computed directly from this evaluation\'s own outputs, not a separate AI guess. Every line below is auditable against what\'s already on this page. Frozen at the time this evaluation ran, it will not change on its own even if the scoring formula is later revised.';
+    const method = (copy && copy.methodNote) || 'This score is added up from the lines already on this page. It was saved when this review ran. It is not a dollar value.';
     const headline = copy ? copy.headline : (score.totalPoints + ' / ' + score.maxPoints);
     const rank = copy ? '<p class="score-rank">' + escapeHtml(copy.rank) + '</p>' : '';
-    const earned = copy ? '<p class="score-earned"><strong>What earned points.</strong> ' + escapeHtml(copy.earned) + '</p>' : '';
-    const cost = copy ? '<p class="score-cost"><strong>What cost points.</strong> ' + escapeHtml(copy.cost) + '</p>' : '';
-    const lever = copy ? '<p class="score-lever"><strong>Fastest way to raise it.</strong> ' + renderValueScoreLever(copy) + '</p>' : '';
+    const earned = copy ? '<p class="score-earned"><strong>What raised the score.</strong> ' + escapeHtml(copy.earned) + '</p>' : '';
+    const cost = copy ? '<p class="score-cost"><strong>What lowered the score.</strong> ' + escapeHtml(copy.cost) + '</p>' : '';
+    const lever = copy ? '<p class="score-lever"><strong>Fastest way to raise the score.</strong> ' + renderValueScoreLever(copy) + '</p>' : '';
     return '<div class="panel" id="value-score"><div class="panel-head"><h3>Value score ' +
       '<details class="score-info"><summary aria-label="How this score is computed">i</summary><span class="score-tip" role="tooltip">' + escapeHtml(method) + '</span></details>' +
-      '</h3><span class="tag ' + tierInfo.tagClass + '">Tier ' + tierInfo.label + '</span></div><div class="panel-body">' +
+      '</h3><span class="tag ' + tierInfo.tagClass + '">' + tierInfo.label + '</span></div><div class="panel-body">' +
       '<p class="score-headline">' + escapeHtml(headline) + '</p>' +
       rank + earned + cost + lever +
       rows +
@@ -3019,17 +3019,17 @@
     const tag = unmatched ? 'pending' : (align.is_focus ? 'license' : 'mature');
     const scoreLabel = align && typeof align.alignment_score === 'number' ? String(align.alignment_score) : '0';
     const frozen = isPortfolioPublication(p)
-      ? '<p style="font-size:12.5px; color:var(--slate); margin-top:8px;">For a publication this alignment is the SC and Clemson strategic fit bonus on venture readiness: 5 at 70 or above, 3 at 55 or above, 1 when any alignment is recorded, otherwise 0.</p>'
+      ? '<p style="font-size:12.5px; color:var(--slate); margin-top:8px;">For a paper, this fit adds points to Venture Readiness. 5 points at 70 or above, 3 at 55 or above, 1 when any fit is recorded, otherwise 0.</p>'
       : (inScore
         ? ''
-        : '<p style="font-size:12.5px; color:var(--slate); margin-top:8px;">This read is on the case file now. Its points join the frozen value score when the evaluation is run again under the current methodology.</p>');
+        : '<p style="font-size:12.5px; color:var(--slate); margin-top:8px;">This fit is on the case now. It joins the score the next time you click Re-evaluate.</p>');
     const focusLine = align && align.focus_area
-      ? '<p style="font-size:12.5px; color:var(--slate); margin-top:8px;">Focus area: ' + escapeHtml(align.focus_area) + '. Matched by ' + escapeHtml(align.source || 'local rules') + '.</p>'
+      ? '<p style="font-size:12.5px; color:var(--slate); margin-top:8px;">Focus area: ' + escapeHtml(align.focus_area) + '. Matched from ' + escapeHtml(plainMatchSource(align.source)) + '.</p>'
       : '';
-    return '<div class="panel"><div class="panel-head"><h3>SC investment alignment</h3><span class="tag ' + tag + '">' + escapeHtml(scoreLabel) + '</span></div><div class="panel-body">' +
+    return '<div class="panel"><div class="panel-head"><h3>South Carolina fit</h3><span class="tag ' + tag + '">' + escapeHtml(scoreLabel) + '</span></div><div class="panel-body">' +
       '<p style="font-size:13.5px;">' + escapeHtml((align && (align.note || align.short)) || '') + '</p>' +
       focusLine + frozen +
-      '<div class="caveat-box" style="margin-top:12px;">Deal counts are completed South Carolina transactions from 2023 through 7 Oct 2026, by PitchBook industry group. The dollar figure is a deal-weighted median check size, not the sum of dollars invested. Investor names are not used.</div>' +
+      '<div class="caveat-box" style="margin-top:12px;">These counts are finished South Carolina deals from 2023 through Oct 7, 2026, grouped by industry. The dollar figure is a typical deal size, not the total dollars invested. Investor names are not used.</div>' +
       '</div></div>';
   }
 
@@ -3081,7 +3081,7 @@
 
     statusPanel.style.display = 'block';
     resultsEl.innerHTML = '';
-    statusEl.innerHTML = '<span class="spinner" style="border-color: rgba(107,100,112,0.3); border-top-color: var(--slate);"></span>Checking Clemson\'s known patents, then researching the broader landscape...';
+    statusEl.innerHTML = '<span class="spinner" style="border-color: rgba(107,100,112,0.3); border-top-color: var(--slate);"></span>Checking Clemson patents, then looking at what already exists...';
 
     // Problem match checks a capped recent slice of the loaded catalog
     // so the prompt stays small. Number and keyword search below use
@@ -3113,23 +3113,23 @@
       }
       const data = await response.json();
       if(data.stop_reason === 'max_tokens'){
-        throw new Error('The response was cut off before finishing (hit the token limit), this can happen with a long problem description or several searches. Try again with a shorter description.');
+        throw new Error('The answer was cut off. Try a shorter description.');
       }
       if(data.stop_reason === 'pause_turn'){
-        throw new Error('The web search ran long and was paused mid turn. This app does not yet resume a paused search automatically, just retry.');
+        throw new Error('The web search ran long and stopped. Try again.');
       }
       const textBlock = selectFinalTextBlock(data.content);
       if(!textBlock){
-        throw new Error('No text response from the model');
+        throw new Error('No text came back from the review.');
       }
       const parsed = extractJsonObject(textBlock.text);
       if(!parsed){
-        throw new Error('Could not find a valid JSON object in the response');
+        throw new Error('Could not read the answer.');
       }
       renderProblemMatchResults(parsed);
-      statusEl.innerHTML = 'Done. Checked ' + corpusRecords.length + ' Clemson patents from the loaded catalog, then researched the broader landscape.';
+      statusEl.innerHTML = 'Done. Checked ' + corpusRecords.length + ' Clemson patents from the list on this page, then looked at what already exists.';
     }catch(err){
-      statusEl.innerHTML = '<span style="color:var(--red);">Could not complete the search: ' + escapeHtml(err.message) + '.</span> This requires the app\'s backend proxy to be deployed with ANTHROPIC_API_KEY set. It will not work from this in chat preview, since there is no server here to hold that key.';
+      statusEl.innerHTML = '<span style="color:var(--red);">Could not finish the search: ' + escapeHtml(err.message) + '.</span> The hosted app has to be set up with the AI key. A preview with no server cannot run this search.';
     }
   }
 
@@ -3140,19 +3140,19 @@
     const matches = result.clemson_matches || [];
     let matchesHtml;
     if(matches.length === 0){
-      matchesHtml = '<div class="empty" style="padding:24px 10px;"><h3>No Clemson match found</h3><p>' + escapeHtml(result.no_strong_match_note || 'Nothing in the known Clemson patent list plausibly addresses this problem.') + '</p>' +
-        '<button class="btn secondary small" data-view="triage">Browse triage anyway</button></div>';
+      matchesHtml = '<div class="empty" style="padding:24px 10px;"><h3>No Clemson match found</h3><p>' + escapeHtml(result.no_strong_match_note || 'Nothing in the Clemson patent list looks like it solves this problem.') + '</p>' +
+        '<button class="btn secondary small" data-view="triage">Open Triage</button></div>';
     } else {
       matchesHtml = matches.map(m => {
         const link = 'https://patents.justia.com/patent/' + encodeURIComponent(m.patent_number || '');
         const known = findKnownPatent(m.patent_number);
         let action;
         if(!known){
-          action = '<span style="font-size:12px; color:var(--slate);">Not in the loaded catalog.</span> <button class="btn secondary small" data-view="triage">Open triage</button>';
+          action = '<span style="font-size:12px; color:var(--slate);">Not in the list on this page.</span> <button class="btn secondary small" data-view="triage">Open Triage</button>';
         } else if(docketHasPatent(known.number) || isPatentEvaluated(known.number)){
           action = '<button class="btn secondary small" data-open-known="' + escapeHtml(known.number) + '">Open case</button>';
         } else {
-          action = '<button class="btn secondary small" data-eval-known-match="' + escapeHtml(known.number) + '">Full evaluation</button>';
+          action = '<button class="btn secondary small" data-eval-known-match="' + escapeHtml(known.number) + '">Run full review</button>';
         }
         return '<div class="archetype"><div class="sector"><a href="' + escapeHtml(link) + '" target="_blank" rel="noopener">' + escapeHtml(m.patent_number) + '</a> &middot; ' + escapeHtml(m.title) +
           ' <span class="tag ' + (fitClass[m.fit] || 'pending') + '" style="margin-left:6px;">' + escapeHtml(m.fit || 'unspecified') + ' fit</span></div>' +
@@ -3166,7 +3166,7 @@
     const examples = result.external_examples || [];
     let externalHtml;
     if(examples.length === 0){
-      externalHtml = '<p style="font-size:13px; color:var(--slate);">No specific existing solution was found via search, this does not confirm a gap exists, only that search did not surface one.</p>';
+      externalHtml = '<p style="font-size:13px; color:var(--slate);">No specific product was found. That does not prove a gap. It only means the search did not find one.</p>';
     } else {
       externalHtml = examples.map(e => {
         const nameHtml = e.source_url ? '<a href="' + escapeHtml(e.source_url) + '" target="_blank" rel="noopener">' + escapeHtml(e.name) + '</a>' : escapeHtml(e.name);
@@ -3176,16 +3176,16 @@
 
     resultsEl.innerHTML =
       '<div class="panel"><div class="panel-head"><h3>Clemson patents checked first</h3></div><div class="panel-body">' + matchesHtml + '</div></div>' +
-      '<div class="panel"><div class="panel-head"><h3>Broader landscape, researched via live search</h3></div><div class="panel-body">' +
+      '<div class="panel"><div class="panel-head"><h3>What already exists</h3></div><div class="panel-body">' +
         '<p style="font-size:13.5px;">' + escapeHtml(result.external_landscape_summary || '') + '</p>' +
         externalHtml +
       '</div></div>' +
-      '<div class="panel"><div class="panel-head"><h3>Overall recommendation</h3></div><div class="panel-body">' +
+      '<div class="panel"><div class="panel-head"><h3>What to do next</h3></div><div class="panel-body">' +
         '<p style="font-size:13.5px;">' + escapeHtml(result.overall_recommendation || '') + '</p>' +
-        '<p style="font-size:12px; color:var(--slate); margin-top:8px;">Model confidence: <strong>' + escapeHtml(result.confidence || 'unspecified') + '</strong></p>' +
-        '<div style="margin-top:12px;"><button class="btn secondary small" data-view="portfolio">Review the portfolio</button></div>' +
+        '<p style="font-size:12px; color:var(--slate); margin-top:8px;">How sure this search is: <strong>' + escapeHtml(result.confidence || 'not stated') + '</strong></p>' +
+        '<div style="margin-top:12px;"><button class="btn secondary small" data-view="portfolio">Open the portfolio</button></div>' +
       '</div></div>' +
-      '<div class="caveat-box">Named companies and examples above were found through live web search, not invented from memory, but treat every one as a lead to verify, not a confirmed fact. This is a first pass, not a substitute for a Technology Commercialization Officer\'s own review.</div>';
+      '<div class="caveat-box">The companies above came from a live web search. Check each one. This is a first pass. A technology manager still makes the call.</div>';
     bindViewButtons(resultsEl);
     resultsEl.querySelectorAll('[data-eval-known-match]').forEach(btn=>{
       btn.addEventListener('click', ()=>{
@@ -3236,7 +3236,7 @@
     }
     if(docketHasPatent(knownPatent.number)){
       if(buttonEl){
-        buttonEl.textContent = 'Already on the docket';
+        buttonEl.textContent = 'Already added';
         buttonEl.disabled = true;
       }
       openDocketPatent(knownPatent.number);
@@ -3245,7 +3245,7 @@
     addDocketPatent({
       id: nextId++,
       title: knownPatent.title,
-      dept: 'Sourced from known Clemson patent snapshot, sector: ' + guessSector(knownPatent.title, knownPatent.abstract),
+      dept: 'From the Aug 29, 2026 Clemson list. Sector: ' + guessSector(knownPatent.title, knownPatent.abstract),
       text: (knownPatent.abstract || '') + '\n\nInventors: ' + (knownPatent.inventors || []).join(', '),
       status: 'pending',
       evaluation: null,
@@ -3254,7 +3254,7 @@
     });
     renderAll();
         if(buttonEl){
-      buttonEl.textContent = 'On the docket';
+      buttonEl.textContent = 'Added';
       buttonEl.disabled = true;
     }
     evaluateAllPending();
@@ -3263,13 +3263,13 @@
   function renderKnownPatentMatch(container, p){
     const alreadyDone = isPatentEvaluated(p.number) || docketHasPatent(p.number);
     const typeLabel = ' <span class="tag ' + (p.type === 'Grant' ? 'license' : 'pending') + '" style="margin-left:6px;">' + escapeHtml(p.type) + '</span>';
-    const doneLabel = alreadyDone ? ' <span class="tag mature">' + (isPatentEvaluated(p.number) ? 'Already evaluated' : 'Already on the docket') + '</span>' : '';
+    const doneLabel = alreadyDone ? ' <span class="tag mature">' + (isPatentEvaluated(p.number) ? 'Already reviewed' : 'Already added') + '</span>' : '';
     const link = 'https://patents.justia.com/patent/' + encodeURIComponent(p.number);
     const btnHtml = isPatentEvaluated(p.number)
-      ? '<button class="btn secondary small" data-open-known="' + escapeHtml(p.number) + '">Open stored result</button>'
+      ? '<button class="btn secondary small" data-open-known="' + escapeHtml(p.number) + '">Open review</button>'
       : (docketHasPatent(p.number)
         ? '<button class="btn secondary small" data-open-known="' + escapeHtml(p.number) + '">Open case</button>'
-        : '<button class="btn secondary small" data-eval-known="' + escapeHtml(p.number) + '">Run evaluation</button>');
+        : '<button class="btn secondary small" data-eval-known="' + escapeHtml(p.number) + '">Run review</button>');
     const el = document.createElement('div');
     el.className = 'archetype';
     el.innerHTML = '<div class="sector"><a href="' + escapeHtml(link) + '" target="_blank" rel="noopener">' + escapeHtml(p.number) + '</a> &middot; ' + escapeHtml(p.title) + typeLabel + doneLabel + '</div>' +
@@ -3307,7 +3307,7 @@
       return num && key && (num.indexOf(key) !== -1 || key.indexOf(num) !== -1);
     });
     if(matches.length === 0){
-      resultsEl.innerHTML = '<p style="font-size:13px; color:var(--slate);">No match for "' + escapeHtml(query) + '" in the loaded catalog of ' + catalog.length + ' patents.</p>';
+      resultsEl.innerHTML = '<p style="font-size:13px; color:var(--slate);">No match for "' + escapeHtml(query) + '" in the list of ' + catalog.length + ' patents on this page.</p>';
       return;
     }
     matches.forEach(p => renderKnownPatentMatch(resultsEl, p));
@@ -3326,7 +3326,7 @@
       p.title.toLowerCase().includes(query) || (p.abstract || '').toLowerCase().includes(query)
     ).slice(0, 30);
     if(matches.length === 0){
-      resultsEl.innerHTML = '<p style="font-size:13px; color:var(--slate);">No title or abstract in the loaded catalog of ' + catalog.length + ' patents mentions "' + escapeHtml(query) + '".</p>';
+      resultsEl.innerHTML = '<p style="font-size:13px; color:var(--slate);">No title or summary in the list of ' + catalog.length + ' patents mentions "' + escapeHtml(query) + '".</p>';
       return;
     }
     matches.forEach(p => renderKnownPatentMatch(resultsEl, p));
@@ -3343,7 +3343,7 @@
       const when = scan.finished_at || scan.started_at;
       const whenText = when ? new Date(when).toLocaleString() : 'an unknown time';
       parts.push('Last scan (' + (scan.trigger || 'scan') + ') ' + (scan.status || 'unknown') + ' at ' + whenText + '.');
-      parts.push('Found ' + (scan.found_count == null ? '—' : scan.found_count) + ', stored ' + (scan.stored_count == null ? '—' : scan.stored_count) + ', scored ' + (scan.scored_count == null ? '—' : scan.scored_count) + '.');
+      parts.push('Found ' + (scan.found_count == null ? '—' : scan.found_count) + ', saved ' + (scan.stored_count == null ? '—' : scan.stored_count) + ', scored ' + (scan.scored_count == null ? '—' : scan.scored_count) + '.');
       if(scan.error) parts.push(scan.error);
       const sources = scan.detail && scan.detail.sources;
       if(Array.isArray(sources) && sources.length){
@@ -3374,7 +3374,7 @@
       const res = await fetch('/api/run-publication-scan');
       const data = await res.json();
       if(!data.configured){
-        showPublicationStatus(null, 'Shared storage is not configured, so findings cannot be loaded or saved. Set SUPABASE_URL and SUPABASE_SERVICE_KEY, then run supabase-setup.sql.');
+        showPublicationStatus(null, 'Shared storage is not set up, so papers cannot be loaded or saved. Ask the person who hosts this app to turn on shared storage.');
         if(!publicationFindings.length) renderPublicationWatchList([]);
         return data;
       }
@@ -3383,7 +3383,7 @@
       renderPublicationWatchList(publicationFindings);
       return data;
     }catch(err){
-      showPublicationStatus(null, 'Could not reach the publication scan endpoint.');
+      showPublicationStatus(null, 'Could not reach the paper scan. Use the hosted app.');
       if(!publicationFindings.length) renderPublicationWatchList([]);
       else renderPublicationWatchList(publicationFindings);
       return null;
@@ -3419,13 +3419,13 @@
     if(!findings || findings.length === 0){
       body.innerHTML = '';
       emptyEl.style.display = 'block';
-      emptyEl.innerHTML = '<h3>No findings stored yet</h3><p>Run a scan, or read the status above. If it names the Supabase key, the scan cannot save until that key is the service_role key.</p>';
+      emptyEl.innerHTML = '<h3>No papers yet</h3><p>Click Scan for new papers. If the message above says shared storage is off, the scan cannot save until that is turned on.</p>';
       return;
     }
     if(rows.length === 0){
       body.innerHTML = '';
       emptyEl.style.display = 'block';
-      emptyEl.innerHTML = '<h3>Nothing in this filter</h3><p>Change the quick score filter to see other stored publications.</p>';
+      emptyEl.innerHTML = '<h3>Nothing in this filter</h3><p>Change the quick score to see other papers.</p>';
       return;
     }
     emptyEl.style.display = 'none';
@@ -3443,7 +3443,7 @@
       }else if(record && record.status === 'error'){
         reviewHtml = '<div class="patent-sub"><span class="tag error">Review failed</span> ' + escapeHtml(record.error || 'The evaluation failed.') + '</div>';
       }else if(review){
-        reviewHtml = '<div class="patent-sub"><strong>Stored note.</strong> ' + escapeHtml(review.opportunity || '') + '</div><div class="patent-sub">Not in the portfolio yet.</div>';
+        reviewHtml = '<div class="patent-sub"><strong>Earlier note.</strong> ' + escapeHtml(review.opportunity || '') + '</div><div class="patent-sub">Not in the portfolio yet.</div>';
       }else{
         reviewHtml = '<div class="patent-sub">Not reviewed yet.</div>';
       }
@@ -3491,14 +3491,14 @@
       showPublicationStatus(null, 'Reviewing the first five selected. Run it again for the rest.');
     }
     if(force){
-      const ok = window.confirm('Re-review runs the full evaluation again and replaces the stored portfolio result for the selected publications.');
+      const ok = window.confirm('Review again runs a new full review and replaces the saved portfolio review for the selected papers.');
       if(!ok) return;
     }
     const btn = document.getElementById(force ? 'btn-rereview-publications' : 'btn-review-publications');
     if(btn) btn.disabled = true;
     urls.forEach(url => publicationReviewing.add(url));
     renderPublicationWatchList(publicationFindings);
-    showPublicationStatus(null, 'Reviewing ' + urls.length + ' publication' + (urls.length === 1 ? '' : 's') + '. They stay on this list until the evaluation is in the portfolio.');
+    showPublicationStatus(null, 'Reviewing ' + urls.length + ' paper' + (urls.length === 1 ? '' : 's') + '. They stay on this list until the review is in the portfolio.');
     try{
       await syncPatentRecordsFromRemote();
       const queue = [];
@@ -3549,7 +3549,7 @@
       renderPublicationWatchList(publicationFindings);
       renderPortfolio();
       if(failed){
-        showPublicationStatus(null, failed + ' publication' + (failed === 1 ? '' : 's') + ' could not be evaluated. The row is still on this list.');
+        showPublicationStatus(null, failed + ' paper' + (failed === 1 ? '' : 's') + ' could not be reviewed. The row is still on this list.');
       }else{
         showPublicationStatus(null, 'Reviewed publications are in the Portfolio, on the Publications list.');
       }
@@ -3582,7 +3582,7 @@
     if(attemptsLeft <= 0){
       const latest = await loadPublicationWatch();
       if(!describePublicationScan(latest)){
-        showPublicationStatus(null, 'The scan is still running, or it could not write a status row. Check again shortly. Rows already stored are not scanned again.');
+        showPublicationStatus(null, 'The scan is still running, or it could not save a status. Check again shortly. Papers already saved are not scanned again.');
       }
       return;
     }
@@ -3591,7 +3591,7 @@
       const res = await fetch('/api/run-publication-scan');
       const data = await res.json();
       if(data && data.configured === false){
-        showPublicationStatus(null, 'The scan cannot store results until SUPABASE_URL and SUPABASE_SERVICE_KEY are set.');
+        showPublicationStatus(null, 'The scan cannot save results until shared storage is turned on.');
         return;
       }
       if(data && data.error){
@@ -3603,7 +3603,7 @@
       publicationFindings = data.findings || [];
       renderPublicationWatchList(publicationFindings);
       if(scanFinishedSince(data, startedMs) || (data.findings || []).length > countBefore){
-        showPublicationStatus(data, 'New findings are listed below.');
+        showPublicationStatus(data, 'New papers are listed below.');
         return;
       }
     }catch(err){
@@ -3638,7 +3638,7 @@
       // If this fails, countBefore stays 0. The poll still stops on a real error once the GET responds.
     }
     if(currentData && currentData.configured === false){
-      showPublicationStatus(null, 'The scan cannot store results until SUPABASE_URL and SUPABASE_SERVICE_KEY are set. Nothing was started.');
+      showPublicationStatus(null, 'The scan cannot save results until shared storage is turned on. Nothing was started.');
       btn.disabled = false;
       return;
     }
@@ -3655,29 +3655,29 @@
         btn.disabled = false;
         return;
       }
-      showPublicationStatus(null, 'Scan started. Results are saved as they are found, then scored. This page checks for the status row.');
+      showPublicationStatus(null, 'Scan started. Papers are saved as they are found, then scored. This page checks for an update.');
       pollForNewFindings(countBefore, 24, 24, Date.now()).finally(() => { btn.disabled = false; });
     }catch(err){
-      showPublicationStatus(null, 'Could not reach the scan endpoint: ' + (err.message || 'unknown error') + '. This requires the deployed app.');
+      showPublicationStatus(null, 'Could not reach the scan: ' + (err.message || 'unknown error') + '. Use the hosted app.');
       btn.disabled = false;
     }
   });
 
   // ---------- rendering ----------
   function pathTagHtml(p){
-    if(p.status === 'pending') return '<span class="tag pending">Queued</span>';
+    if(p.status === 'pending') return '<span class="tag pending">Waiting</span>';
     if(p.status === 'evaluating'){
       const stage = p.evalStage || 'Starting';
       const pos = evaluationBatch ? (evaluationBatch.index + ' of ' + evaluationBatch.total + ' · ') : '';
       return '<span class="tag pending"><span class="spinner" style="border-color: rgba(107,100,112,0.3); border-top-color: var(--slate);"></span>' + escapeHtml(pos + stage) + '</span>';
     }
     if(p.status === 'error') return '<span class="tag error">Error</span>';
-    if(!p.evaluation) return '<span class="tag pending">Queued</span>';
+    if(!p.evaluation) return '<span class="tag pending">Waiting</span>';
     const path = p.evaluation.recommended_path;
     if(path === 'LICENSE') return '<span class="tag license">License candidate</span>';
-    if(path === 'VENTURE') return '<span class="tag venture">Venture candidate</span>';
-    if(path === 'NO_DEMAND') return '<span class="tag error">Insufficient demand</span>';
-    return '<span class="tag mature">Needs maturation</span>';
+    if(path === 'VENTURE') return '<span class="tag venture">Startup candidate</span>';
+    if(path === 'NO_DEMAND') return '<span class="tag error">Weak market</span>';
+    return '<span class="tag mature">Needs more work</span>';
   }
 
   function renderAll(){
@@ -3689,7 +3689,7 @@
 
   function renderQueue(){
     if(patents.length === 0){
-      queueBodyEl.innerHTML = '<div class="empty" style="padding:24px 10px;">Nothing in progress. Add a file or paste a disclosure and the case shows up here, with a status and an Open button.</div>';
+      queueBodyEl.innerHTML = '<div class="empty" style="padding:24px 10px;">Nothing is in progress. Add a file or paste a disclosure. The case shows up here with a status and an Open button.</div>';
       return;
     }
     queueBodyEl.innerHTML = patents.map(p=>{
@@ -3714,13 +3714,13 @@
     if(!recentEl) return;
     if(active.length === 0){
       recentEl.innerHTML = patentRows.length > 0
-        ? '<div class="empty"><h3>Everything is archived</h3><p>Every patent currently in the docket has been archived.</p><div style="margin-top:12px;"><button class="btn small" data-view="portfolio">Open portfolio</button></div></div>'
-        : '<div class="empty"><h3>No patents on the docket yet</h3><p>Start from Triage, rank the list, then evaluate the ones worth a full read.</p><div style="margin-top:12px; display:flex; gap:8px; justify-content:center; flex-wrap:wrap;"><button class="btn small" data-view="triage">Open triage</button><button class="btn secondary small" data-view="intake">Submit a disclosure</button></div></div>';
+        ? '<div class="empty"><h3>Everything is archived</h3><p>Every patent in the portfolio has been archived.</p><div style="margin-top:12px;"><button class="btn small" data-view="portfolio">Open portfolio</button></div></div>'
+        : '<div class="empty"><h3>No patents in the portfolio yet</h3><p>Start from Triage, rank the list, then review the ones worth a full read.</p><div style="margin-top:12px; display:flex; gap:8px; justify-content:center; flex-wrap:wrap;"><button class="btn small" data-view="triage">Open Triage</button><button class="btn secondary small" data-view="intake">Submit a patent</button></div></div>';
       bindViewButtons(recentEl);
       return;
     }
     const recent = active.slice(-6).reverse();
-    recentEl.innerHTML = '<table class="docket"><thead><tr><th>Case</th><th>Title</th><th>Path</th><th></th></tr></thead><tbody>' +
+    recentEl.innerHTML = '<table class="docket"><thead><tr><th>Case</th><th>Title</th><th>Next step</th><th></th></tr></thead><tbody>' +
       recent.map(p=>{
         return '<tr class="clickable" data-open="'+p.id+'"><td class="case-id">CU-' + String(p.id).padStart(4,'0') + '</td><td><div class="patent-title">' + escapeHtml(p.title) + '</div><div class="patent-sub">' + escapeHtml(p.dept) + '</div></td><td>' + pathTagHtml(p) + '</td><td><button class="btn secondary small" data-open-btn="'+p.id+'">Open</button></td></tr>';
       }).join('') + '</tbody></table>';
@@ -3830,7 +3830,7 @@
       } else if(portfolioKind === 'publications'){
         emptyEl.innerHTML = '<h3>No publications in the portfolio</h3><p>Publications stay on their own list. Patent evaluations are on the Patents tab.</p>';
       } else {
-        emptyEl.innerHTML = '<h3>The docket is empty</h3><p>Triage a discovered patent and choose Evaluate selected, or submit a disclosure from Intake.</p><div style="margin-top:12px; display:flex; gap:8px; justify-content:center; flex-wrap:wrap;"><button class="btn small" data-view="triage">Open triage</button><button class="btn secondary small" data-view="intake">Submit a disclosure</button></div>';
+        emptyEl.innerHTML = '<h3>No patents yet</h3><p>On Triage, pick a patent and click Evaluate selected. Or add one from Submit patents.</p><div style="margin-top:12px; display:flex; gap:8px; justify-content:center; flex-wrap:wrap;"><button class="btn small" data-view="triage">Open Triage</button><button class="btn secondary small" data-view="intake">Submit a patent</button></div>';
       }
       bindViewButtons(emptyEl);
       return;
@@ -3889,7 +3889,7 @@
         : '';
       const licenseLine = licensingSummaryLine(p.evaluation);
       const storedLine = ev.evaluated_at
-        ? '<div class="patent-sub">Stored ' + escapeHtml(new Date(ev.evaluated_at).toLocaleDateString()) + (ev.cached_only ? ' · id only, model was not run' : ' · cached result') + '</div>'
+        ? '<div class="patent-sub">Reviewed ' + escapeHtml(new Date(ev.evaluated_at).toLocaleDateString()) + (ev.cached_only ? '. Only the id was saved, so it was not reviewed again.' : '') + '</div>'
         : '';
       const openCell = '<td style="white-space:nowrap;"><button class="btn secondary small" data-open-btn="'+p.id+'">Open</button> <button class="btn secondary small" data-archive-btn="'+p.id+'">' + archiveBtnLabel + '</button></td>';
       const titleCell = '<td><div class="patent-title">' + escapeHtml(p.title) + kindLabel + newLabel + archivedLabel + '</div><div class="patent-sub">' + escapeHtml(p.dept) + '</div>' + detailLine + licenseLine + storedLine + '</td>';
@@ -3967,12 +3967,12 @@
       throw new Error(readApiError(errBody, response.status));
     }
     const data = await response.json();
-    if(data.stop_reason === 'max_tokens') throw new Error('The response was cut off before finishing (hit the token limit). Try again.');
-    if(data.stop_reason === 'pause_turn') throw new Error('The web search ran long and was paused mid turn. Just retry.');
+    if(data.stop_reason === 'max_tokens') throw new Error('The answer was cut off before it finished. Try again.');
+    if(data.stop_reason === 'pause_turn') throw new Error('The web search ran long and stopped. Try again.');
     const textBlock = selectFinalTextBlock(data.content);
-    if(!textBlock) throw new Error('No text response from the model');
+    if(!textBlock) throw new Error('No text came back from the review.');
     const parsed = extractJsonObject(textBlock.text);
-    if(!parsed) throw new Error('Could not find a valid JSON object in the response');
+    if(!parsed) throw new Error('Could not read the answer.');
     return parsed;
   }
 
@@ -3982,8 +3982,8 @@
 
     let body;
     if(!ps){
-      body = '<p style="font-size:13px; color:var(--slate); margin-bottom:12px;">Not yet run for this patent.</p>' +
-        '<button class="btn secondary small" id="btn-run-patentability" data-patent-id="' + p.id + '">Run patentability &amp; landscape screen</button>';
+      body = '<p style="font-size:13px; color:var(--slate); margin-bottom:12px;">Not run yet for this patent. Click the button to search the public web for similar patents and products.</p>' +
+        '<button class="btn secondary small" id="btn-run-patentability" data-patent-id="' + p.id + '">Check what already exists</button>';
     } else {
       const listBlock = (items, emptyMsg, renderItem) => items.length
         ? items.map(renderItem).join('')
@@ -4002,20 +4002,20 @@
       const runDate = ps.run_at ? new Date(ps.run_at).toLocaleString() : null;
 
       body =
-        '<div class="caveat-box" style="background:var(--red-bg); border-color:#E0B4A6; color:var(--red); margin-bottom:14px;"><strong>Not a legal opinion.</strong> This is a public web search screen, not a Freedom to Operate search or prior art search a licensed patent attorney would perform, and it cannot access full patent databases. Use this only to help decide whether the technology is worth sending to the attorney, never as the basis for a filing or business decision on its own.</div>' +
+        '<div class="caveat-box" style="background:var(--red-bg); border-color:#E0B4A6; color:var(--red); margin-bottom:14px;"><strong>This is not legal advice.</strong> It is a public web search, not the full search a patent lawyer would do, and it cannot see every patent database. Use it only to decide whether to send this to a lawyer.</div>' +
         (runDate ? '<p style="font-size:11.5px; color:var(--slate); margin-bottom:12px;">Last run ' + escapeHtml(runDate) + '.</p>' : '') +
         '<p style="font-size:13.5px; margin-bottom:6px;"><strong>Novelty signal:</strong> <span class="tag ' + (novelSignalClass[ps.novelty_signal] || 'pending') + '">' + escapeHtml(ps.novelty_signal || 'Unspecified') + '</span></p>' +
         '<p style="font-size:13.5px; margin-bottom:14px;">' + escapeHtml(ps.novelty_rationale || '') + '</p>' +
         '<p style="font-size:12.5px; font-weight:600; color:var(--slate); text-transform:uppercase; letter-spacing:0.04em; margin-bottom:6px;">Similar existing patents</p>' + similarHtml +
         '<p style="font-size:12.5px; font-weight:600; color:var(--slate); text-transform:uppercase; letter-spacing:0.04em; margin:14px 0 6px 0;">Competing products</p>' + competingHtml +
         '<p style="font-size:12.5px; font-weight:600; color:var(--slate); text-transform:uppercase; letter-spacing:0.04em; margin:14px 0 6px 0;">Potential blocking concerns</p>' + blockingHtml +
-        '<p style="font-size:12.5px; font-weight:600; color:var(--slate); text-transform:uppercase; letter-spacing:0.04em; margin:14px 0 6px 0;">Suggested claim concepts, discussion starting points only, not drafted legal language</p>' + claimsHtml +
+        '<p style="font-size:12.5px; font-weight:600; color:var(--slate); text-transform:uppercase; letter-spacing:0.04em; margin:14px 0 6px 0;">Ideas to discuss with a lawyer. These are not claims ready to file.</p>' + claimsHtml +
         '<div class="field" style="margin-top:16px;"><label>Staff feedback to refine the next run</label><textarea id="pat-screen-feedback" placeholder="e.g. the second similar patent is not actually related, or search specifically for X"></textarea></div>' +
         '<button class="btn secondary small" id="btn-run-patentability" data-patent-id="' + p.id + '">Re-run with this feedback</button>' +
         '<span id="patentability-status" style="margin-left:10px; font-size:12.5px; color:var(--slate);"></span>';
     }
 
-    return '<div class="panel"><div class="panel-head"><h3>Patentability &amp; landscape screen</h3></div><div class="panel-body" id="patentability-panel-body">' + body + '</div></div>';
+    return '<div class="panel"><div class="panel-head"><h3>What already exists</h3></div><div class="panel-body" id="patentability-panel-body">' + body + '</div></div>';
   }
 
   function attachPatentabilityHandler(){
@@ -4029,7 +4029,7 @@
       const feedback = feedbackEl ? feedbackEl.value : '';
       const statusEl = document.getElementById('patentability-status');
       btn.disabled = true;
-      if(statusEl) statusEl.innerHTML = '<span class="spinner" style="border-color: rgba(107,100,112,0.3); border-top-color: var(--slate);"></span>Running screen...';
+      if(statusEl) statusEl.innerHTML = '<span class="spinner" style="border-color: rgba(107,100,112,0.3); border-top-color: var(--slate);"></span>Checking...';
       try{
         const result = await runPatentabilityScreen(p, feedback);
         p.patentabilityScreen = { ...result, run_at: new Date().toISOString(), staff_feedback_used: feedback || '' };
@@ -4057,10 +4057,10 @@
       '<option value="' + escapeHtml(opt) + '"' + (si.inventorWillingness === opt ? ' selected' : '') + '>' + escapeHtml(opt) + '</option>'
     ).join('');
     const reEvalNote = p.status === 'evaluated'
-      ? '<p style="font-size:11.5px; color:var(--slate); margin-top:8px;">Saving keeps this note on the stored case. It does not run the model. Use Re-evaluate above when you want a new result.</p>'
-      : (p.status === 'error' ? '<p style="font-size:11.5px; color:var(--slate); margin-top:8px;">Saving keeps the note. Retry evaluation is the button that runs the model again after a failure.</p>' : '');
+      ? '<p style="font-size:11.5px; color:var(--slate); margin-top:8px;">Saving keeps this note on the case. It does not run a new review. Click Re-evaluate above when you want a new result.</p>'
+      : (p.status === 'error' ? '<p style="font-size:11.5px; color:var(--slate); margin-top:8px;">Saving keeps the note. Retry review is the button that runs the review again after a failure.</p>' : '');
     const retryBtn = p.status === 'error'
-      ? '<button class="btn small" id="btn-retry-evaluation" data-patent-id="' + p.id + '" style="margin-left:8px;">Retry evaluation</button>'
+      ? '<button class="btn small" id="btn-retry-evaluation" data-patent-id="' + p.id + '" style="margin-left:8px;">Retry review</button>'
       : '';
     return '<div class="panel"><div class="panel-head"><h3>Staff and inventor input (optional)</h3></div><div class="panel-body">' +
       '<div class="field"><label>Funding source</label><select id="si-funding">' + fundingOpts + '</select></div>' +
@@ -4125,7 +4125,7 @@
   }
 
   function requestReevaluation(p){
-    const ok = window.confirm('Re-evaluate this patent? This runs the full model again and replaces the stored result.');
+    const ok = window.confirm('Re-evaluate this patent? This runs a new full review and replaces the saved one.');
     if(!ok) return;
     p.forceReevaluate = true;
     p.skipRemoteSave = false;
@@ -4183,13 +4183,71 @@
     });
   }
 
+  function plainHardPassReason(text){
+    let raw = String(text || '').replace(/\s+/g, ' ').trim();
+    if(!raw) return 'No real market. Fewer than 3 real buyers or partners were found.';
+    raw = raw
+      .replace(/^Hard pass:\s*/i, '')
+      .replace(/\bno viable market\b/gi, 'no real market')
+      .replace(/\bcredible\b/gi, 'real')
+      .replace(/\s+/g, ' ')
+      .trim();
+    if(!raw) return 'No real market. Fewer than 3 real buyers or partners were found.';
+    return raw.charAt(0).toUpperCase() + raw.slice(1);
+  }
+
+  function plainPilotNote(note){
+    const text = String(note || '').trim();
+    if(!text || text === 'No verified prior pilot found') return 'No public page about an earlier pilot was found.';
+    return text;
+  }
+
+  function plainProofGap(text){
+    const raw = String(text || '').replace(/\s+/g, ' ').trim();
+    if(!raw) return '';
+    if(/pilots aren'?t recommended/i.test(raw) && /hard pass/i.test(raw)){
+      return 'A pilot is not a good next step. This patent has no real buyer yet.';
+    }
+    return raw
+      .replace(/Pilots aren'?t recommended/gi, 'A pilot is not a good next step')
+      .replace(/\bhard pass\b/gi, 'no real market')
+      .replace(/\bno viable market\b/gi, 'no real market')
+      .replace(/\blicensee\b/gi, 'partner');
+  }
+
+  function plainMatchSource(source){
+    const key = String(source || '').toLowerCase();
+    if(key === 'cpc') return 'the patent class codes';
+    if(key === 'keyword') return 'words in the title and summary';
+    if(key === 'model') return 'the review';
+    if(key === 'cache') return 'the saved rank';
+    return 'the words in the title and summary';
+  }
+
+  function plainRecommendation(value){
+    if(value === 'hard pass') return 'no real market';
+    if(value === 'pursue') return 'pursue';
+    if(value === 'informational') return 'optional';
+    if(value === 'not recommended') return 'not a good next step';
+    return value || '';
+  }
+
+  function plainPath(value){
+    if(value === 'LICENSE') return 'License candidate';
+    if(value === 'VENTURE') return 'Startup candidate';
+    if(value === 'NO_DEMAND') return 'Weak market';
+    if(value === 'MATURE') return 'Needs more work';
+    if(!value || value === 'not reviewed') return 'not reviewed';
+    return String(value);
+  }
+
   function licensingSummaryLine(ev){
     if(!ev) return '';
     if(ev.licensing_search_error && !Array.isArray(ev.licensing_targets)){
-      return '<div class="patent-sub">Licensing targets did not finish. Open the case and use Re-evaluate.</div>';
+      return '<div class="patent-sub">The buyer search did not finish. Open the case and click Re-evaluate.</div>';
     }
     if(!Array.isArray(ev.licensing_targets)){
-      return '<div class="patent-sub">Licensing targets were not stored with this evaluation. Open the case and use Re-evaluate.</div>';
+      return '<div class="patent-sub">Buyer names were not saved with this review. Open the case and click Re-evaluate.</div>';
     }
     if(publicationUsesVenture(ev)){
       const names = ev.licensing_targets.map(t => t && t.name).filter(Boolean);
@@ -4198,10 +4256,10 @@
       return '<div class="patent-sub">Sell or license: ' + escapeHtml(names.slice(0, 4).join(', ')) + extra + '</div>';
     }
     if(ev.licensing_recommendation === 'hard pass' || ev.licensing_targets.length < 3){
-      return '<div class="patent-sub">Hard pass: no viable market for a sale or license.</div>';
+      return '<div class="patent-sub">No real market for a sale or license.</div>';
     }
     const names = ev.licensing_targets.map(t => t && t.name).filter(Boolean);
-    if(!names.length) return '<div class="patent-sub">No licensing destinations stored.</div>';
+    if(!names.length) return '<div class="patent-sub">No buyers were named.</div>';
     const extra = names.length > 4 ? ' +' + (names.length - 4) : '';
     return '<div class="patent-sub">Sell or license: ' + escapeHtml(names.slice(0, 4).join(', ')) + extra + '</div>';
   }
@@ -4213,7 +4271,7 @@
 
   function licensingSourceHtml(source){
     const text = String(source || '').trim();
-    if(!text) return '<div class="why">Source: none returned. Not filled in.</div>';
+    if(!text) return '<div class="why">Source: none given.</div>';
     if(/^https?:\/\//i.test(text)){
       return '<div style="margin-top:4px;"><a href="' + escapeHtml(text) + '" target="_blank" rel="noopener" style="font-size:11.5px;">' + escapeHtml(text) + '</a></div>';
     }
@@ -4244,7 +4302,7 @@
   function renderLicensingTargetsPanel(ev){
     if(ev.licensing_search_error && !Array.isArray(ev.licensing_targets)){
       return '<div class="panel" id="licensing-targets"><div class="panel-head"><h3>Who to sell or license this to</h3></div><div class="panel-body">' +
-        '<div class="caveat-box" style="background:var(--red-bg); border-color:#E0B4A6; color:var(--red);">Licensing target research did not complete: ' + escapeHtml(ev.licensing_search_error) + '. The evaluation above is saved. Use Re-evaluate to try this search again.</div>' +
+        '<div class="caveat-box" style="background:var(--red-bg); border-color:#E0B4A6; color:var(--red);">The buyer search did not finish: ' + escapeHtml(ev.licensing_search_error) + '. The review above is saved. Click Re-evaluate to try this search again.</div>' +
         '</div></div>';
     }
     if(!Array.isArray(ev.licensing_targets)){
@@ -4252,12 +4310,12 @@
       const showLegacy = ev.recommended_path === 'LICENSE' && legacy.some(t => t && (t.company_name || t.name));
       const legacyHtml = showLegacy
         ? legacy.map((target, idx) => renderLicensingTargetCard(target, idx)).join('') +
-          '<p style="font-size:12px; color:var(--slate); margin-top:8px;">Earlier acquirer list, stored before licensing targets. Re-evaluate replaces it.</p>'
+          '<p style="font-size:12px; color:var(--slate); margin-top:8px;">Earlier buyer list, saved before this search. Re-evaluate replaces it.</p>'
         : (ev.acquirer_search_error
-          ? '<div class="caveat-box" style="background:var(--red-bg); border-color:#E0B4A6; color:var(--red); margin-top:8px;">An earlier acquirer search did not finish: ' + escapeHtml(ev.acquirer_search_error) + '.</div>'
+          ? '<div class="caveat-box" style="background:var(--red-bg); border-color:#E0B4A6; color:var(--red); margin-top:8px;">An earlier buyer search did not finish: ' + escapeHtml(ev.acquirer_search_error) + '.</div>'
           : '');
       return '<div class="panel" id="licensing-targets"><div class="panel-head"><h3>Who to sell or license this to</h3></div><div class="panel-body">' +
-        '<div class="caveat-box">This stored evaluation does not include licensing targets. Use Re-evaluate to add who this patent could be sold or licensed to. Re-evaluate runs the full model again and replaces the stored result.</div>' +
+        '<div class="caveat-box">This review does not include buyer names. Click Re-evaluate to add who this patent could be sold or licensed to. Re-evaluate runs a new review and replaces this one.</div>' +
         legacyHtml +
         '</div></div>';
     }
@@ -4265,10 +4323,10 @@
     const publication = publicationUsesVenture(ev);
     const hardPass = !publication && (ev.licensing_recommendation === 'hard pass' || targets.length < 3);
     const tag = hardPass
-      ? '<span class="tag error">Hard pass</span>'
+      ? '<span class="tag error">No real market</span>'
       : '<span class="tag license">' + targets.length + ' destinations</span>';
     const banner = hardPass
-      ? '<div class="caveat-box" style="background:var(--red-bg); border-color:#E0B4A6; color:var(--red);">' + escapeHtml(ev.hard_pass_reason || 'Hard pass: no viable market. Fewer than 3 credible destinations were found.') + '</div>'
+      ? '<div class="caveat-box" style="background:var(--red-bg); border-color:#E0B4A6; color:var(--red);">' + escapeHtml(plainHardPassReason(ev.hard_pass_reason)) + '</div>'
       : '';
     const cards = targets.length
       ? targets.map((target, idx) => renderLicensingTargetCard(target, idx)).join('')
@@ -4277,7 +4335,7 @@
         : '<p style="font-size:13px; color:var(--slate);">No destinations were named.</p>');
     return '<div class="panel" id="licensing-targets"><div class="panel-head"><h3>Who to sell or license this to</h3>' + tag + '</div><div class="panel-body">' +
       banner + cards +
-      '<div class="caveat-box">Destinations come from the licensing search for this evaluation. A name is a lead to check, not confirmed interest. The list is not padded when fewer than three credible organizations were found. Outreach drafts are a starting point for CURF staff. This app never sends email on its own.</div>' +
+      '<div class="caveat-box">These names come from the buyer search for this review. A name is a lead to check, not a yes from that company. The list is not padded when fewer than three real organizations were found. Email drafts are a starting point for CURF staff. This app never sends email on its own.</div>' +
       '</div></div>';
   }
 
@@ -4325,7 +4383,7 @@
 
   function renderPriorPilotsHtml(target){
     const pilots = (Array.isArray(target.prior_pilots) ? target.prior_pilots : []).filter(item => item && pilotProofUrl(item.source));
-    const note = pilots.length ? '' : (target.prior_pilot_note || 'No verified prior pilot found');
+    const note = pilots.length ? '' : plainPilotNote(target.prior_pilot_note);
     const cards = pilots.map(item => {
       const bits = [];
       if(item.year) bits.push(escapeHtml(item.year));
@@ -4349,14 +4407,14 @@
     const effortLabel = { low: 'Low effort / cost', medium: 'Medium effort / cost', high: 'High effort / cost' }[target.effort] || '';
     const proof = pilotLinkHtml(pilotDisplayProofUrl(target));
     const flag = verified
-      ? '<span class="tag license">Sourced</span>'
-      : '<span class="tag error">Unverified</span>';
+      ? '<span class="tag license">Has a link</span>'
+      : '<span class="tag error">No proof link</span>';
     const unverifiedNote = verified
       ? ''
-      : '<div class="caveat-box" style="background:var(--red-bg); border-color:#E0B4A6; color:var(--red);">Unverified. No clickable source for previous work in this technical area. Not a recommendation. Ranked last.</div>';
+      : '<div class="caveat-box" style="background:var(--red-bg); border-color:#E0B4A6; color:var(--red);">No proof link. No page was found about earlier work in this area. Not a recommendation. Listed last.</div>';
     const proofLine = proof
-      ? '<div class="why"><strong>Proof of prior work:</strong> ' + proof + '</div>'
-      : '<div class="why">Proof of prior work: none. A press release, paper, grant, program page, patent, or case study link is required.</div>';
+      ? '<div class="why"><strong>Proof of earlier work:</strong> ' + proof + '</div>'
+      : '<div class="why">Proof of earlier work: none. A press page, paper, grant, program page, patent, or case study link is required.</div>';
     return '<div class="archetype" data-pilot-verified="' + (verified ? 'yes' : 'no') + '"' + (verified ? '' : ' style="border-style:dashed;"') + '>' +
       '<div class="sector">' + escapeHtml(target.name || 'Unnamed') + ' ' + flag +
       (target.type ? ' <span class="tag mature">' + escapeHtml(target.type) + '</span>' : '') +
@@ -4428,7 +4486,7 @@
       if(pilotResponsePending(data)) continue;
       if(data.job_status === 'error' || data.error){
         p.pilotLookup = 'error';
-        p.pilotLookupError = data.job_error || data.error || 'Pilot target search failed';
+        p.pilotLookupError = data.job_error || data.error || 'The pilot search failed';
         applyCompletedPilotSection(p, data);
         if(openCaseId === p.id) openCaseFile(p.id, { silent: true });
         return;
@@ -4441,7 +4499,7 @@
     }
     if(p.pilotGeneration !== generation) return;
     p.pilotLookup = 'error';
-    p.pilotLookupError = 'Pilot target search is still running. Reopen this case in a minute.';
+    p.pilotLookupError = 'This search is still running. Reopen this case in a minute.';
     if(openCaseId === p.id) openCaseFile(p.id, { silent: true });
   }
 
@@ -4479,7 +4537,7 @@
           if(p.pilotGeneration !== generation) return;
           if(kick.status !== 202 && !kick.ok){
             const kickBody = await kick.json().catch(() => ({}));
-            throw new Error((kickBody && kickBody.error) || ('Pilot generation could not be started (' + kick.status + ')'));
+            throw new Error((kickBody && kickBody.error) || ('The pilot search could not be started (' + kick.status + ')'));
           }
         }
         await pollPilotJob(p, generation, startedAt);
@@ -4492,7 +4550,7 @@
     }catch(err){
       if(p.pilotGeneration !== generation) return;
       p.pilotLookup = 'error';
-      p.pilotLookupError = err.message || 'Pilot target search failed';
+      p.pilotLookupError = err.message || 'The pilot search failed';
     }
     if(openCaseId === p.id) openCaseFile(p.id, { silent: true });
   }
@@ -4509,45 +4567,45 @@
   function renderPilotTargetsPanel(ev, patent){
     const hasSection = Array.isArray(ev.pilot_targets);
     const loading = patent && patent.pilotLookup === 'loading';
-    const label = hasSection ? 'Refresh pilot targets' : 'Add pilot targets';
+    const label = hasSection ? 'Refresh pilot sites' : 'Add pilot sites';
     const button = pilotActionButton(patent, label);
     const finding = loading
-      ? '<p style="font-size:13.5px; margin:0 0 12px;"><span class="spinner" style="border-color: rgba(36,48,86,0.25); border-top-color: #243056;"></span>Finding pilot targets…</p>'
+      ? '<p style="font-size:13.5px; margin:0 0 12px;"><span class="spinner" style="border-color: rgba(36,48,86,0.25); border-top-color: #243056;"></span>Looking for pilot sites…</p>'
       : '';
     const lookupError = !loading && patent && patent.pilotLookup === 'error'
-      ? '<div class="caveat-box" style="background:var(--red-bg); border-color:#E0B4A6; color:var(--red);">Pilot targets were not updated: ' + escapeHtml(patent.pilotLookupError || 'Pilot target search failed') + '.</div>'
+      ? '<div class="caveat-box" style="background:var(--red-bg); border-color:#E0B4A6; color:var(--red);">Pilot sites were not updated: ' + escapeHtml(patent.pilotLookupError || 'The pilot search failed') + '.</div>'
       : '';
     if(!hasSection){
       const storedError = ev.pilot_search_error
-        ? '<div class="caveat-box" style="background:var(--red-bg); border-color:#E0B4A6; color:var(--red);">Pilot target research did not complete: ' + escapeHtml(ev.pilot_search_error) + '.</div>'
+        ? '<div class="caveat-box" style="background:var(--red-bg); border-color:#E0B4A6; color:var(--red);">The pilot search did not finish: ' + escapeHtml(ev.pilot_search_error) + '.</div>'
         : '';
-      return '<div class="panel" id="pilot-targets"><div class="panel-head"><h3>Pilot &amp; proof-of-concept targets</h3>' + button + '</div><div class="panel-body">' +
+      return '<div class="panel" id="pilot-targets"><div class="panel-head"><h3>Pilot sites</h3>' + button + '</div><div class="panel-body">' +
         finding + lookupError + storedError +
         '</div></div>';
     }
     if(ev.pilot_recommendation === 'not recommended' && !publicationUsesVenture(ev)){
-      return '<div class="panel" id="pilot-targets"><div class="panel-head"><h3>Pilot &amp; proof-of-concept targets</h3><span class="tag error">Not recommended</span>' + button + '</div><div class="panel-body">' +
+      return '<div class="panel" id="pilot-targets"><div class="panel-head"><h3>Pilot sites</h3><span class="tag error">Not a good next step</span>' + button + '</div><div class="panel-body">' +
         finding + lookupError +
-        '<div class="caveat-box" style="background:var(--red-bg); border-color:#E0B4A6; color:var(--red);">Pilots aren\'t recommended. This patent is a hard pass with no marketable destinations.</div>' +
-        (ev.biggest_proof_gap ? '<p style="font-size:13.5px; margin-top:10px;"><strong>Biggest proof gap:</strong> ' + escapeHtml(ev.biggest_proof_gap) + '</p>' : '') +
-        (ev.suggested_next_step ? '<p style="font-size:13.5px;"><strong>Suggested next step:</strong> ' + escapeHtml(ev.suggested_next_step) + '</p>' : '') +
+        '<div class="caveat-box" style="background:var(--red-bg); border-color:#E0B4A6; color:var(--red);">A pilot is not a good next step. This patent has no real buyer yet.</div>' +
+        (ev.biggest_proof_gap ? '<p style="font-size:13.5px; margin-top:10px;"><strong>Biggest proof gap:</strong> ' + escapeHtml(plainProofGap(ev.biggest_proof_gap)) + '</p>' : '') +
+        (ev.suggested_next_step ? '<p style="font-size:13.5px;"><strong>Suggested next step:</strong> ' + escapeHtml(plainProofGap(ev.suggested_next_step)) + '</p>' : '') +
         '</div></div>';
     }
     const targets = orderedPilotTargets(ev.pilot_targets);
     const verifiedCount = targets.filter(pilotIsVerified).length;
     const unverifiedCount = targets.length - verifiedCount;
     const tag = '<span class="tag license">' + verifiedCount + ' with proof</span>' +
-      (unverifiedCount ? ' <span class="tag error">' + unverifiedCount + ' unverified</span>' : '');
+      (unverifiedCount ? ' <span class="tag error">' + unverifiedCount + ' no proof link</span>' : '');
     const cards = targets.length
       ? targets.map(renderPilotTargetCard).join('')
-      : '<p style="font-size:13px; color:var(--slate);">No pilot targets were named. The list was not padded.</p>';
-    return '<div class="panel" id="pilot-targets"><div class="panel-head"><h3>Pilot &amp; proof-of-concept targets</h3>' + tag + button + '</div><div class="panel-body">' +
+      : '<p style="font-size:13px; color:var(--slate);">No pilot sites were named. The list was not padded.</p>';
+    return '<div class="panel" id="pilot-targets"><div class="panel-head"><h3>Pilot sites</h3>' + tag + button + '</div><div class="panel-body">' +
       finding + lookupError +
-      '<p style="font-size:13px; margin-top:0;">Every recommended target includes a source for previous work in this technical area. Unverified names have no such link, are not a recommendation, and are ranked last.</p>' +
-      (ev.biggest_proof_gap ? '<p style="font-size:13.5px;"><strong>Biggest proof gap:</strong> ' + escapeHtml(ev.biggest_proof_gap) + '</p>' : '') +
-      (ev.suggested_next_step ? '<p style="font-size:13.5px;"><strong>Suggested next step:</strong> ' + escapeHtml(ev.suggested_next_step) + '</p>' : '') +
+      '<p style="font-size:13px; margin-top:0;">Every recommended site includes a page about earlier work in this area. Names with no proof link are not a recommendation, and they are listed last.</p>' +
+      (ev.biggest_proof_gap ? '<p style="font-size:13.5px;"><strong>Biggest proof gap:</strong> ' + escapeHtml(plainProofGap(ev.biggest_proof_gap)) + '</p>' : '') +
+      (ev.suggested_next_step ? '<p style="font-size:13.5px;"><strong>Suggested next step:</strong> ' + escapeHtml(plainProofGap(ev.suggested_next_step)) + '</p>' : '') +
       cards +
-      '<div class="caveat-box">Pilot sites come from a web search for this evaluation. A prior pilot is listed only when a page was found. This is a lead to check, not a commitment from that organization.</div>' +
+      '<div class="caveat-box">Pilot sites come from a web search for this review. An earlier pilot is listed only when a page was found. This is a lead to check, not a promise from that organization.</div>' +
       '</div></div>';
   }
 
@@ -4561,30 +4619,30 @@
     const venture = isPortfolioPublication(p) ? ventureReadinessFor(p) : null;
     if(venture){
       lines.push('Venture readiness: ' + venture.total + ' / ' + venture.max);
-      lines.push('Band: ' + venture.bandLabel);
-      lines.push('Recommended path: ' + (venture.paths && venture.paths.primary ? venture.paths.primary.label : ''));
+      lines.push('Rating: ' + venture.bandLabel);
+      lines.push('Next step: ' + (venture.paths && venture.paths.primary ? venture.paths.primary.label : ''));
       if(venture.paths && venture.paths.secondary) lines.push('Also consider: ' + venture.paths.secondary.label);
-      lines.push('Disclosure: ' + (venture.flag ? venture.flag.label : ''));
+      lines.push('Filing clock: ' + (venture.flag ? venture.flag.label : ''));
       if(venture.flag && venture.flag.detail) lines.push(venture.flag.detail);
-      lines.push('Advice for the authors: ' + (venture.advice || ''));
+      lines.push('What to tell the authors: ' + (venture.advice || ''));
       lines.push(venture.caveat || '');
       (venture.criteria || []).forEach(row => {
         lines.push(row.label + ': ' + row.points + ' / ' + row.max);
         if(row.evidence) lines.push(row.evidence);
       });
     }else{
-      lines.push('Recommended path: ' + (ev.recommended_path || 'not evaluated'));
-      lines.push('Demand: ' + (ev.market_demand_verdict || ''));
+      lines.push('Next step: ' + plainPath(ev.recommended_path || 'not reviewed'));
+      lines.push('Market interest: ' + (ev.market_demand_verdict || ''));
     }
-    if(ev.evaluated_at) lines.push('Evaluated: ' + ev.evaluated_at);
+    if(ev.evaluated_at) lines.push('Reviewed: ' + ev.evaluated_at);
     lines.push('');
     lines.push('Who to sell or license this to');
     if(ev.licensing_search_error && !Array.isArray(ev.licensing_targets)){
-      lines.push('Licensing target research did not complete: ' + ev.licensing_search_error);
-      lines.push('Use Re-evaluate to try again.');
+      lines.push('The buyer search did not finish: ' + ev.licensing_search_error);
+      lines.push('Click Re-evaluate to try again.');
     }else if(!Array.isArray(ev.licensing_targets)){
-      lines.push('This stored evaluation does not include licensing targets.');
-      lines.push('Use Re-evaluate to add who this patent could be sold or licensed to.');
+      lines.push('This review does not include buyer names.');
+      lines.push('Click Re-evaluate to add who this patent could be sold or licensed to.');
       (ev.top_acquirer_targets || []).forEach((target, index) => {
         const name = target.company_name || target.name;
         if(!name) return;
@@ -4594,42 +4652,42 @@
       });
     }else{
       const publicationReport = publicationUsesVenture(ev);
-      lines.push('Recommendation: ' + (ev.licensing_recommendation || (publicationReport ? 'informational' : (ev.licensing_targets.length >= 3 ? 'pursue' : 'hard pass'))));
-      if(!publicationReport && ev.hard_pass_reason) lines.push(ev.hard_pass_reason);
+      lines.push('Recommendation: ' + plainRecommendation(ev.licensing_recommendation || (publicationReport ? 'informational' : (ev.licensing_targets.length >= 3 ? 'pursue' : 'hard pass'))));
+      if(!publicationReport && (ev.hard_pass_reason || ev.licensing_recommendation === 'hard pass' || ev.licensing_targets.length < 3)) lines.push(plainHardPassReason(ev.hard_pass_reason));
       if(!ev.licensing_targets.length) lines.push('No destinations were named.');
       ev.licensing_targets.forEach((target, index) => {
         lines.push('');
         lines.push((index + 1) + '. ' + (target.name || 'Unnamed') + (target.type ? ' (' + target.type + ')' : ''));
         lines.push('Why it fits: ' + (target.why_it_fits || ''));
         lines.push('South Carolina / Southeast: ' + (target.sc_connection || 'none found'));
-        lines.push('Source: ' + (target.source || 'none returned'));
+        lines.push('Source: ' + (target.source || 'none given'));
       });
     }
     lines.push('');
-    lines.push('Pilot and proof-of-concept targets');
+    lines.push('Pilot sites');
     if(ev.pilot_search_error && !Array.isArray(ev.pilot_targets)){
-      lines.push('Pilot target research did not complete: ' + ev.pilot_search_error);
+      lines.push('The pilot search did not finish: ' + ev.pilot_search_error);
     }else if(!Array.isArray(ev.pilot_targets)){
-      lines.push('Pilot targets have not been generated yet.');
+      lines.push('Pilot sites have not been looked up yet.');
     }else if(ev.pilot_recommendation === 'not recommended' && !publicationUsesVenture(ev)){
-      lines.push('Pilots aren\'t recommended. This patent is a hard pass with no marketable destinations.');
-      if(ev.biggest_proof_gap) lines.push('Biggest proof gap: ' + ev.biggest_proof_gap);
-      if(ev.suggested_next_step) lines.push('Suggested next step: ' + ev.suggested_next_step);
+      lines.push('A pilot is not a good next step. This patent has no real buyer yet.');
+      if(ev.biggest_proof_gap) lines.push('Biggest proof gap: ' + plainProofGap(ev.biggest_proof_gap));
+      if(ev.suggested_next_step) lines.push('Suggested next step: ' + plainProofGap(ev.suggested_next_step));
     }else{
-      if(ev.biggest_proof_gap) lines.push('Biggest proof gap: ' + ev.biggest_proof_gap);
-      if(ev.suggested_next_step) lines.push('Suggested next step: ' + ev.suggested_next_step);
+      if(ev.biggest_proof_gap) lines.push('Biggest proof gap: ' + plainProofGap(ev.biggest_proof_gap));
+      if(ev.suggested_next_step) lines.push('Suggested next step: ' + plainProofGap(ev.suggested_next_step));
       const pilots = orderedPilotTargets(ev.pilot_targets);
-      if(!pilots.length) lines.push('No pilot targets were named.');
+      if(!pilots.length) lines.push('No pilot sites were named.');
       pilots.forEach((target, index) => {
         lines.push('');
-        lines.push((index + 1) + '. ' + (target.name || 'Unnamed') + (target.type ? ' (' + target.type + ')' : '') + (pilotIsVerified(target) ? '' : ' [Unverified]'));
+        lines.push((index + 1) + '. ' + (target.name || 'Unnamed') + (target.type ? ' (' + target.type + ')' : '') + (pilotIsVerified(target) ? '' : ' [No proof link]'));
         lines.push('What the pilot would prove: ' + (target.what_it_proves || ''));
         lines.push('Why it fits: ' + (target.why_it_fits || ''));
         lines.push('South Carolina / Southeast: ' + (target.sc_connection || 'none found'));
         lines.push('Effort / cost: ' + (target.effort || 'not stated'));
-        lines.push('Proof of prior work: ' + (pilotDisplayProofUrl(target) || 'none'));
+        lines.push('Proof of earlier work: ' + (pilotDisplayProofUrl(target) || 'none'));
         const prior = (target.prior_pilots || []).filter(item => item && pilotProofUrl(item.source));
-        if(!prior.length) lines.push('Relevant prior pilots: ' + (target.prior_pilot_note || 'No verified prior pilot found'));
+        if(!prior.length) lines.push('Relevant prior pilots: ' + plainPilotNote(target.prior_pilot_note));
         prior.forEach(item => {
           lines.push('Relevant prior pilot: ' + (item.name || 'Unnamed') + (item.year ? ' (' + item.year + ')' : ''));
           if(item.what_it_tested) lines.push('Tested: ' + item.what_it_tested);
@@ -4673,7 +4731,7 @@
     const el = document.getElementById('casefile-body');
 
     if(p.status === 'pending'){
-      el.innerHTML = '<h2>' + escapeHtml(p.title) + '</h2>' + renderArchiveControl(p) + '<p style="color:var(--slate);">Not yet evaluated. It will run from the queue, or you can add staff input below and save to start it.</p>' + renderScAlignmentPanel(p) + renderStaffInputPanel(p);
+      el.innerHTML = '<h2>' + escapeHtml(p.title) + '</h2>' + renderArchiveControl(p) + '<p style="color:var(--slate);">Not reviewed yet. It will run from the waiting list, or you can add staff notes below and save to start it.</p>' + renderScAlignmentPanel(p) + renderStaffInputPanel(p);
       showView('casefile');
       attachStaffInputHandler();
       attachReevaluateHandler();
@@ -4682,12 +4740,12 @@
     }
     if(p.status === 'evaluating'){
       const pos = evaluationBatch ? (' Patent ' + evaluationBatch.index + ' of ' + evaluationBatch.total + '.') : '';
-      el.innerHTML = '<h2>' + escapeHtml(p.title) + '</h2><p style="color:var(--slate);">Evaluation in progress.' + pos + ' Current step: ' + escapeHtml(p.evalStage || 'Starting') + '.</p>';
+      el.innerHTML = '<h2>' + escapeHtml(p.title) + '</h2><p style="color:var(--slate);">Review in progress.' + pos + ' Current step: ' + escapeHtml(p.evalStage || 'Starting') + '.</p>';
       showView('casefile');
       return;
     }
     if(p.status === 'error'){
-      el.innerHTML = '<h2>' + escapeHtml(p.title) + '</h2>' + renderArchiveControl(p) + '<div class="caveat-box" style="background:var(--red-bg); border-color:#E0B4A6; color:var(--red);">Evaluation failed: ' + escapeHtml(p.error) + '. Use Retry evaluation below to try again. Adding another disclosure will not retry this one.</div>' + renderScAlignmentPanel(p) + renderStaffInputPanel(p);
+      el.innerHTML = '<h2>' + escapeHtml(p.title) + '</h2>' + renderArchiveControl(p) + '<div class="caveat-box" style="background:var(--red-bg); border-color:#E0B4A6; color:var(--red);">The review failed: ' + escapeHtml(p.error) + '. Click Retry review below to try again. Adding another disclosure will not retry this one.</div>' + renderScAlignmentPanel(p) + renderStaffInputPanel(p);
       showView('casefile');
       attachStaffInputHandler();
       attachReevaluateHandler();
@@ -4698,7 +4756,7 @@
     const ev = p.evaluation;
     if(ev && ev.cached_only){
       el.innerHTML = '<h2>' + escapeHtml(p.title) + '</h2>' + renderArchiveControl(p) +
-        '<div class="caveat-box">This patent is already in the shared evaluation store. The full writeup was not on this browser, so the model was not run again. Re-evaluate only if you intend to replace the stored result.</div>' +
+        '<div class="caveat-box">This patent is already in the shared review list. The full write-up was not on this browser, so it was not reviewed again. Click Re-evaluate only if you want a new review.</div>' +
         renderStaffInputPanel(p);
       showView('casefile');
       attachStaffInputHandler();
@@ -4707,10 +4765,10 @@
       return;
     }
     const pathMeta = {
-      LICENSE: { stampClass: 'license', stampLabel: 'License Candidate' },
-      VENTURE: { stampClass: 'venture', stampLabel: 'Venture Candidate' },
-      NO_DEMAND: { stampClass: 'mature', stampLabel: 'Insufficient Demand Found' },
-      MATURE: { stampClass: 'mature', stampLabel: 'Further Maturation Needed' }
+      LICENSE: { stampClass: 'license', stampLabel: 'License candidate' },
+      VENTURE: { stampClass: 'venture', stampLabel: 'Startup candidate' },
+      NO_DEMAND: { stampClass: 'mature', stampLabel: 'Weak market' },
+      MATURE: { stampClass: 'mature', stampLabel: 'Needs more work' }
     };
     const ventureScored = isPortfolioPublication(p) ? ventureReadinessFor(p) : null;
     const meta = ventureScored
@@ -4728,15 +4786,15 @@
     let risksHtml = (ev.adoption_risks || []).map(r=>{
       const level = String(r.level || '').toLowerCase();
       return '<div class="risk-row"><span class="risk-dot ' + escapeHtml(level) + '"></span><span class="factor"><strong>' + escapeHtml(r.factor) + '</strong> — ' + escapeHtml(r.note) + '</span></div>';
-    }).join('') || '<p style="color:var(--slate); font-size:13px;">No adoption risk factors returned.</p>';
+    }).join('') || '<p style="color:var(--slate); font-size:13px;">No adoption risks came back.</p>';
 
     let licensingHtml = renderLicensingTargetsPanel(ev);
     const outreachTargets = licensingOutreachTargets(ev);
 
     let venturePlanHtml = '';
     if(!isPortfolioPublication(p) && ev.recommended_path === 'VENTURE' && ev.venture_plan){
-      venturePlanHtml = '<div class="panel"><div class="panel-head"><h3>Suggested venture path</h3></div><div class="panel-body">' +
-        '<p style="font-size:13.5px;"><strong>Team composition:</strong> ' + escapeHtml(ev.venture_plan.team || 'Not specified') + '</p>' +
+      venturePlanHtml = '<div class="panel"><div class="panel-head"><h3>If you start a company</h3></div><div class="panel-body">' +
+        '<p style="font-size:13.5px;"><strong>Team:</strong> ' + escapeHtml(ev.venture_plan.team || 'Not stated') + '</p>' +
         '<p style="font-size:13.5px; font-weight:600; margin-top:10px;">Next steps</p>' +
         '<ul style="margin:6px 0 0 0; padding-left:20px; font-size:13.5px;">' +
         (ev.venture_plan.next_steps || []).map(s => '<li>' + escapeHtml(s) + '</li>').join('') +
@@ -4747,35 +4805,35 @@
     const expectedSchema = isPortfolioPublication(p) ? PUBLICATION_SCHEMA_VERSION : EVALUATION_SCHEMA_VERSION;
     const versionMismatch = ev.schema_version && ev.schema_version !== expectedSchema;
     const provenanceLine = evaluatedDate
-      ? '<p style="font-size:11.5px; color:var(--slate); margin:-8px 0 16px 0;">Evaluated ' + escapeHtml(evaluatedDate) + (ev.schema_version ? ' under methodology ' + escapeHtml(ev.schema_version) : '') + '.' +
-        (versionMismatch ? ' The methodology has changed since (currently ' + escapeHtml(expectedSchema) + '). This is the stored result. Re-evaluate is the only control that runs the model again.' : ' This is the stored result.') +
+      ? '<p style="font-size:11.5px; color:var(--slate); margin:-8px 0 16px 0;">Reviewed ' + escapeHtml(evaluatedDate) + (ev.schema_version ? ' with scoring version ' + escapeHtml(ev.schema_version) : '') + '.' +
+        (versionMismatch ? ' The scoring has changed since (now ' + escapeHtml(expectedSchema) + '). This is the saved review. Re-evaluate is the only button that runs the review again.' : ' This is the saved review.') +
         '</p>'
       : '';
 
     const patentAnalysisHtml =
       renderValueScorePanel(p) +
 
-      '<div class="panel"><div class="panel-head"><h3>Market demand, the gating question</h3><span class="tag ' + demandTagClass + '">' + escapeHtml(ev.market_demand_verdict || 'Unspecified') + '</span></div><div class="panel-body">' +
+      '<div class="panel"><div class="panel-head"><h3>Market interest, the first question</h3><span class="tag ' + demandTagClass + '">' + escapeHtml(ev.market_demand_verdict || 'Not stated') + '</span></div><div class="panel-body">' +
         '<p style="font-size:13.5px;">' + escapeHtml(ev.market_demand_rationale || '') + '</p>' +
-        '<div class="caveat-box" style="background:#F7E7E2; border-color:#E0B4A6; color:var(--red);"><strong>What the disclosure asserts but does not actually back up:</strong> ' + escapeHtml(ev.unsupported_claims || 'Not specified.') + '</div>' +
+        '<div class="caveat-box" style="background:#F7E7E2; border-color:#E0B4A6; color:var(--red);"><strong>What the text claims but does not back up:</strong> ' + escapeHtml(ev.unsupported_claims || 'Not stated.') + '</div>' +
       '</div></div>' +
 
-      '<div class="panel"><div class="panel-head"><h3>Technology Readiness Level</h3></div><div class="panel-body">' +
+      '<div class="panel"><div class="panel-head"><h3>How far along it is</h3></div><div class="panel-body">' +
         '<div class="trl-scale">' + trlCells + '</div>' +
         '<p style="margin-top:10px; font-size:13.5px; color:var(--slate);">' + escapeHtml(ev.trl_rationale || '') + '</p>' +
       '</div></div>' +
 
-      '<div class="panel"><div class="panel-head"><h3>Adoption risk factors</h3></div><div class="panel-body">' + risksHtml + '</div></div>' +
+      '<div class="panel"><div class="panel-head"><h3>What could slow adoption</h3></div><div class="panel-body">' + risksHtml + '</div></div>' +
 
-      '<div class="panel"><div class="panel-head"><h3>Recommendation: license a specific corporate, or venture a larger market</h3></div><div class="panel-body">' +
+      '<div class="panel"><div class="panel-head"><h3>License to a company, or start a new one</h3></div><div class="panel-body">' +
         '<p style="font-size:13.5px;">' + escapeHtml(ev.path_rationale || '') + '</p>' +
-        '<p style="font-size:12px; color:var(--slate); margin-top:8px;">Model confidence: <strong>' + escapeHtml(ev.confidence || 'unspecified') + '</strong></p>' +
+        '<p style="font-size:12px; color:var(--slate); margin-top:8px;">How sure this review is: <strong>' + escapeHtml(ev.confidence || 'not stated') + '</strong></p>' +
       '</div></div>';
 
     const analysisHtml = isPortfolioPublication(p)
       ? (ventureScored
         ? renderVentureReadinessPanel(p)
-        : '<div class="panel" id="venture-readiness"><div class="panel-head"><h3>Venture readiness</h3></div><div class="panel-body"><p style="font-size:13.5px;">This publication has not been scored on the venture readiness model. Re-evaluate runs that screen from the paper text. The patent value score is not used.</p></div></div>')
+        : '<div class="panel" id="venture-readiness"><div class="panel-head"><h3>Venture readiness</h3></div><div class="panel-body"><p style="font-size:13.5px;">This paper does not have a Venture Readiness score yet. Click Re-evaluate to score it from the saved text. Papers do not use the patent score.</p></div></div>')
       : patentAnalysisHtml;
 
     el.innerHTML =
@@ -4791,20 +4849,20 @@
 
       licensingHtml + renderPilotTargetsPanel(ev, p) + venturePlanHtml +
 
-      '<div class="panel"><div class="panel-head"><h3>Marketing abstract, for outside audiences</h3></div><div class="panel-body">' +
-        '<p style="font-size:13.5px;">' + escapeHtml(ev.marketing_abstract || 'Not generated.') + '</p>' +
-        '<p style="font-size:11.5px; color:var(--slate); margin-top:8px;">Plain language, non confidential, written for a business audience, not a patent examiner. Have a Technology Commercialization Officer review before sending it externally.</p>' +
+      '<div class="panel"><div class="panel-head"><h3>Short pitch for outside readers</h3></div><div class="panel-body">' +
+        '<p style="font-size:13.5px;">' + escapeHtml(ev.marketing_abstract || 'Not written yet.') + '</p>' +
+        '<p style="font-size:11.5px; color:var(--slate); margin-top:8px;">Plain language for a business reader. Have a technology manager read it before you send it outside CURF.</p>' +
       '</div></div>' +
 
-      '<div class="panel"><div class="panel-head"><h3>Where this evaluation could be wrong</h3></div><div class="panel-body">' +
-        '<p style="font-size:13.5px;">' + escapeHtml(ev.critical_challenge || 'No specific challenge returned.') + '</p>' +
+      '<div class="panel"><div class="panel-head"><h3>Where this review could be wrong</h3></div><div class="panel-body">' +
+        '<p style="font-size:13.5px;">' + escapeHtml(ev.critical_challenge || 'No specific concern came back.') + '</p>' +
       '</div></div>' +
 
       renderPatentabilityPanel(p) +
 
       renderStaffInputPanel(p) +
 
-      '<div class="caveat-box">' + escapeHtml(ev.caveat || 'This is an automated first pass and should be checked by a Technology Commercialization Officer before any decision is finalized.') + '</div>';
+      '<div class="caveat-box">' + escapeHtml(ev.caveat || 'This is a first pass. A technology manager should check it before any decision is final.') + '</div>';
 
     showView('casefile');
     attachStaffInputHandler();
@@ -4828,7 +4886,7 @@
 
   loadKnownRegistry();
   fillAlignmentFilter();
-  renderRegistryStatus('Loaded ' + KNOWN_CLEMSON_PATENTS.length + ' known Clemson assigned patents and published applications, most recent first, from a snapshot dated August 29, 2026. A stored catalog replaces this when a scan can be read.');
+  renderRegistryStatus('Showing ' + KNOWN_CLEMSON_PATENTS.length + ' Clemson patents from the Aug 29, 2026 list, newest first. Click Scan for new patents to update.');
   renderAll();
   renderScanSummary();
   renderRegistry();
