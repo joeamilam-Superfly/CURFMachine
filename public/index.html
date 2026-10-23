@@ -603,6 +603,30 @@
           </select>
         </div>
         <button class="btn secondary" id="btn-mark-portfolio-seen" type="button">Mark all seen</button>
+        <div id="publication-score-filters" hidden style="flex-wrap:wrap; gap:10px; align-items:flex-end;">
+          <div class="field" style="margin:0; min-width:200px;">
+            <label for="publication-band-filter">Band</label>
+            <select id="publication-band-filter">
+              <option value="all">All bands</option>
+              <option value="venture_ready">Venture-ready candidate</option>
+              <option value="promising">Promising, needs de-risking</option>
+              <option value="early">Early/exploratory</option>
+              <option value="not_commercial">Not commercial now</option>
+            </select>
+          </div>
+          <div class="field" style="margin:0; min-width:240px;">
+            <label for="publication-path-filter">Path</label>
+            <select id="publication-path-filter">
+              <option value="all">All paths</option>
+              <option value="file_disclosure">File invention disclosure now</option>
+              <option value="explore_startup">Explore startup</option>
+              <option value="gap_funding">Seek gap/proof-of-concept funding</option>
+              <option value="sponsored_research">Sponsored research / industry partner</option>
+              <option value="license_knowhow">License know-how/software/materials</option>
+              <option value="not_ready">Not ready yet / monitor</option>
+            </select>
+          </div>
+        </div>
       </div>
       <div id="portfolio-archive-status" style="margin-bottom:10px; font-size:12.5px; color:var(--slate);"></div>
       <div class="panel">
@@ -730,6 +754,10 @@
             <div class="what">Each case file has an optional staff and inventor input panel, known industry contacts, the inventor's own read on feasibility, willingness to engage, and funding source. When filled in, this is weighed as real evidence, stronger than the disclosure's own unsupported claims, but the evaluation still notes it is self reported, not independently verified. A federal funding source triggers a compliance note about the government's retained use license and possible march-in rights under the Bayh-Dole Act. Every evaluation also generates a separate marketing abstract, plain language, non confidential, written for a business audience rather than a patent examiner, modeled on how offices like Stanford's OTL market technology to industry with inventor-informed, non-technical descriptions rather than the legal abstract itself.</div>
           </div>
           <div class="bp-item">
+            <div class="who">Publications use a separate venture readiness score</div>
+            <div class="what">A publication is not graded on the patent value score and is not a hard pass when fewer than three licensees are named. The model only extracts evidence from the abstract or paper. Points, the 0 to 100 total, the band, the recommended path, the advice to the authors, and the public-disclosure flag are computed afterward with a fixed formula. The weights are novelty and technical advantage 20, NASA TRL 15, protectability and IP status 20, problem and market pull 20, path to a product 10, team or founder signal 10, and an SC and Clemson fit bonus of up to 5 from the same investment alignment used on patents. Bands are 75 to 100 venture-ready candidate, 55 to 74 promising and needs de-risking, 35 to 54 early or exploratory, and below 35 not commercial now. The path can be file an invention disclosure, explore a startup through NSF I-Corps and then SCRA or SC Launch, seek gap or proof-of-concept funding, sponsored research, license know-how or software or materials, or monitor. The disclosure flag is red when the publication date is more than a year ago, amber during the US grace period with a countdown to that date plus one year, and green before publication. A missing exact date stays unknown. Licensing destinations and pilot targets are still searched and stored. They are optional. This is not legal advice, and the case says to confirm it with CURF or patent counsel. Patents keep the value score and the hard-pass rule.</div>
+          </div>
+          <div class="bp-item">
             <div class="who">The value score is computed, not guessed</div>
             <div class="what">Every patent gets a letter tier (A through D) and a points total out of 15. Thirteen points come from the evaluation itself: market demand verdict, technology readiness level, adoption risk, whether a real licensee or buyer was named with a source rather than just a sector guess, and whether staff or the inventor confirmed real engagement. Up to two more points come from South Carolina investment alignment, described below. The letter thresholds stay at 10, 7, and 4, so alignment can raise a grade and cannot raise the bar for A. It is computed with a fixed formula, not asked of the AI, so the same inputs always produce the same score and every point is traceable back to something already on the page. It deliberately does not produce a licensing-value dollar figure. The dollar amount in the alignment note is PitchBook's reported median check size, not a sum of capital and not a valuation of the patent. Backward citation counts and patent family IDs are shown for reference on live registry pulls but are not folded into this score. Evaluations stored before this change keep the score they were given. Re-run one to include the alignment points.</div>
           </div>
@@ -806,6 +834,7 @@
 
 <script src="sc-investment.js"></script>
 <script src="value-score-copy.js"></script>
+<script src="venture-readiness.js"></script>
 <script>
 (function(){
 
@@ -831,6 +860,11 @@
   let portfolioKind = 'patents';
   let portfolioView = 'active';
   const portfolioViewByKind = { patents: 'active', publications: 'active' };
+  let publicationBandFilter = 'all';
+  let publicationPathFilter = 'all';
+  const PUBLICATION_SCHEMA_VERSION = 'publication-venture-v1';
+  const PORTFOLIO_PATENT_HEAD = '<tr><th>Case</th><th>Title</th><th>Recommended path</th><th>TRL</th><th>Value</th><th>SC alignment</th><th>Confidence</th><th></th></tr>';
+  const PORTFOLIO_PUBLICATION_HEAD = '<tr><th>Case</th><th>Title</th><th>Path</th><th>Band</th><th>Venture readiness</th><th>Disclosure</th><th>SC alignment</th><th></th></tr>';
   const portfolioViewTouchedByKind = { patents: false, publications: false };
   const PORTFOLIO_NEW_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -1434,6 +1468,14 @@
     });
   });
   document.getElementById('btn-mark-portfolio-seen').addEventListener('click', markAllPortfolioSeen);
+  document.getElementById('publication-band-filter').addEventListener('change', (e)=>{
+    publicationBandFilter = e.target.value || 'all';
+    renderPortfolio();
+  });
+  document.getElementById('publication-path-filter').addEventListener('change', (e)=>{
+    publicationPathFilter = e.target.value || 'all';
+    renderPortfolio();
+  });
 
   // ---------- sample data ----------
   document.getElementById('btn-load-sample').addEventListener('click', ()=>{
@@ -2243,9 +2285,11 @@
       // the scoring formula (a new EVALUATION_SCHEMA_VERSION) cannot
       // silently change what this patent shows without it being
       // re-evaluated on purpose.
-      p.evaluation.schema_version = EVALUATION_SCHEMA_VERSION;
+      p.evaluation.schema_version = isPortfolioPublication(p) ? PUBLICATION_SCHEMA_VERSION : EVALUATION_SCHEMA_VERSION;
       p.evaluation.evaluated_at = new Date().toISOString();
-      p.evaluation.value_score_snapshot = computeValueScore(p);
+      const patentScore = isPortfolioPublication(p) ? null : computeValueScore(p);
+      if(patentScore) p.evaluation.value_score_snapshot = patentScore;
+      else delete p.evaluation.value_score_snapshot;
       markPatentEvaluatedAndPersist(p);
       if(p.sourcePatentId && registryAll.length){
         registryResults = applyEvaluatedFilter(registryAll);
@@ -2543,7 +2587,129 @@
     return await callAnthropicJson(systemPrompt, userMsg, false);
   }
 
+  async function runPublicationEvidence(patent){
+    const response = await fetchWithTimeoutRetry(API_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        task: "publication_evidence",
+        publication: {
+          title: patent.title,
+          authors: patent.dept,
+          text: (patent.text || "").slice(0, 6000),
+          published: patent.publicationDate || ""
+        }
+      })
+    });
+    if(!response.ok){
+      const errBody = await response.json().catch(()=>({}));
+      throw new Error(readApiError(errBody, response.status));
+    }
+    const data = await response.json();
+    if(data.stop_reason === 'max_tokens'){
+      throw new Error('The model response was cut off before finishing (hit the token limit). Try again.');
+    }
+    const textBlock = selectFinalTextBlock(data.content);
+    if(!textBlock) throw new Error('No text response from the model');
+    const parsed = extractJsonObject(textBlock.text);
+    if(!parsed) throw new Error('Could not find a valid JSON object in the model response');
+    return parsed.evidence || parsed;
+  }
+
+  function publicationEvaluationShell(patent, rawEvidence){
+    const evidence = window.CURF_VENTURE
+      ? window.CURF_VENTURE.normalizePublicationEvidence(rawEvidence)
+      : (rawEvidence || {});
+    const align = alignmentForPatent(patent, evidence.sc_industry_group);
+    const marketVerdict = { specific_buyer: 'STRONG', plausible_sector: 'MODERATE', none: 'NONE' }[evidence.market] || 'WEAK';
+    return {
+      trl: evidence.trl || 1,
+      trl_rationale: evidence.trl_evidence || '',
+      market_demand_verdict: marketVerdict,
+      market_demand_rationale: evidence.market_evidence || '',
+      unsupported_claims: evidence.novelty_evidence || '',
+      adoption_risks: [],
+      recommended_path: 'MATURE',
+      path_rationale: evidence.path_evidence || '',
+      venture_plan: { team: '', next_steps: [] },
+      marketing_abstract: evidence.market_evidence || patent.title || '',
+      critical_challenge: evidence.protectability_evidence || '',
+      confidence: 'medium',
+      caveat: window.CURF_VENTURE ? window.CURF_VENTURE.CAVEAT : 'Not legal advice; confirm with CURF / patent counsel.',
+      sc_industry_group: align.industry_group || evidence.sc_industry_group || '',
+      sc_alignment: align,
+      venture_readiness: {
+        evidence: evidence,
+        alignment_score: align && typeof align.alignment_score === 'number' ? align.alignment_score : 0,
+        industry_group: (align && align.industry_group) || '',
+        scored_at: new Date().toISOString()
+      },
+      licensing_targets: [],
+      licensing_recommendation: 'informational',
+      hard_pass_reason: '',
+      top_acquirer_targets: [],
+      licensing_search_error: '',
+      acquirer_search_error: '',
+      pilot_targets: [],
+      pilot_recommendation: 'optional',
+      biggest_proof_gap: '',
+      suggested_next_step: '',
+      pilot_search_error: ''
+    };
+  }
+
+  async function callPublicationEvaluation(patent){
+    patent.evalStage = 'Venture readiness';
+    renderAll();
+    refreshOpenCaseIfShowing(patent.id);
+    const rawEvidence = await runPublicationEvidence(patent);
+    const core = publicationEvaluationShell(patent, rawEvidence);
+
+    patent.evalStage = 'Licensing targets';
+    renderAll();
+    refreshOpenCaseIfShowing(patent.id);
+    const searchStartedAt = Date.now();
+    try{
+      const found = await runLicensingTargetSearch(patent, core);
+      const targets = Array.isArray(found.licensing_targets) ? found.licensing_targets : [];
+      core.licensing_targets = targets;
+      core.licensing_recommendation = 'informational';
+      core.hard_pass_reason = '';
+      core.top_acquirer_targets = targets.map((t, i) => ({
+        rank: i + 1,
+        company_name: t.name || '',
+        source_url: /^https?:\/\//i.test(t.source || '') ? t.source : '',
+        sector: t.type || '',
+        rationale: t.why_it_fits || '',
+        pitch_angle: t.why_it_fits || ''
+      }));
+    }catch(err){
+      const elapsedMs = Date.now() - searchStartedAt;
+      core.licensing_search_error = "Failed after " + elapsedMs + "ms: " + (err.message || 'Licensing target search failed');
+      delete core.licensing_targets;
+    }
+
+    patent.evalStage = 'Pilot targets';
+    renderAll();
+    refreshOpenCaseIfShowing(patent.id);
+    const pilotStartedAt = Date.now();
+    try{
+      const found = await runPilotTargetSearch(patent, core);
+      core.pilot_targets = Array.isArray(found.pilot_targets) ? found.pilot_targets : [];
+      core.biggest_proof_gap = found.biggest_proof_gap || '';
+      core.suggested_next_step = found.suggested_next_step || '';
+      core.pilot_recommendation = core.pilot_targets.length ? 'pursue' : 'optional';
+      core.pilot_search_error = '';
+    }catch(err){
+      const elapsedMs = Date.now() - pilotStartedAt;
+      core.pilot_search_error = "Failed after " + elapsedMs + "ms: " + (err.message || 'Pilot target search failed');
+      delete core.pilot_targets;
+    }
+    return core;
+  }
+
   async function callEvaluationAPI(patent){
+    if(isPortfolioPublication(patent)) return callPublicationEvaluation(patent);
     patent.evalStage = 'Core read';
     renderAll();
     refreshOpenCaseIfShowing(patent.id);
@@ -2691,7 +2857,7 @@
   };
 
   function computeValueScore(p){
-    if(!p.evaluation || p.evaluation.cached_only) return null;
+    if(!p.evaluation || p.evaluation.cached_only || isPortfolioPublication(p)) return null;
     const ev = p.evaluation;
     const breakdown = [];
 
@@ -2753,8 +2919,23 @@
   // that keeps a patent's displayed grade unchanged if the formula
   // itself changes later.
   function getDisplayValueScore(p){
+    if(isPortfolioPublication(p)) return null;
     if(p.evaluation && p.evaluation.value_score_snapshot) return p.evaluation.value_score_snapshot;
     return computeValueScore(p);
+  }
+
+  function ventureReadinessFor(p){
+    const stored = p && p.evaluation && p.evaluation.venture_readiness;
+    if(!stored || !stored.evidence || !window.CURF_VENTURE) return null;
+    return window.CURF_VENTURE.scoreVentureReadiness(stored.evidence, {
+      asOf: new Date().toISOString().slice(0, 10),
+      alignmentScore: stored.alignment_score,
+      industryGroup: stored.industry_group
+    });
+  }
+
+  function publicationUsesVenture(ev){
+    return !!(ev && (ev.venture_readiness || ev.licensing_recommendation === 'informational'));
   }
 
   function valueScorePeers(){
@@ -2779,6 +2960,30 @@
     const text = escapeHtml(copy.lever);
     if(!copy.seePilotTargets) return text;
     return text.replace('Pilot targets', '<a href="#pilot-targets">Pilot targets</a>');
+  }
+
+  function renderVentureReadinessPanel(p){
+    const scored = ventureReadinessFor(p);
+    if(!scored) return '';
+    const flagClass = { red: 'error', amber: 'mature', green: 'license', unknown: 'pending' };
+    const flag = scored.flag || {};
+    const primary = scored.paths && scored.paths.primary;
+    const secondary = scored.paths && scored.paths.secondary;
+    const rows = (scored.criteria || []).map(row =>
+      '<div class="risk-row"><span class="factor"><strong>' + escapeHtml(row.label) + '</strong><div class="patent-sub">' + escapeHtml(row.evidence || '') + '</div></span><span class="mono" style="color:var(--slate); font-size:12px;">' + row.points + ' / ' + row.max + '</span></div>'
+    ).join('');
+    const secondaryLine = secondary
+      ? '<p style="font-size:13.5px;"><strong>Also consider.</strong> ' + escapeHtml(secondary.label) + (secondary.detail ? '. ' + escapeHtml(secondary.detail) : '') + '</p>'
+      : '';
+    return '<div class="panel" id="venture-readiness"><div class="panel-head"><h3>Venture readiness</h3><span class="tag ' + (flagClass[flag.level] || 'pending') + '">' + escapeHtml(flag.label || 'Disclosure date unknown') + '</span></div><div class="panel-body">' +
+      '<p class="score-headline">' + scored.total + ' / ' + scored.max + '. ' + escapeHtml(scored.bandLabel) + '.</p>' +
+      '<p style="font-size:13.5px;"><strong>Recommended path.</strong> ' + escapeHtml(primary ? primary.label : 'Not ready yet / monitor') + (primary && primary.detail ? '. ' + escapeHtml(primary.detail) : '') + '</p>' +
+      secondaryLine +
+      '<p style="font-size:13.5px;"><strong>Advice for the authors.</strong> ' + escapeHtml(scored.advice || '') + '</p>' +
+      '<p style="font-size:13px; color:var(--slate);">' + escapeHtml(flag.detail || '') + '</p>' +
+      rows +
+      '<div class="caveat-box" style="margin-top:12px;">' + escapeHtml(scored.caveat || 'Not legal advice; confirm with CURF / patent counsel.') + '</div>' +
+    '</div></div>';
   }
 
   function renderValueScorePanel(p){
@@ -2813,9 +3018,11 @@
     const unmatched = !align || align.industry_group === 'Unmatched';
     const tag = unmatched ? 'pending' : (align.is_focus ? 'license' : 'mature');
     const scoreLabel = align && typeof align.alignment_score === 'number' ? String(align.alignment_score) : '0';
-    const frozen = inScore
-      ? ''
-      : '<p style="font-size:12.5px; color:var(--slate); margin-top:8px;">This read is on the case file now. Its points join the frozen value score when the evaluation is run again under the current methodology.</p>';
+    const frozen = isPortfolioPublication(p)
+      ? '<p style="font-size:12.5px; color:var(--slate); margin-top:8px;">For a publication this alignment is the SC and Clemson strategic fit bonus on venture readiness: 5 at 70 or above, 3 at 55 or above, 1 when any alignment is recorded, otherwise 0.</p>'
+      : (inScore
+        ? ''
+        : '<p style="font-size:12.5px; color:var(--slate); margin-top:8px;">This read is on the case file now. Its points join the frozen value score when the evaluation is run again under the current methodology.</p>');
     const focusLine = align && align.focus_area
       ? '<p style="font-size:12.5px; color:var(--slate); margin-top:8px;">Focus area: ' + escapeHtml(align.focus_area) + '. Matched by ' + escapeHtml(align.source || 'local rules') + '.</p>'
       : '';
@@ -3561,16 +3768,36 @@
     }
     const markBtn = document.getElementById('btn-mark-portfolio-seen');
     if(markBtn) markBtn.disabled = counts.fresh === 0;
+    const scoreFilters = document.getElementById('publication-score-filters');
+    if(scoreFilters){
+      const showScores = portfolioKind === 'publications';
+      scoreFilters.hidden = !showScores;
+      scoreFilters.style.display = showScores ? 'flex' : 'none';
+    }
     paintPortfolioKindTabs();
     return counts.fresh;
   }
 
   function portfolioRowsForView(){
-    const rows = portfolioRecordsForKind();
-    if(portfolioView === 'new') return rows.filter(isPortfolioNew);
-    if(portfolioView === 'archived') return rows.filter(p => p.archived);
-    if(portfolioView === 'all') return rows;
-    return rows.filter(p => !p.archived);
+    let rows = portfolioRecordsForKind();
+    if(portfolioView === 'new') rows = rows.filter(isPortfolioNew);
+    else if(portfolioView === 'archived') rows = rows.filter(p => p.archived);
+    else if(portfolioView !== 'all') rows = rows.filter(p => !p.archived);
+    if(portfolioKind === 'publications'){
+      if(publicationBandFilter !== 'all'){
+        rows = rows.filter(p => {
+          const scored = ventureReadinessFor(p);
+          return scored && scored.band === publicationBandFilter;
+        });
+      }
+      if(publicationPathFilter !== 'all'){
+        rows = rows.filter(p => {
+          const scored = ventureReadinessFor(p);
+          return scored && scored.paths && scored.paths.primary && scored.paths.primary.id === publicationPathFilter;
+        });
+      }
+    }
+    return rows;
   }
 
   function renderPortfolio(){
@@ -3615,7 +3842,18 @@
     // that share no score (still pending, evaluating, or errored),
     // most recently added comes first, the same ordering this table
     // used before scoring existed.
+    const head = document.querySelector('#view-portfolio table.docket thead');
+    if(head) head.innerHTML = portfolioKind === 'publications' ? PORTFOLIO_PUBLICATION_HEAD : PORTFOLIO_PATENT_HEAD;
+
     const sorted = visible.slice().sort((a, b) => {
+      if(portfolioKind === 'publications'){
+        const ventureA = ventureReadinessFor(a);
+        const ventureB = ventureReadinessFor(b);
+        const pointsA = ventureA ? ventureA.total : -1;
+        const pointsB = ventureB ? ventureB.total : -1;
+        if(pointsB !== pointsA) return pointsB - pointsA;
+        return b.id - a.id;
+      }
       const scoreA = getDisplayValueScore(a);
       const scoreB = getDisplayValueScore(b);
       if(scoreA && scoreB && scoreB.totalPoints !== scoreA.totalPoints) return scoreB.totalPoints - scoreA.totalPoints;
@@ -3632,8 +3870,10 @@
     body.innerHTML = sorted.map(p=>{
       const trl = (p.evaluation && p.evaluation.trl) ? p.evaluation.trl : '—';
       const conf = (p.evaluation && p.evaluation.confidence) ? p.evaluation.confidence : '—';
+      const venture = portfolioKind === 'publications' ? ventureReadinessFor(p) : null;
       const score = getDisplayValueScore(p);
       const valueCell = score ? '<span class="tag ' + VALUE_TIER_INFO[score.tier].tagClass + '">' + score.tier + ' &middot; ' + score.totalPoints + '/' + score.maxPoints + '</span>' : '—';
+      const flagClass = { red: 'error', amber: 'mature', green: 'license', unknown: 'pending' };
       const align = (p.evaluation && p.evaluation.sc_alignment) || alignmentForPatent(p);
       const alignCell = !align || align.industry_group === 'Unmatched'
         ? '<span class="tag pending">Unmatched</span>'
@@ -3651,15 +3891,36 @@
       const storedLine = ev.evaluated_at
         ? '<div class="patent-sub">Stored ' + escapeHtml(new Date(ev.evaluated_at).toLocaleDateString()) + (ev.cached_only ? ' · id only, model was not run' : ' · cached result') + '</div>'
         : '';
+      const openCell = '<td style="white-space:nowrap;"><button class="btn secondary small" data-open-btn="'+p.id+'">Open</button> <button class="btn secondary small" data-archive-btn="'+p.id+'">' + archiveBtnLabel + '</button></td>';
+      const titleCell = '<td><div class="patent-title">' + escapeHtml(p.title) + kindLabel + newLabel + archivedLabel + '</div><div class="patent-sub">' + escapeHtml(p.dept) + '</div>' + detailLine + licenseLine + storedLine + '</td>';
+      if(portfolioKind === 'publications'){
+        const pathLabel = venture && venture.paths && venture.paths.primary ? venture.paths.primary.label : '—';
+        const bandLabel = venture ? venture.bandLabel : '—';
+        const scoreLabel = venture ? (venture.total + ' / ' + venture.max) : '—';
+        const flag = venture && venture.flag;
+        const flagCell = flag
+          ? '<span class="tag ' + (flagClass[flag.level] || 'pending') + '">' + escapeHtml(flag.label) + '</span>'
+          : '—';
+        return '<tr class="clickable' + (isPortfolioNew(p) ? ' portfolio-new' : '') + '" data-open="'+p.id+'">' +
+          '<td class="case-id">CU-' + String(p.id).padStart(4,'0') + '</td>' +
+          titleCell +
+          '<td>' + escapeHtml(pathLabel) + '</td>' +
+          '<td>' + escapeHtml(bandLabel) + '</td>' +
+          '<td class="mono">' + escapeHtml(scoreLabel) + '</td>' +
+          '<td>' + flagCell + '</td>' +
+          '<td>' + alignCell + '</td>' +
+          openCell +
+          '</tr>';
+      }
       return '<tr class="clickable' + (isPortfolioNew(p) ? ' portfolio-new' : '') + '" data-open="'+p.id+'">' +
         '<td class="case-id">CU-' + String(p.id).padStart(4,'0') + '</td>' +
-        '<td><div class="patent-title">' + escapeHtml(p.title) + kindLabel + newLabel + archivedLabel + '</div><div class="patent-sub">' + escapeHtml(p.dept) + '</div>' + detailLine + licenseLine + storedLine + '</td>' +
+        titleCell +
         '<td>' + pathTagHtml(p) + '</td>' +
         '<td class="mono">' + trl + (trl !== '—' ? '/9' : '') + '</td>' +
         '<td>' + valueCell + '</td>' +
         '<td>' + alignCell + '</td>' +
         '<td>' + conf + '</td>' +
-        '<td style="white-space:nowrap;"><button class="btn secondary small" data-open-btn="'+p.id+'">Open</button> <button class="btn secondary small" data-archive-btn="'+p.id+'">' + archiveBtnLabel + '</button></td>' +
+        openCell +
         '</tr>';
     }).join('');
     attachOpenHandlers(body);
@@ -3930,6 +4191,12 @@
     if(!Array.isArray(ev.licensing_targets)){
       return '<div class="patent-sub">Licensing targets were not stored with this evaluation. Open the case and use Re-evaluate.</div>';
     }
+    if(publicationUsesVenture(ev)){
+      const names = ev.licensing_targets.map(t => t && t.name).filter(Boolean);
+      if(!names.length) return '<div class="patent-sub">Licensing destinations are optional for a publication.</div>';
+      const extra = names.length > 4 ? ' +' + (names.length - 4) : '';
+      return '<div class="patent-sub">Sell or license: ' + escapeHtml(names.slice(0, 4).join(', ')) + extra + '</div>';
+    }
     if(ev.licensing_recommendation === 'hard pass' || ev.licensing_targets.length < 3){
       return '<div class="patent-sub">Hard pass: no viable market for a sale or license.</div>';
     }
@@ -3995,7 +4262,8 @@
         '</div></div>';
     }
     const targets = ev.licensing_targets;
-    const hardPass = ev.licensing_recommendation === 'hard pass' || targets.length < 3;
+    const publication = publicationUsesVenture(ev);
+    const hardPass = !publication && (ev.licensing_recommendation === 'hard pass' || targets.length < 3);
     const tag = hardPass
       ? '<span class="tag error">Hard pass</span>'
       : '<span class="tag license">' + targets.length + ' destinations</span>';
@@ -4004,7 +4272,9 @@
       : '';
     const cards = targets.length
       ? targets.map((target, idx) => renderLicensingTargetCard(target, idx)).join('')
-      : '<p style="font-size:13px; color:var(--slate);">No destinations were named.</p>';
+      : (publication
+        ? '<p style="font-size:13px; color:var(--slate);">No licensing destinations were named. Licensing destinations are optional for a publication, and it does not need three of them to stay in review.</p>'
+        : '<p style="font-size:13px; color:var(--slate);">No destinations were named.</p>');
     return '<div class="panel" id="licensing-targets"><div class="panel-head"><h3>Who to sell or license this to</h3>' + tag + '</div><div class="panel-body">' +
       banner + cards +
       '<div class="caveat-box">Destinations come from the licensing search for this evaluation. A name is a lead to check, not confirmed interest. The list is not padded when fewer than three credible organizations were found. Outreach drafts are a starting point for CURF staff. This app never sends email on its own.</div>' +
@@ -4255,7 +4525,7 @@
         finding + lookupError + storedError +
         '</div></div>';
     }
-    if(ev.pilot_recommendation === 'not recommended'){
+    if(ev.pilot_recommendation === 'not recommended' && !publicationUsesVenture(ev)){
       return '<div class="panel" id="pilot-targets"><div class="panel-head"><h3>Pilot &amp; proof-of-concept targets</h3><span class="tag error">Not recommended</span>' + button + '</div><div class="panel-body">' +
         finding + lookupError +
         '<div class="caveat-box" style="background:var(--red-bg); border-color:#E0B4A6; color:var(--red);">Pilots aren\'t recommended. This patent is a hard pass with no marketable destinations.</div>' +
@@ -4288,8 +4558,24 @@
     lines.push('CU-' + String(p.id).padStart(4, '0'));
     lines.push('Title: ' + (p.title || ''));
     lines.push('Department: ' + (p.dept || ''));
-    lines.push('Recommended path: ' + (ev.recommended_path || 'not evaluated'));
-    lines.push('Demand: ' + (ev.market_demand_verdict || ''));
+    const venture = isPortfolioPublication(p) ? ventureReadinessFor(p) : null;
+    if(venture){
+      lines.push('Venture readiness: ' + venture.total + ' / ' + venture.max);
+      lines.push('Band: ' + venture.bandLabel);
+      lines.push('Recommended path: ' + (venture.paths && venture.paths.primary ? venture.paths.primary.label : ''));
+      if(venture.paths && venture.paths.secondary) lines.push('Also consider: ' + venture.paths.secondary.label);
+      lines.push('Disclosure: ' + (venture.flag ? venture.flag.label : ''));
+      if(venture.flag && venture.flag.detail) lines.push(venture.flag.detail);
+      lines.push('Advice for the authors: ' + (venture.advice || ''));
+      lines.push(venture.caveat || '');
+      (venture.criteria || []).forEach(row => {
+        lines.push(row.label + ': ' + row.points + ' / ' + row.max);
+        if(row.evidence) lines.push(row.evidence);
+      });
+    }else{
+      lines.push('Recommended path: ' + (ev.recommended_path || 'not evaluated'));
+      lines.push('Demand: ' + (ev.market_demand_verdict || ''));
+    }
     if(ev.evaluated_at) lines.push('Evaluated: ' + ev.evaluated_at);
     lines.push('');
     lines.push('Who to sell or license this to');
@@ -4307,8 +4593,9 @@
         if(target.source_url || target.source) lines.push('Source: ' + (target.source || target.source_url));
       });
     }else{
-      lines.push('Recommendation: ' + (ev.licensing_recommendation || (ev.licensing_targets.length >= 3 ? 'pursue' : 'hard pass')));
-      if(ev.hard_pass_reason) lines.push(ev.hard_pass_reason);
+      const publicationReport = publicationUsesVenture(ev);
+      lines.push('Recommendation: ' + (ev.licensing_recommendation || (publicationReport ? 'informational' : (ev.licensing_targets.length >= 3 ? 'pursue' : 'hard pass'))));
+      if(!publicationReport && ev.hard_pass_reason) lines.push(ev.hard_pass_reason);
       if(!ev.licensing_targets.length) lines.push('No destinations were named.');
       ev.licensing_targets.forEach((target, index) => {
         lines.push('');
@@ -4324,7 +4611,7 @@
       lines.push('Pilot target research did not complete: ' + ev.pilot_search_error);
     }else if(!Array.isArray(ev.pilot_targets)){
       lines.push('Pilot targets have not been generated yet.');
-    }else if(ev.pilot_recommendation === 'not recommended'){
+    }else if(ev.pilot_recommendation === 'not recommended' && !publicationUsesVenture(ev)){
       lines.push('Pilots aren\'t recommended. This patent is a hard pass with no marketable destinations.');
       if(ev.biggest_proof_gap) lines.push('Biggest proof gap: ' + ev.biggest_proof_gap);
       if(ev.suggested_next_step) lines.push('Suggested next step: ' + ev.suggested_next_step);
@@ -4425,7 +4712,10 @@
       NO_DEMAND: { stampClass: 'mature', stampLabel: 'Insufficient Demand Found' },
       MATURE: { stampClass: 'mature', stampLabel: 'Further Maturation Needed' }
     };
-    const meta = pathMeta[ev.recommended_path] || pathMeta.MATURE;
+    const ventureScored = isPortfolioPublication(p) ? ventureReadinessFor(p) : null;
+    const meta = ventureScored
+      ? { stampClass: ventureScored.band === 'venture_ready' ? 'license' : (ventureScored.band === 'not_commercial' ? 'mature' : 'venture'), stampLabel: ventureScored.bandLabel }
+      : (pathMeta[ev.recommended_path] || pathMeta.MATURE);
 
     let trlCells = '';
     for(let i=1;i<=9;i++){
@@ -4444,7 +4734,7 @@
     const outreachTargets = licensingOutreachTargets(ev);
 
     let venturePlanHtml = '';
-    if(ev.recommended_path === 'VENTURE' && ev.venture_plan){
+    if(!isPortfolioPublication(p) && ev.recommended_path === 'VENTURE' && ev.venture_plan){
       venturePlanHtml = '<div class="panel"><div class="panel-head"><h3>Suggested venture path</h3></div><div class="panel-body">' +
         '<p style="font-size:13.5px;"><strong>Team composition:</strong> ' + escapeHtml(ev.venture_plan.team || 'Not specified') + '</p>' +
         '<p style="font-size:13.5px; font-weight:600; margin-top:10px;">Next steps</p>' +
@@ -4454,23 +4744,16 @@
     }
 
     const evaluatedDate = ev.evaluated_at ? new Date(ev.evaluated_at).toLocaleString() : null;
-    const versionMismatch = ev.schema_version && ev.schema_version !== EVALUATION_SCHEMA_VERSION;
+    const expectedSchema = isPortfolioPublication(p) ? PUBLICATION_SCHEMA_VERSION : EVALUATION_SCHEMA_VERSION;
+    const versionMismatch = ev.schema_version && ev.schema_version !== expectedSchema;
     const provenanceLine = evaluatedDate
       ? '<p style="font-size:11.5px; color:var(--slate); margin:-8px 0 16px 0;">Evaluated ' + escapeHtml(evaluatedDate) + (ev.schema_version ? ' under methodology ' + escapeHtml(ev.schema_version) : '') + '.' +
-        (versionMismatch ? ' The methodology has changed since (currently ' + escapeHtml(EVALUATION_SCHEMA_VERSION) + '). This is the stored result. Re-evaluate is the only control that runs the model again.' : ' This is the stored result.') +
+        (versionMismatch ? ' The methodology has changed since (currently ' + escapeHtml(expectedSchema) + '). This is the stored result. Re-evaluate is the only control that runs the model again.' : ' This is the stored result.') +
         '</p>'
       : '';
 
-    el.innerHTML =
-      '<div class="page-head"><div><div class="eyebrow">CU-' + String(p.id).padStart(4,'0') + ' &middot; ' + escapeHtml(p.dept) + '</div><h1>' + escapeHtml(p.title) + '</h1></div><div class="stamp ' + meta.stampClass + '">' + meta.stampLabel + '</div></div>' +
-
-      renderArchiveControl(p) +
-
-      provenanceLine +
-
+    const patentAnalysisHtml =
       renderValueScorePanel(p) +
-
-      renderScAlignmentPanel(p) +
 
       '<div class="panel"><div class="panel-head"><h3>Market demand, the gating question</h3><span class="tag ' + demandTagClass + '">' + escapeHtml(ev.market_demand_verdict || 'Unspecified') + '</span></div><div class="panel-body">' +
         '<p style="font-size:13.5px;">' + escapeHtml(ev.market_demand_rationale || '') + '</p>' +
@@ -4487,7 +4770,24 @@
       '<div class="panel"><div class="panel-head"><h3>Recommendation: license a specific corporate, or venture a larger market</h3></div><div class="panel-body">' +
         '<p style="font-size:13.5px;">' + escapeHtml(ev.path_rationale || '') + '</p>' +
         '<p style="font-size:12px; color:var(--slate); margin-top:8px;">Model confidence: <strong>' + escapeHtml(ev.confidence || 'unspecified') + '</strong></p>' +
-      '</div></div>' +
+      '</div></div>';
+
+    const analysisHtml = isPortfolioPublication(p)
+      ? (ventureScored
+        ? renderVentureReadinessPanel(p)
+        : '<div class="panel" id="venture-readiness"><div class="panel-head"><h3>Venture readiness</h3></div><div class="panel-body"><p style="font-size:13.5px;">This publication has not been scored on the venture readiness model. Re-evaluate runs that screen from the paper text. The patent value score is not used.</p></div></div>')
+      : patentAnalysisHtml;
+
+    el.innerHTML =
+      '<div class="page-head"><div><div class="eyebrow">CU-' + String(p.id).padStart(4,'0') + ' &middot; ' + escapeHtml(p.dept) + '</div><h1>' + escapeHtml(p.title) + '</h1></div><div class="stamp ' + meta.stampClass + '">' + meta.stampLabel + '</div></div>' +
+
+      renderArchiveControl(p) +
+
+      provenanceLine +
+
+      analysisHtml +
+
+      renderScAlignmentPanel(p) +
 
       licensingHtml + renderPilotTargetsPanel(ev, p) + venturePlanHtml +
 
