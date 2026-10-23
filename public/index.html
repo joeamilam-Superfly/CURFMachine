@@ -3902,6 +3902,74 @@
     return '<button type="button" class="btn secondary small" data-pilot-action="' + patent.id + '"' + (busy ? ' disabled' : '') + '>' + escapeHtml(label) + '</button>';
   }
 
+  function pilotResponsePending(data){
+    if(!data) return false;
+    if(data.pending) return true;
+    return data.job_status === 'pending' || data.job_status === 'running';
+  }
+
+  function pilotPollDelay(){
+    const value = Number(window.PILOT_POLL_MS);
+    if(Number.isFinite(value) && value >= 0 && value < 60000) return value;
+    return 4000;
+  }
+
+  function pilotPollAttempts(){
+    const value = Number(window.PILOT_POLL_ATTEMPTS);
+    if(Number.isFinite(value) && value > 0 && value < 500) return Math.floor(value);
+    return 120;
+  }
+
+  function applyCompletedPilotSection(p, data){
+    if(!data || !Array.isArray(data.pilot_targets) || !p.evaluation) return;
+    const ev = p.evaluation;
+    ev.pilot_targets = data.pilot_targets;
+    ev.biggest_proof_gap = data.biggest_proof_gap || '';
+    ev.suggested_next_step = data.suggested_next_step || '';
+    ev.pilot_recommendation = data.pilot_recommendation || '';
+    ev.pilot_search_error = data.pilot_search_error || '';
+  }
+
+  async function pollPilotJob(p, generation, startedAt){
+    const attempts = pilotPollAttempts();
+    for(let attempt = 0; attempt < attempts; attempt++){
+      if(attempt > 0) await new Promise(resolve => setTimeout(resolve, pilotPollDelay()));
+      if(p.pilotGeneration !== generation) return;
+      if(openCaseId !== p.id){
+        p.pilotLookup = '';
+        return;
+      }
+      let response = null;
+      let data = null;
+      try{
+        response = await fetch('/api/generate-pilot-targets?patent_id=' + encodeURIComponent(remotePatentId(p)));
+        data = await response.json();
+      }catch(err){
+        continue;
+      }
+      if(p.pilotGeneration !== generation) return;
+      if(!response || !response.ok || !data) continue;
+      if(startedAt && data.started_at && data.started_at !== startedAt) continue;
+      if(pilotResponsePending(data)) continue;
+      if(data.job_status === 'error' || data.error){
+        p.pilotLookup = 'error';
+        p.pilotLookupError = data.job_error || data.error || 'Pilot target search failed';
+        applyCompletedPilotSection(p, data);
+        if(openCaseId === p.id) openCaseFile(p.id, { silent: true });
+        return;
+      }
+      applyCompletedPilotSection(p, data);
+      p.pilotLookup = 'ready';
+      savePatentRecordsToStorage();
+      if(openCaseId === p.id) openCaseFile(p.id, { silent: true });
+      return;
+    }
+    if(p.pilotGeneration !== generation) return;
+    p.pilotLookup = 'error';
+    p.pilotLookupError = 'Pilot target search is still running. Reopen this case in a minute.';
+    if(openCaseId === p.id) openCaseFile(p.id, { silent: true });
+  }
+
   async function runPilotLookup(p, lookupOptions){
     if(!p || p.status !== 'evaluated' || !p.evaluation || p.evaluation.cached_only) return;
     if(p.pilotLookup === 'loading') return;
@@ -3922,15 +3990,27 @@
       });
       const data = await response.json().catch(() => ({}));
       if(p.pilotGeneration !== generation) return;
-      if(!response.ok || (data && data.error)){
+      if((!response.ok && response.status !== 202) || (data && data.error && !pilotResponsePending(data))){
         throw new Error((data && data.error) || readApiError(data, response.status));
       }
-      const ev = p.evaluation;
-      ev.pilot_targets = Array.isArray(data.pilot_targets) ? data.pilot_targets : [];
-      ev.biggest_proof_gap = data.biggest_proof_gap || '';
-      ev.suggested_next_step = data.suggested_next_step || '';
-      ev.pilot_recommendation = data.pilot_recommendation || '';
-      ev.pilot_search_error = data.pilot_search_error || '';
+      if(pilotResponsePending(data)){
+        const startedAt = data.started_at || '';
+        if(data.dispatched === false){
+          const kick = await fetch('/api/generate-pilot-targets-background', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ patent_id: remotePatentId(p), started_at: startedAt })
+          });
+          if(p.pilotGeneration !== generation) return;
+          if(kick.status !== 202 && !kick.ok){
+            const kickBody = await kick.json().catch(() => ({}));
+            throw new Error((kickBody && kickBody.error) || ('Pilot generation could not be started (' + kick.status + ')'));
+          }
+        }
+        await pollPilotJob(p, generation, startedAt);
+        return;
+      }
+      applyCompletedPilotSection(p, data);
       p.pilotLookup = 'ready';
       savePatentRecordsToStorage();
       if(!data.saved) pushPatentRecordToRemote(p);
@@ -3956,25 +4036,23 @@
     const loading = patent && patent.pilotLookup === 'loading';
     const label = hasSection ? 'Refresh pilot targets' : 'Add pilot targets';
     const button = pilotActionButton(patent, label);
-    const lookupError = patent && patent.pilotLookup === 'error'
+    const finding = loading
+      ? '<p style="font-size:13.5px; margin:0 0 12px;"><span class="spinner" style="border-color: rgba(36,48,86,0.25); border-top-color: #243056;"></span>Finding pilot targets…</p>'
+      : '';
+    const lookupError = !loading && patent && patent.pilotLookup === 'error'
       ? '<div class="caveat-box" style="background:var(--red-bg); border-color:#E0B4A6; color:var(--red);">Pilot targets were not updated: ' + escapeHtml(patent.pilotLookupError || 'Pilot target search failed') + '.</div>'
       : '';
-    if(loading){
-      return '<div class="panel" id="pilot-targets"><div class="panel-head"><h3>Pilot &amp; proof-of-concept targets</h3>' + button + '</div><div class="panel-body">' +
-        '<p style="font-size:13.5px; margin:0;"><span class="spinner" style="border-color: rgba(36,48,86,0.25); border-top-color: #243056;"></span>Finding pilot targets…</p>' +
-        '</div></div>';
-    }
     if(!hasSection){
       const storedError = ev.pilot_search_error
         ? '<div class="caveat-box" style="background:var(--red-bg); border-color:#E0B4A6; color:var(--red);">Pilot target research did not complete: ' + escapeHtml(ev.pilot_search_error) + '.</div>'
         : '';
       return '<div class="panel" id="pilot-targets"><div class="panel-head"><h3>Pilot &amp; proof-of-concept targets</h3>' + button + '</div><div class="panel-body">' +
-        lookupError + storedError +
+        finding + lookupError + storedError +
         '</div></div>';
     }
     if(ev.pilot_recommendation === 'not recommended'){
       return '<div class="panel" id="pilot-targets"><div class="panel-head"><h3>Pilot &amp; proof-of-concept targets</h3><span class="tag error">Not recommended</span>' + button + '</div><div class="panel-body">' +
-        lookupError +
+        finding + lookupError +
         '<div class="caveat-box" style="background:var(--red-bg); border-color:#E0B4A6; color:var(--red);">Pilots aren\'t recommended. This patent is a hard pass with no marketable destinations.</div>' +
         (ev.biggest_proof_gap ? '<p style="font-size:13.5px; margin-top:10px;"><strong>Biggest proof gap:</strong> ' + escapeHtml(ev.biggest_proof_gap) + '</p>' : '') +
         (ev.suggested_next_step ? '<p style="font-size:13.5px;"><strong>Suggested next step:</strong> ' + escapeHtml(ev.suggested_next_step) + '</p>' : '') +
@@ -3989,7 +4067,7 @@
       ? targets.map(renderPilotTargetCard).join('')
       : '<p style="font-size:13px; color:var(--slate);">No pilot targets were named. The list was not padded.</p>';
     return '<div class="panel" id="pilot-targets"><div class="panel-head"><h3>Pilot &amp; proof-of-concept targets</h3>' + tag + button + '</div><div class="panel-body">' +
-      lookupError +
+      finding + lookupError +
       '<p style="font-size:13px; margin-top:0;">Every recommended target includes a source for previous work in this technical area. Unverified names have no such link, are not a recommendation, and are ranked last.</p>' +
       (ev.biggest_proof_gap ? '<p style="font-size:13.5px;"><strong>Biggest proof gap:</strong> ' + escapeHtml(ev.biggest_proof_gap) + '</p>' : '') +
       (ev.suggested_next_step ? '<p style="font-size:13.5px;"><strong>Suggested next step:</strong> ' + escapeHtml(ev.suggested_next_step) + '</p>' : '') +
