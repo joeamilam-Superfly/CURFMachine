@@ -17,3 +17,36 @@
   from = "/api/clemson-patents"
   to = "/.netlify/functions/fetch-clemson-patents"
   status = 200
+
+[[redirects]]
+  from = "/api/solve-problem"
+  to = "/.netlify/functions/solve-problem"
+  status = 200
+
+[[redirects]]
+  from = "/api/evaluated-patents"
+  to = "/.netlify/functions/evaluated-patents"
+  status = 200
+
+[[redirects]]
+  from = "/api/send-email"
+  to = "/.netlify/functions/send-email"
+  status = 200
+
+[[redirects]]
+  from = "/api/run-publication-scan"
+  to = "/.netlify/functions/run-publication-scan"
+  status = 200
+
+[[redirects]]
+  from = "/api/run-publication-scan-background"
+  to = "/.netlify/functions/run-publication-scan-background"
+  status = 200
+
+# weekly-publication-scan.js deliberately has no redirect here, it is a
+# scheduled function (see its own config export) and Netlify does not
+# allow scheduled functions to be invoked via a URL at all, only by
+# their cron schedule or the Netlify CLI. run-publication-scan-background.js
+# above is the button-triggerable path for actually running a full scan
+# on demand, a genuine Background Function with a 15 minute budget, not
+# the 30 second budget the scheduled function is stuck with.
