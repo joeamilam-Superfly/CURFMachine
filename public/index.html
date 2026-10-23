@@ -2344,7 +2344,7 @@
   // instead of once. A no-demand result stops after this call. Anything
   // with a real demand read continues to the licensing search.
   async function runCoreEvaluation(patent){
-    const systemPrompt = "You are a skeptical technology transfer analyst supporting a university research foundation's patent portfolio triage. Your job is not to describe the disclosure favorably, it is to pressure test it the way a hardnosed licensing officer or investor would, and to catch overclaimed readiness or invented demand rather than rubber stamp it. The central question for every patent is: is there real market demand for what this solves, not just technical novelty. Follow this decision order exactly. Step one, assess market demand critically: look for actual evidence in the disclosure of a real problem someone would pay to solve (named interest, a pilot, a competitor's existing product, a cited pain point), versus mere assertion that something 'could be used for' or 'may have applications in' a market with no supporting evidence. Rate demand as STRONG, MODERATE, WEAK, or NONE, and explicitly say what claim in the disclosure is asserted but not actually backed by evidence in the text, do not skip this even if you have to say 'none, the abstract asserts market need without evidence.' Step two, only if demand is at least MODERATE, decide the path: LICENSE fits when the problem is narrow and specific enough that an existing company would view it as an incremental addition to a product line they already have, VENTURE fits when the opportunity is a broader market problem no single incumbent already serves well, better suited to a new company built around it. If demand is WEAK or NONE, the path is NO_DEMAND regardless of how technically impressive the patent is, do not recommend LICENSE or VENTURE just because the technology is good. If demand is at least MODERATE but the Technology Readiness Level (1 to 9, NASA or DOD scale) is too low for either outside licensing or a venture to move on right now, the path is MATURE. Also score adoption risk factors modeled on the Adoption Readiness Level concept (market pull, supply chain, workforce, or regulatory friction). If the user message includes a section of staff or inventor provided input, treat known industry contacts and the inventor's own feasibility read as real evidence for the market demand assessment, generally stronger than the disclosure text's own unsupported claims, but note in market_demand_rationale that it is self-reported and not independently verified. If a funding source is provided and is federal (NIH, NSF, DOD, or Other federal), add a one sentence compliance note to critical_challenge or caveat that the federal government retains a royalty free use license and possible march-in rights under the Bayh-Dole Act; if the funding source is specifically NIH, also note the NIH affordability mandate adopted in October 2025 may constrain licensing terms. Also write a marketing_abstract: two to three plain language sentences pitching this technology to a business audience, no patent jargon, suitable to send to a prospective licensee, distinct in tone and content from the internal analysis above. Every rationale, note, or reason field must be one short sentence, under 20 words, this is a triage tool, not a full memo. Respond with ONLY valid JSON as your final message, no markdown fences, no commentary, matching exactly this shape: {\"trl\": number, \"trl_rationale\": string, \"market_demand_verdict\": \"STRONG|MODERATE|WEAK|NONE\", \"market_demand_rationale\": string, \"unsupported_claims\": string, \"adoption_risks\": [{\"factor\": string, \"level\": \"low|medium|high\", \"note\": string}], \"recommended_path\": \"LICENSE|VENTURE|NO_DEMAND|MATURE\", \"path_rationale\": string, \"venture_plan\": {\"team\": string, \"next_steps\": [string]}, \"marketing_abstract\": string, \"critical_challenge\": string, \"confidence\": \"low|medium|high\", \"caveat\": string, \"sc_industry_group\": string, \"licensing_targets\": [{\"name\": string, \"type\": \"licensee|acquirer|strategic partner|startup/spinout vehicle|investor\", \"why_it_fits\": string, \"sc_connection\": string, \"source\": string}], \"licensing_recommendation\": \"pursue|hard pass\", \"hard_pass_reason\": string}. Keep adoption_risks to at most 4 items. venture_plan.next_steps should only be filled in when recommended_path is VENTURE, otherwise leave team empty and next_steps an empty array. critical_challenge must state the single strongest reason this specific evaluation could be wrong, a weak assumption, a gap in the disclosure, or a reason a skeptical reviewer would push back, never a generic disclaimer. licensing_targets is required in the output schema. In this step the array must be empty, and licensing_recommendation and hard_pass_reason must be empty strings. Do not name companies, buyers, licensees, investors, or partners here. A separate licensing search fills licensing_targets. Inventing a destination in this step is not allowed.";
+    const systemPrompt = "You are a skeptical technology transfer analyst supporting a university research foundation's patent portfolio triage. Your job is not to describe the disclosure favorably, it is to pressure test it the way a hardnosed licensing officer or investor would, and to catch overclaimed readiness or invented demand rather than rubber stamp it. The central question for every patent is: is there real market demand for what this solves, not just technical novelty. Follow this decision order exactly. Step one, assess market demand critically: look for actual evidence in the disclosure of a real problem someone would pay to solve (named interest, a pilot, a competitor's existing product, a cited pain point), versus mere assertion that something 'could be used for' or 'may have applications in' a market with no supporting evidence. Rate demand as STRONG, MODERATE, WEAK, or NONE, and explicitly say what claim in the disclosure is asserted but not actually backed by evidence in the text, do not skip this even if you have to say 'none, the abstract asserts market need without evidence.' Step two, only if demand is at least MODERATE, decide the path: LICENSE fits when the problem is narrow and specific enough that an existing company would view it as an incremental addition to a product line they already have, VENTURE fits when the opportunity is a broader market problem no single incumbent already serves well, better suited to a new company built around it. If demand is WEAK or NONE, the path is NO_DEMAND regardless of how technically impressive the patent is, do not recommend LICENSE or VENTURE just because the technology is good. If demand is at least MODERATE but the Technology Readiness Level (1 to 9, NASA or DOD scale) is too low for either outside licensing or a venture to move on right now, the path is MATURE. Also score adoption risk factors modeled on the Adoption Readiness Level concept (market pull, supply chain, workforce, or regulatory friction). If the user message includes a section of staff or inventor provided input, treat known industry contacts and the inventor's own feasibility read as real evidence for the market demand assessment, generally stronger than the disclosure text's own unsupported claims, but note in market_demand_rationale that it is self-reported and not independently verified. If a funding source is provided and is federal (NIH, NSF, DOD, or Other federal), add a one sentence compliance note to critical_challenge or caveat that the federal government retains a royalty free use license and possible march-in rights under the Bayh-Dole Act; if the funding source is specifically NIH, also note the NIH affordability mandate adopted in October 2025 may constrain licensing terms. Also write a marketing_abstract: two to three plain language sentences pitching this technology to a business audience, no patent jargon, suitable to send to a prospective licensee, distinct in tone and content from the internal analysis above. Every rationale, note, or reason field must be one short sentence, under 20 words, this is a triage tool, not a full memo. Respond with ONLY valid JSON as your final message, no markdown fences, no commentary, matching exactly this shape: {\"trl\": number, \"trl_rationale\": string, \"market_demand_verdict\": \"STRONG|MODERATE|WEAK|NONE\", \"market_demand_rationale\": string, \"unsupported_claims\": string, \"adoption_risks\": [{\"factor\": string, \"level\": \"low|medium|high\", \"note\": string}], \"recommended_path\": \"LICENSE|VENTURE|NO_DEMAND|MATURE\", \"path_rationale\": string, \"venture_plan\": {\"team\": string, \"next_steps\": [string]}, \"marketing_abstract\": string, \"critical_challenge\": string, \"confidence\": \"low|medium|high\", \"caveat\": string, \"sc_industry_group\": string, \"licensing_targets\": [{\"name\": string, \"type\": \"licensee|acquirer|strategic partner|startup/spinout vehicle|investor\", \"why_it_fits\": string, \"sc_connection\": string, \"source\": string}], \"licensing_recommendation\": \"pursue|hard pass\", \"hard_pass_reason\": string, \"pilot_targets\": [{\"name\": string, \"type\": \"industry pilot partner|end-user site|test lab/standards body|Clemson/SC research center or facility|federal program|SC program\", \"what_it_proves\": string, \"why_it_fits\": string, \"sc_connection\": string, \"effort\": \"low|medium|high\", \"source\": string, \"prior_pilots\": [{\"name\": string, \"year\": string, \"what_it_tested\": string, \"alignment\": string, \"source\": string}], \"prior_pilot_note\": string}], \"biggest_proof_gap\": string, \"suggested_next_step\": string, \"pilot_recommendation\": \"pursue|not recommended\"}. Keep adoption_risks to at most 4 items. venture_plan.next_steps should only be filled in when recommended_path is VENTURE, otherwise leave team empty and next_steps an empty array. critical_challenge must state the single strongest reason this specific evaluation could be wrong, a weak assumption, a gap in the disclosure, or a reason a skeptical reviewer would push back, never a generic disclaimer. licensing_targets is required in the output schema. In this step the array must be empty, and licensing_recommendation and hard_pass_reason must be empty strings. Do not name companies, buyers, licensees, investors, or partners here. A separate licensing search fills licensing_targets. Inventing a destination in this step is not allowed. pilot_targets must be an empty array in this step. biggest_proof_gap, suggested_next_step, pilot_recommendation, and prior_pilot_note must be empty. Do not name pilot sites, labs, programs, or prior pilots here. A separate pilot search fills pilot_targets, and only with a source link for previous work in this technical area. Inventing a pilot or a URL in this step is not allowed.";
 
     let staffInputText = "";
     if(patent.staffInput){
@@ -2418,6 +2418,51 @@
     return parsed;
   }
 
+  async function runPilotTargetSearch(patent, core){
+    const response = await fetchWithTimeoutRetry(API_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        task: "pilot_targets",
+        enableSearch: true,
+        patent: {
+          title: patent.title,
+          dept: patent.dept,
+          text: (patent.text || "").slice(0, 4000),
+          recommended_path: (core && core.recommended_path) || "",
+          market_demand_rationale: (core && core.market_demand_rationale) || "",
+          trl_rationale: (core && core.trl_rationale) || "",
+          unsupported_claims: (core && core.unsupported_claims) || "",
+          sc_industry_group: (core && core.sc_industry_group) || ""
+        }
+      })
+    });
+    if(!response.ok){
+      const errBody = await response.json().catch(()=>({}));
+      throw new Error(readApiError(errBody, response.status));
+    }
+    const data = await response.json();
+    if(data.stop_reason === 'max_tokens'){
+      throw new Error('The model response was cut off before finishing (hit the token limit). Try again, and if it keeps happening the max_tokens limit in the app needs raising further.');
+    }
+    if(data.stop_reason === 'pause_turn'){
+      throw new Error('The web search ran long and was paused mid turn. This app does not yet resume a paused search automatically, just retry.');
+    }
+    const textBlock = selectFinalTextBlock(data.content);
+    if(!textBlock) throw new Error('No text response from the model');
+    const parsed = extractJsonObject(textBlock.text);
+    if(!parsed) throw new Error('Could not find a valid JSON object in the model response');
+    return parsed;
+  }
+
+  function markPilotsNotRecommended(core){
+    core.pilot_targets = [];
+    core.pilot_recommendation = 'not recommended';
+    core.biggest_proof_gap = 'Pilots aren\'t recommended. This is a hard pass with no marketable destination.';
+    core.suggested_next_step = 'Do not recruit a pilot partner. Pilots aren\'t recommended until a real buyer or licensee exists.';
+    core.pilot_search_error = '';
+  }
+
   // Drafts a cold outreach email for ONE specific, already identified
   // acquirer target. Deliberately uses NO web search, everything it
   // needs (company name, sector, why it fits, the marketing abstract)
@@ -2446,6 +2491,10 @@
     delete core.licensing_targets;
     delete core.licensing_recommendation;
     delete core.hard_pass_reason;
+    delete core.pilot_targets;
+    delete core.biggest_proof_gap;
+    delete core.suggested_next_step;
+    delete core.pilot_recommendation;
     core.top_acquirer_targets = [];
     core.licensing_search_error = "";
     core.acquirer_search_error = "";
@@ -2489,6 +2538,33 @@
         // differently from one that ran close to 60 seconds.
         const elapsedMs = Date.now() - searchStartedAt;
         core.licensing_search_error = "Failed after " + elapsedMs + "ms: " + (err.message || 'Licensing target search failed');
+      }
+    }
+
+    const licensingHardPass = noMarket || core.licensing_recommendation === 'hard pass' || !Array.isArray(core.licensing_targets) || core.licensing_targets.length < 3;
+    if(core.licensing_search_error && !Array.isArray(core.licensing_targets)){
+      // The buyer list never finished, so a pilot search would be guessing
+      // at a market. Leave pilot_targets unset. The case file asks for
+      // Re-evaluate.
+    }else if(licensingHardPass){
+      markPilotsNotRecommended(core);
+    }else{
+      patent.evalStage = 'Pilot targets';
+      renderAll();
+      refreshOpenCaseIfShowing(patent.id);
+      const pilotStartedAt = Date.now();
+      try{
+        const found = await runPilotTargetSearch(patent, core);
+        core.pilot_targets = Array.isArray(found.pilot_targets) ? found.pilot_targets : [];
+        core.biggest_proof_gap = found.biggest_proof_gap || '';
+        core.suggested_next_step = found.suggested_next_step || '';
+        core.pilot_recommendation = found.pilot_recommendation === 'not recommended' && !core.pilot_targets.length
+          ? 'not recommended'
+          : 'pursue';
+        core.pilot_search_error = '';
+      }catch(err){
+        const elapsedMs = Date.now() - pilotStartedAt;
+        core.pilot_search_error = "Failed after " + elapsedMs + "ms: " + (err.message || 'Pilot target search failed');
       }
     }
     core.sc_alignment = alignmentForPatent(patent, core.sc_industry_group);
@@ -3727,6 +3803,132 @@
       '</div></div>';
   }
 
+  function pilotProofUrl(value){
+    const match = String(value || '').match(/https?:\/\/[^\s)]+/i);
+    if(!match) return '';
+    return match[0].replace(/[.,;]+$/, '');
+  }
+
+  function pilotPriorProofs(target){
+    const pilots = Array.isArray(target && target.prior_pilots) ? target.prior_pilots : [];
+    return pilots.filter(item => item && pilotProofUrl(item.source));
+  }
+
+  function pilotDisplayProofUrl(target){
+    const own = pilotProofUrl(target && target.source);
+    if(own) return own;
+    const prior = pilotPriorProofs(target);
+    return prior.length ? pilotProofUrl(prior[0].source) : '';
+  }
+
+  function pilotIsVerified(target){
+    return !!pilotDisplayProofUrl(target);
+  }
+
+  function orderedPilotTargets(list){
+    return list.map((target, index) => ({ target, index })).sort((a, b) => {
+      const group = item => {
+        if(!pilotIsVerified(item.target)) return 2;
+        return pilotPriorProofs(item.target).length ? 0 : 1;
+      };
+      const byGroup = group(a) - group(b);
+      if(byGroup) return byGroup;
+      const byPilots = pilotPriorProofs(b.target).length - pilotPriorProofs(a.target).length;
+      if(byPilots) return byPilots;
+      return a.index - b.index;
+    }).map(item => item.target);
+  }
+
+  function pilotLinkHtml(url){
+    const href = pilotProofUrl(url);
+    if(!href) return '';
+    return '<a href="' + escapeHtml(href) + '" target="_blank" rel="noopener">' + escapeHtml(href) + '</a>';
+  }
+
+  function renderPriorPilotsHtml(target){
+    const pilots = (Array.isArray(target.prior_pilots) ? target.prior_pilots : []).filter(item => item && pilotProofUrl(item.source));
+    const note = pilots.length ? '' : (target.prior_pilot_note || 'No verified prior pilot found');
+    const cards = pilots.map(item => {
+      const bits = [];
+      if(item.year) bits.push(escapeHtml(item.year));
+      if(item.what_it_tested) bits.push(escapeHtml(item.what_it_tested));
+      const link = pilotLinkHtml(item.source);
+      return '<div class="archetype" style="background:#fff; margin-top:8px;">' +
+        '<div class="sector">' + escapeHtml(item.name || 'Unnamed prior pilot') + '</div>' +
+        (bits.length ? '<div class="why">' + bits.join(' — ') + '</div>' : '') +
+        (item.alignment ? '<div class="why">Aligns because: ' + escapeHtml(item.alignment) + '</div>' : '') +
+        (link ? '<div class="why">Source: ' + link + '</div>' : '') +
+        '</div>';
+    }).join('');
+    return '<div style="background:#F3F7EE; border:1px solid #C9D9C4; border-radius:4px; padding:10px 12px; margin:8px 0 10px 0;">' +
+      '<div style="font-size:12px; font-weight:700; letter-spacing:0.04em; text-transform:uppercase; color:#2C5A32;">Relevant prior pilots</div>' +
+      (cards || '<p style="font-size:13px; margin:6px 0 0 0;">' + escapeHtml(note) + '</p>') +
+      '</div>';
+  }
+
+  function renderPilotTargetCard(target){
+    const verified = pilotIsVerified(target);
+    const effortLabel = { low: 'Low effort / cost', medium: 'Medium effort / cost', high: 'High effort / cost' }[target.effort] || '';
+    const proof = pilotLinkHtml(pilotDisplayProofUrl(target));
+    const flag = verified
+      ? '<span class="tag license">Sourced</span>'
+      : '<span class="tag error">Unverified</span>';
+    const unverifiedNote = verified
+      ? ''
+      : '<div class="caveat-box" style="background:var(--red-bg); border-color:#E0B4A6; color:var(--red);">Unverified. No clickable source for previous work in this technical area. Not a recommendation. Ranked last.</div>';
+    const proofLine = proof
+      ? '<div class="why"><strong>Proof of prior work:</strong> ' + proof + '</div>'
+      : '<div class="why">Proof of prior work: none. A press release, paper, grant, program page, patent, or case study link is required.</div>';
+    return '<div class="archetype" data-pilot-verified="' + (verified ? 'yes' : 'no') + '"' + (verified ? '' : ' style="border-style:dashed;"') + '>' +
+      '<div class="sector">' + escapeHtml(target.name || 'Unnamed') + ' ' + flag +
+      (target.type ? ' <span class="tag mature">' + escapeHtml(target.type) + '</span>' : '') +
+      (effortLabel ? ' <span class="tag pending">' + escapeHtml(effortLabel) + '</span>' : '') +
+      '</div>' +
+      unverifiedNote +
+      renderPriorPilotsHtml(target) +
+      '<div class="why">What the pilot would prove: ' + escapeHtml(target.what_it_proves || 'Not stated') + '</div>' +
+      '<div class="why">Why it fits: ' + escapeHtml(target.why_it_fits || 'Not stated') + '</div>' +
+      '<div class="why">South Carolina / Southeast: ' + escapeHtml(target.sc_connection || 'none found') + '</div>' +
+      proofLine +
+      '</div>';
+  }
+
+  function renderPilotTargetsPanel(ev){
+    if(ev.pilot_search_error && !Array.isArray(ev.pilot_targets)){
+      return '<div class="panel" id="pilot-targets"><div class="panel-head"><h3>Pilot &amp; proof-of-concept targets</h3></div><div class="panel-body">' +
+        '<div class="caveat-box" style="background:var(--red-bg); border-color:#E0B4A6; color:var(--red);">Pilot target research did not complete: ' + escapeHtml(ev.pilot_search_error) + '.</div>' +
+        '<p style="font-size:13px; margin-top:8px;">Re-evaluate to add pilot targets.</p>' +
+        '</div></div>';
+    }
+    if(!Array.isArray(ev.pilot_targets)){
+      return '<div class="panel" id="pilot-targets"><div class="panel-head"><h3>Pilot &amp; proof-of-concept targets</h3></div><div class="panel-body">' +
+        '<p style="font-size:13px; margin:0;">Re-evaluate to add pilot targets.</p>' +
+        '</div></div>';
+    }
+    if(ev.pilot_recommendation === 'not recommended'){
+      return '<div class="panel" id="pilot-targets"><div class="panel-head"><h3>Pilot &amp; proof-of-concept targets</h3><span class="tag error">Not recommended</span></div><div class="panel-body">' +
+        '<div class="caveat-box" style="background:var(--red-bg); border-color:#E0B4A6; color:var(--red);">Pilots aren\'t recommended. This patent is a hard pass with no marketable destinations.</div>' +
+        (ev.biggest_proof_gap ? '<p style="font-size:13.5px; margin-top:10px;"><strong>Biggest proof gap:</strong> ' + escapeHtml(ev.biggest_proof_gap) + '</p>' : '') +
+        (ev.suggested_next_step ? '<p style="font-size:13.5px;"><strong>Suggested next step:</strong> ' + escapeHtml(ev.suggested_next_step) + '</p>' : '') +
+        '</div></div>';
+    }
+    const targets = orderedPilotTargets(ev.pilot_targets);
+    const verifiedCount = targets.filter(pilotIsVerified).length;
+    const unverifiedCount = targets.length - verifiedCount;
+    const tag = '<span class="tag license">' + verifiedCount + ' with proof</span>' +
+      (unverifiedCount ? ' <span class="tag error">' + unverifiedCount + ' unverified</span>' : '');
+    const cards = targets.length
+      ? targets.map(renderPilotTargetCard).join('')
+      : '<p style="font-size:13px; color:var(--slate);">No pilot targets were named. The list was not padded.</p>';
+    return '<div class="panel" id="pilot-targets"><div class="panel-head"><h3>Pilot &amp; proof-of-concept targets</h3>' + tag + '</div><div class="panel-body">' +
+      '<p style="font-size:13px; margin-top:0;">Every recommended target includes a source for previous work in this technical area. Unverified names have no such link, are not a recommendation, and are ranked last.</p>' +
+      (ev.biggest_proof_gap ? '<p style="font-size:13.5px;"><strong>Biggest proof gap:</strong> ' + escapeHtml(ev.biggest_proof_gap) + '</p>' : '') +
+      (ev.suggested_next_step ? '<p style="font-size:13.5px;"><strong>Suggested next step:</strong> ' + escapeHtml(ev.suggested_next_step) + '</p>' : '') +
+      cards +
+      '<div class="caveat-box">Pilot sites come from a web search for this evaluation. A prior pilot is listed only when a page was found. This is a lead to check, not a commitment from that organization.</div>' +
+      '</div></div>';
+  }
+
   function buildCaseReport(p){
     const ev = p.evaluation || {};
     const lines = [];
@@ -3762,6 +3964,40 @@
         lines.push('Why it fits: ' + (target.why_it_fits || ''));
         lines.push('South Carolina / Southeast: ' + (target.sc_connection || 'none found'));
         lines.push('Source: ' + (target.source || 'none returned'));
+      });
+    }
+    lines.push('');
+    lines.push('Pilot and proof-of-concept targets');
+    if(ev.pilot_search_error && !Array.isArray(ev.pilot_targets)){
+      lines.push('Pilot target research did not complete: ' + ev.pilot_search_error);
+      lines.push('Re-evaluate to add pilot targets.');
+    }else if(!Array.isArray(ev.pilot_targets)){
+      lines.push('Re-evaluate to add pilot targets.');
+    }else if(ev.pilot_recommendation === 'not recommended'){
+      lines.push('Pilots aren\'t recommended. This patent is a hard pass with no marketable destinations.');
+      if(ev.biggest_proof_gap) lines.push('Biggest proof gap: ' + ev.biggest_proof_gap);
+      if(ev.suggested_next_step) lines.push('Suggested next step: ' + ev.suggested_next_step);
+    }else{
+      if(ev.biggest_proof_gap) lines.push('Biggest proof gap: ' + ev.biggest_proof_gap);
+      if(ev.suggested_next_step) lines.push('Suggested next step: ' + ev.suggested_next_step);
+      const pilots = orderedPilotTargets(ev.pilot_targets);
+      if(!pilots.length) lines.push('No pilot targets were named.');
+      pilots.forEach((target, index) => {
+        lines.push('');
+        lines.push((index + 1) + '. ' + (target.name || 'Unnamed') + (target.type ? ' (' + target.type + ')' : '') + (pilotIsVerified(target) ? '' : ' [Unverified]'));
+        lines.push('What the pilot would prove: ' + (target.what_it_proves || ''));
+        lines.push('Why it fits: ' + (target.why_it_fits || ''));
+        lines.push('South Carolina / Southeast: ' + (target.sc_connection || 'none found'));
+        lines.push('Effort / cost: ' + (target.effort || 'not stated'));
+        lines.push('Proof of prior work: ' + (pilotDisplayProofUrl(target) || 'none'));
+        const prior = (target.prior_pilots || []).filter(item => item && pilotProofUrl(item.source));
+        if(!prior.length) lines.push('Relevant prior pilots: ' + (target.prior_pilot_note || 'No verified prior pilot found'));
+        prior.forEach(item => {
+          lines.push('Relevant prior pilot: ' + (item.name || 'Unnamed') + (item.year ? ' (' + item.year + ')' : ''));
+          if(item.what_it_tested) lines.push('Tested: ' + item.what_it_tested);
+          if(item.alignment) lines.push('Alignment: ' + item.alignment);
+          lines.push('Source: ' + pilotProofUrl(item.source));
+        });
       });
     }
     lines.push('');
@@ -3902,7 +4138,7 @@
         '<p style="font-size:12px; color:var(--slate); margin-top:8px;">Model confidence: <strong>' + escapeHtml(ev.confidence || 'unspecified') + '</strong></p>' +
       '</div></div>' +
 
-      licensingHtml + venturePlanHtml +
+      licensingHtml + renderPilotTargetsPanel(ev) + venturePlanHtml +
 
       '<div class="panel"><div class="panel-head"><h3>Marketing abstract, for outside audiences</h3></div><div class="panel-body">' +
         '<p style="font-size:13.5px;">' + escapeHtml(ev.marketing_abstract || 'Not generated.') + '</p>' +
