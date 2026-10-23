@@ -62,6 +62,21 @@
   to = "/.netlify/functions/triage-patents-background"
   status = 200
 
+[[redirects]]
+  from = "/api/discover-patents"
+  to = "/.netlify/functions/discover-patents"
+  status = 200
+
+[[redirects]]
+  from = "/api/discover-patents-background"
+  to = "/.netlify/functions/discover-patents-background"
+  status = 200
+
+[[redirects]]
+  from = "/api/review-publications"
+  to = "/.netlify/functions/review-publications"
+  status = 200
+
 # weekly-publication-scan.js deliberately has no redirect here, it is a
 # scheduled function (see its own config export) and Netlify does not
 # allow scheduled functions to be invoked via a URL at all, only by
