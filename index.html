@@ -524,7 +524,7 @@
         <div>
           <div class="eyebrow">Optional, public search only</div>
           <h1>Publication Watch</h1>
-          <p>Searches for new Clemson research publications using public web search only: titles, abstracts, press releases, anything already publicly indexed. This cannot get behind Clemson library's paywalled full text subscriptions. Treat it as a partial signal. Each row links to the public source.</p>
+          <p>Pulls recent public Clemson research from the Clemson news feed, PubMed, OpenAlex, and arXiv. The model only scores commercial relevance after those rows are saved. A scoring failure still leaves the items here. This cannot read paywalled full text.</p>
         </div>
         <div>
           <button class="btn" id="btn-run-pubwatch-scan">Run scan now</button>
@@ -532,7 +532,7 @@
       </div>
 
       <div class="caveat-box" style="margin-bottom:20px;">
-        Runs automatically once a week too, on a much tighter budget (scheduled functions get 30 seconds, versus the 15 minutes this button's background run gets), so the weekly automatic scan deliberately does a single, narrower search while this button does a fuller one. An email alert only goes out when a genuinely new finding scores HIGH for commercial relevance, and only if RESEND_API_KEY and CURF_ALERT_EMAIL are both configured, see DEPLOYMENT.md. Clicking the button starts the scan and checks back for about three minutes. An open-ended search can take longer. If nothing new is shown yet, it is still running. Check back later. A later click will not duplicate a finding already stored.
+        The same sources run on the weekly schedule. That run has 30 seconds, so it may save items as "Not scored" and leave scoring for the next button click. An email goes out only for a new HIGH score, and only when RESEND_API_KEY and CURF_ALERT_EMAIL are set. The status line under this note is the last scan's time, counts, and error. An empty list with no error is not the same thing as a failed save.
       </div>
 
       <div class="panel" id="pubwatch-status-panel" style="display:none;">
@@ -548,8 +548,8 @@
             <tbody id="pubwatch-body"></tbody>
           </table>
           <div class="empty" id="pubwatch-empty">
-            <h3>No findings yet</h3>
-            <p>Click "Run scan now" to search once immediately, or wait for the weekly automatic run.</p>
+            <h3>No findings stored yet</h3>
+            <p>Run a scan, or read the status above. If it names the Supabase key, the scan cannot save until that key is the service_role key.</p>
           </div>
         </div>
       </div>
@@ -2033,30 +2033,58 @@
   });
 
   // ---------- Publication Watch ----------
-  const pubwatchRelevanceClass = { HIGH: 'license', MODERATE: 'venture', LOW: 'mature' };
+  const pubwatchRelevanceClass = { HIGH: 'license', MODERATE: 'venture', LOW: 'mature', UNSCORED: 'pending' };
 
-  async function loadPublicationWatch(){
+  function describePublicationScan(data){
+    if(!data) return '';
+    const parts = [];
+    const scan = data.last_scan;
+    if(scan){
+      const when = scan.finished_at || scan.started_at;
+      const whenText = when ? new Date(when).toLocaleString() : 'an unknown time';
+      parts.push('Last scan (' + (scan.trigger || 'scan') + ') ' + (scan.status || 'unknown') + ' at ' + whenText + '.');
+      parts.push('Found ' + (scan.found_count == null ? '—' : scan.found_count) + ', stored ' + (scan.stored_count == null ? '—' : scan.stored_count) + ', scored ' + (scan.scored_count == null ? '—' : scan.scored_count) + '.');
+      if(scan.error) parts.push(scan.error);
+      const sources = scan.detail && scan.detail.sources;
+      if(Array.isArray(sources) && sources.length){
+        parts.push(sources.map(source => source.name + ': ' + (source.error || ((source.fetched || 0) + ' kept'))).join('; ') + '.');
+      }
+    }
+    if(data.scan_log_error) parts.push(data.scan_log_error);
+    if(data.error) parts.push(data.error);
+    return parts.join(' ');
+  }
+
+  function showPublicationStatus(data, fallback){
     const statusPanel = document.getElementById('pubwatch-status-panel');
     const statusEl = document.getElementById('pubwatch-status');
+    const text = describePublicationScan(data) || fallback || '';
+    if(!text){
+      statusPanel.style.display = 'none';
+      statusEl.textContent = '';
+      return;
+    }
+    statusPanel.style.display = 'block';
+    const failed = data && (data.error || (data.last_scan && (data.last_scan.status === 'error' || data.last_scan.status === 'partial')));
+    statusEl.innerHTML = failed ? '<span style="color:var(--red);">' + escapeHtml(text) + '</span>' : escapeHtml(text);
+  }
+
+  async function loadPublicationWatch(){
     try{
       const res = await fetch('/api/run-publication-scan');
       const data = await res.json();
       if(!data.configured){
-        statusPanel.style.display = 'block';
-        statusEl.textContent = 'Shared storage is not configured, so findings cannot be loaded or saved. Set SUPABASE_URL and SUPABASE_SERVICE_KEY, then run supabase-setup.sql.';
+        showPublicationStatus(null, 'Shared storage is not configured, so findings cannot be loaded or saved. Set SUPABASE_URL and SUPABASE_SERVICE_KEY, then run supabase-setup.sql.');
         renderPublicationWatchList([]);
-        return;
+        return data;
       }
-      if(data.error){
-        statusPanel.style.display = 'block';
-        const detailText = data.detail ? (typeof data.detail === 'string' ? data.detail : JSON.stringify(data.detail)) : '';
-        statusEl.innerHTML = '<span style="color:var(--red);">' + escapeHtml(data.error) + (detailText ? ': ' + escapeHtml(detailText) : '') + '</span>';
-        renderPublicationWatchList([]);
-        return;
-      }
+      showPublicationStatus(data);
       renderPublicationWatchList(data.findings || []);
+      return data;
     }catch(err){
+      showPublicationStatus(null, 'Could not reach the publication scan endpoint.');
       renderPublicationWatchList([]);
+      return null;
     }
   }
 
@@ -2074,8 +2102,8 @@
       const relevance = f.commercial_relevance_score || 'Unspecified';
       return '<tr>' +
         '<td class="mono">' + escapeHtml(date) + '</td>' +
-        '<td><div class="patent-title"><a href="' + escapeHtml(f.source_url || '#') + '" target="_blank" rel="noopener">' + escapeHtml(f.title || 'Untitled') + '</a></div><div class="patent-sub">' + escapeHtml(f.authors || '') + '</div><div class="patent-sub">' + escapeHtml(f.commercial_rationale || '') + '</div></td>' +
-        '<td><span class="tag ' + (pubwatchRelevanceClass[relevance] || 'pending') + '">' + escapeHtml(relevance) + '</span></td>' +
+        '<td><div class="patent-title"><a href="' + escapeHtml(f.source_url || '#') + '" target="_blank" rel="noopener">' + escapeHtml(f.title || 'Untitled') + '</a></div><div class="patent-sub">' + escapeHtml(f.authors || '') + '</div><div class="patent-sub">' + escapeHtml(f.summary || '') + '</div><div class="patent-sub">' + escapeHtml(f.commercial_rationale || '') + '</div></td>' +
+        '<td><span class="tag ' + (pubwatchRelevanceClass[relevance] || 'pending') + '">' + escapeHtml(relevance === 'UNSCORED' ? 'Not scored' : relevance) + '</span></td>' +
         '<td>' + (f.source_url ? '<a href="' + escapeHtml(f.source_url) + '" target="_blank" rel="noopener">Open source</a>' : '—') + '</td>' +
         '</tr>';
     }).join('');
@@ -2088,35 +2116,45 @@
   // findings list until the count of stored findings increases, or
   // give up gracefully after a bounded number of attempts rather than
   // polling forever.
-  async function pollForNewFindings(countBefore, attemptsLeft, attemptsTotal){
-    const statusEl = document.getElementById('pubwatch-status');
+  function scanFinishedSince(data, startedMs){
+    const scan = data && data.last_scan;
+    if(!scan || !scan.finished_at) return false;
+    const started = Date.parse(scan.started_at || scan.finished_at);
+    return Number.isFinite(started) && started >= startedMs - 15000 && scan.status !== 'running';
+  }
+
+  async function pollForNewFindings(countBefore, attemptsLeft, attemptsTotal, startedMs){
     const total = attemptsTotal || attemptsLeft;
     if(attemptsLeft <= 0){
-      statusEl.textContent = 'Scan is still running in the background. This can take a few minutes for an open-ended search like this one. Check back shortly, or click "Run scan now" again later, it will not duplicate anything already found.';
+      const latest = await loadPublicationWatch();
+      if(!describePublicationScan(latest)){
+        showPublicationStatus(null, 'The scan is still running, or it could not write a status row. Check again shortly. Rows already stored are not scanned again.');
+      }
       return;
     }
-    statusEl.innerHTML = '<span class="spinner" style="border-color: rgba(107,100,112,0.3); border-top-color: var(--slate);"></span>Scan running. Check ' + (total - attemptsLeft + 1) + ' of ' + total + '.';
+    showPublicationStatus(null, 'Scan running. Check ' + (total - attemptsLeft + 1) + ' of ' + total + '.');
     try{
       const res = await fetch('/api/run-publication-scan');
       const data = await res.json();
       if(data && data.configured === false){
-        statusEl.textContent = 'The scan cannot store results until SUPABASE_URL and SUPABASE_SERVICE_KEY are set.';
+        showPublicationStatus(null, 'The scan cannot store results until SUPABASE_URL and SUPABASE_SERVICE_KEY are set.');
         return;
       }
       if(data && data.error){
-        statusEl.textContent = data.error;
-        return;
-      }
-      const currentCount = (data.findings || []).length;
-      if(currentCount > countBefore){
-        statusEl.textContent = 'New findings appeared.';
+        showPublicationStatus(data);
         renderPublicationWatchList(data.findings || []);
         return;
       }
+      renderPublicationWatchList(data.findings || []);
+      if(scanFinishedSince(data, startedMs) || (data.findings || []).length > countBefore){
+        showPublicationStatus(data, 'New findings are listed below.');
+        return;
+      }
     }catch(err){
-      // Keep polling, a transient failure here shouldn't stop the loop.
+      // Keep polling. A single failed status read should not hide a scan that is still writing.
     }
-    setTimeout(()=> pollForNewFindings(countBefore, attemptsLeft - 1, total), 8000);
+    await new Promise(resolve => setTimeout(resolve, 5000));
+    return pollForNewFindings(countBefore, attemptsLeft - 1, total, startedMs);
   }
 
   document.getElementById('btn-run-pubwatch-scan').addEventListener('click', async ()=>{
@@ -2125,7 +2163,7 @@
     const statusEl = document.getElementById('pubwatch-status');
     btn.disabled = true;
     statusPanel.style.display = 'block';
-    statusEl.innerHTML = '<span class="spinner" style="border-color: rgba(107,100,112,0.3); border-top-color: var(--slate);"></span>Starting the scan...';
+    showPublicationStatus(null, 'Starting the scan...');
 
     let countBefore = 0;
     let currentData = null;
@@ -2134,16 +2172,15 @@
       currentData = await currentRes.json();
       countBefore = (currentData.findings || []).length;
     }catch(err){
-      // If this fails, countBefore just stays 0, the poll loop below
-      // still works, it will just treat any findings at all as new.
+      // If this fails, countBefore stays 0. The poll still stops on a real error once the GET responds.
     }
     if(currentData && currentData.configured === false){
-      statusEl.textContent = 'The scan cannot store results until SUPABASE_URL and SUPABASE_SERVICE_KEY are set. Nothing was started.';
+      showPublicationStatus(null, 'The scan cannot store results until SUPABASE_URL and SUPABASE_SERVICE_KEY are set. Nothing was started.');
       btn.disabled = false;
       return;
     }
     if(currentData && currentData.error){
-      statusEl.textContent = currentData.error;
+      showPublicationStatus(currentData);
       btn.disabled = false;
       return;
     }
@@ -2151,16 +2188,16 @@
     try{
       const res = await fetch('/api/run-publication-scan-background', { method: 'POST' });
       if(!res.ok && res.status !== 202){
-        statusEl.innerHTML = '<span style="color:var(--red);">Could not start the scan (status ' + res.status + ').</span>';
+        showPublicationStatus(null, 'Could not start the scan (status ' + res.status + ').');
         btn.disabled = false;
         return;
       }
-      statusEl.innerHTML = '<span class="spinner" style="border-color: rgba(107,100,112,0.3); border-top-color: var(--slate);"></span>Scan started in the background, this can take a few minutes for an open-ended search. Checking for results...';
-      pollForNewFindings(countBefore, 20, 20);
+      showPublicationStatus(null, 'Scan started. Results are saved as they are found, then scored. This page checks for the status row.');
+      pollForNewFindings(countBefore, 24, 24, Date.now()).finally(() => { btn.disabled = false; });
     }catch(err){
-      statusEl.innerHTML = '<span style="color:var(--red);">Could not reach the scan endpoint: ' + escapeHtml(err.message || 'unknown error') + '. This requires the app\'s backend proxy to be deployed with ANTHROPIC_API_KEY and Supabase configured, it will not work from this in chat preview.</span>';
+      showPublicationStatus(null, 'Could not reach the scan endpoint: ' + (err.message || 'unknown error') + '. This requires the deployed app.');
+      btn.disabled = false;
     }
-    btn.disabled = false;
   });
 
   // ---------- rendering ----------

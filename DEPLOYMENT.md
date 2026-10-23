@@ -67,7 +67,11 @@ If these aren't set, `/api/evaluated-patents` returns a normal response saying s
 
 ## Setting up Publication Watch and email alerts (optional)
 
-The findings list itself needs only what's already set up: `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, and `ANTHROPIC_API_KEY`. Run the `publication_watch` table creation SQL in `supabase-setup.sql` if you haven't already, then use "Run scan now" on the Publication Watch tab.
+The findings list needs `SUPABASE_URL` and `SUPABASE_SERVICE_KEY`. `SUPABASE_SERVICE_KEY` must be the service_role key. With the anon key, the page reports `configured: true` and an empty list, and every save is rejected by row level security. That is the same failure as evaluated patents. `ANTHROPIC_API_KEY` is used only to score relevance. Items are still stored when scoring fails.
+
+Run `supabase-setup.sql` on a new project. On the existing project, run `supabase-publication-scan.sql` as well. It creates `publication_scan_runs` (last scan time, status, counts, and error) and grants that table to `service_role` only. Do not expect a scan status line until that file has been run. No new environment variable is required.
+
+The scan reads the Clemson news RSS feed, PubMed (affiliation Clemson), OpenAlex (Clemson University ROR `037s24f05`), and arXiv. It does not ask the model to discover publications, and it does not use web search.
 
 For actual email alerts on top of that:
 
@@ -77,11 +81,9 @@ For actual email alerts on top of that:
 4. Optionally set `RESEND_FROM_EMAIL` once you've verified your own sending domain in Resend. Without it, emails send from Resend's shared sandbox address (`onboarding@resend.dev`), which works for testing but is commonly restricted in who it can actually deliver to once past initial testing, verify a real domain before relying on this for real alerts.
 5. Redeploy.
 
-An email only goes out when a genuinely new finding (one not already in the `publication_watch` table) scores HIGH for commercial relevance. Re-finding the same publication on a later scan does not trigger a second email.
+An email only goes out for a finding scored HIGH that has not already been alerted. A later scan does not send a second email for the same row. If the email send fails, `alerted` stays false and a later scan tries again.
 
-The weekly automatic run (`weekly-publication-scan.js`) cannot be tested by visiting a URL, Netlify does not allow a scheduled function to be invoked that way. Use "Run scan now" in the app, which calls `run-publication-scan-background.js` instead, to verify the underlying search and storage logic works.
-
-That button and the scheduled run are deliberately not identical. Scheduled functions get a 30 second execution limit on Netlify, half the ordinary 60 seconds the rest of this app is tuned around, and publication discovery is a more open-ended search task than anything else here. The scheduled version runs a single, narrower search to fit that budget; the button-triggered version is a genuine Background Function with a 15 minute budget and can afford a fuller search. Expect the weekly automatic scan to be a real but shallower signal than clicking the button yourself.
+The weekly automatic run (`weekly-publication-scan.js`) cannot be tested by visiting a URL. Use "Run scan now", which calls `run-publication-scan-background.js`. Both runs use the same four sources. The weekly run has a 30 second limit and may leave new rows unscored. The button run scores a larger batch. Either way, stored rows show up even when scoring does not finish. The page shows the last run's time, counts, and error once `publication_scan_runs` exists.
 
 **What this cannot do**: get behind Clemson library's paywalled journal subscriptions. It searches public web sources only, titles, abstracts, press releases, and anything already publicly indexed. That is a known, stated limitation, not an oversight, closing it would require a specific integration with Clemson's own library systems that does not exist here.
 
