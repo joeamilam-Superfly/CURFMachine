@@ -104,6 +104,7 @@
 
   /* dashboard cards */
   .stat-row{ display:grid; grid-template-columns: repeat(4, 1fr); gap:14px; margin-bottom: 26px; }
+  .stat-row.cols-5{ grid-template-columns: repeat(5, 1fr); }
   .stat-card{
     background:#fff; border:1px solid var(--line); border-radius: var(--radius);
     padding: 16px 18px; box-shadow: var(--shadow);
@@ -219,12 +220,22 @@
 
   @media (max-width: 900px){
     .app{ flex-direction:column; }
-    .sidebar{ width:100%; height:auto; position:relative; flex-direction:row; overflow-x:auto; }
-    .sidebar-brand, .sidebar-foot{ display:none; }
-    .nav{ display:flex; padding:8px; }
-    .main{ padding: 20px; }
-    .stat-row{ grid-template-columns: repeat(2,1fr); }
+    .sidebar{ width:100%; height:auto; position:relative; flex-direction:column; overflow:visible; }
+    .sidebar-brand{ display:flex; align-items:center; gap:10px; padding:12px 14px; }
+    .sidebar-brand .seal{ margin-bottom:0; flex-shrink:0; }
+    .sidebar-foot{ display:none; }
+    .nav{ display:flex; flex-wrap:nowrap; gap:4px; padding:8px 10px 12px; overflow-x:auto; -webkit-overflow-scrolling:touch; }
+    .nav-item{ width:auto; flex:0 0 auto; white-space:nowrap; }
+    .main{ padding: 16px; }
+    .stat-row, .stat-row.cols-5{ grid-template-columns: repeat(2, 1fr); }
     .intake-grid{ grid-template-columns: 1fr; }
+    .page-head h1{ font-size: 22px; }
+    .stamp{ transform: none; }
+    .panel, .panel-body{ max-width:100%; }
+    .panel-body{ overflow-x:auto; -webkit-overflow-scrolling:touch; }
+    table.docket{ min-width: 640px; }
+    .trl-scale{ overflow-x:auto; }
+    .trl-cell{ min-width: 28px; flex: 0 0 28px; }
   }
 </style>
 </head>
@@ -257,6 +268,7 @@
     <div id="security-banner" style="background:#F7E7E2; border:1px solid #E0B4A6; color:#9C3B2E; padding:12px 16px; border-radius:3px; font-size:12.5px; margin-bottom:20px; max-width:1120px;">
       <strong>Handle with care.</strong> This app is deployed with a backend proxy and does not expose an API key to the browser, but that alone is not clearance to submit real, unpublished Clemson disclosures. Two live requirements still apply: a Zero Data Retention arrangement should be confirmed on the Anthropic account this uses (see SECURITY-AND-PRIVACY.md), and, now that AI evaluation uses live web search to identify acquirer targets, the search queries built from a patent's title and abstract are sent to public web search infrastructure, not just to Anthropic's model. That is a non issue for already published patents, but it means a pending, unfiled disclosure must never be run through evaluation, doing so would push its confidential content out to a public search engine.
     </div>
+    <div id="remote-save-status" style="display:none; background:#FBF0DA; border:1px solid #E4C990; color:#6B4E0E; padding:12px 16px; border-radius:3px; font-size:12.5px; margin-bottom:20px; max-width:1120px;"></div>
 
     <!-- DASHBOARD -->
     <div class="view active" id="view-dashboard">
@@ -271,7 +283,7 @@
         </div>
       </div>
 
-      <div class="stat-row" style="grid-template-columns: repeat(5, 1fr);">
+      <div class="stat-row cols-5">
         <div class="stat-card"><div class="label">Patents on docket</div><div class="value" id="stat-total">0</div><div class="sub">active, not archived</div></div>
         <div class="stat-card"><div class="label">License candidates</div><div class="value" id="stat-license">0</div><div class="sub">demand fits a corporate</div></div>
         <div class="stat-card"><div class="label">Venture candidates</div><div class="value" id="stat-venture">0</div><div class="sub">demand fits a new market</div></div>
@@ -296,7 +308,7 @@
         <div>
           <div class="eyebrow">Known Clemson assigned patents, snapshot dated August 29, 2026</div>
           <h1>Clemson Patent Registry</h1>
-          <p>Patents and published applications where Clemson University (or a co-assignee alongside Clemson) is the assignee of record, most recent first. Loaded below by default is a manually pulled snapshot, real, verified, individually sourced patents, not a live feed. A live pull from Google Patents Public Data is also available as a secondary option once Google Cloud credentials are configured. Once a patent has been added to the docket and evaluated, it drops off this list automatically, so working through the backlog over time never re-evaluates or re-bills the same patent twice. This is remembered in this browser only, not shared across devices.</p>
+          <p>Patents and published applications where Clemson University (or a co-assignee alongside Clemson) is the assignee of record, most recent first. Loaded below by default is a manually pulled snapshot, real, verified, individually sourced patents, not a live feed. A live pull from Google Patents Public Data is also available as a secondary option once Google Cloud credentials are configured. Once a patent has been added to the docket and evaluated, it drops off this list automatically, so working through the backlog over time never re-evaluates or re-bills the same patent twice. That memory stays in this browser, and is shared with other browsers when Supabase is configured.</p>
         </div>
         <div>
           <button class="btn" id="btn-load-known-registry">Load known Clemson patents</button>
@@ -321,7 +333,7 @@
           </table>
           <div class="empty" id="registry-empty">
             <h3>No results yet</h3>
-            <p>Click "Load known Clemson patents" above for the real, verified snapshot, no API key needed. A live PatentsView attempt is also available further down once this loads.</p>
+            <p>Click "Load known Clemson patents" above for the real, verified snapshot, no API key needed. A live Google Patents pull is also available further down once this loads.</p>
           </div>
           <div id="registry-pagination" style="display:none; padding:14px 16px; border-top:1px solid var(--line); align-items:center; justify-content:space-between;">
             <span id="registry-pagination-label" style="font-size:12.5px; color:var(--slate);"></span>
@@ -336,8 +348,8 @@
       <div class="panel" style="margin-top:20px;">
         <div class="panel-head"><h3>Optional: try a live USPTO pull instead</h3></div>
         <div class="panel-body">
-          <p style="font-size:13px; color:var(--slate); margin-bottom:12px;">Requires the app's backend proxy to be deployed and a PATENTSVIEW_API_KEY configured for a USPTO Open Data Portal account. Will not work from this in chat preview, and may not work at all until that account and key are set up.</p>
-          <button class="btn secondary" id="btn-fetch-registry">Try live fetch from USPTO</button>
+          <p style="font-size:13px; color:var(--slate); margin-bottom:12px;">Requires the deployed backend proxy and Google Cloud credentials (GCP_PROJECT_ID and GCP_SERVICE_ACCOUNT_KEY_BASE64). This queries Google Patents Public Data on BigQuery, not the USPTO PatentsView API. It will not work from a local file preview, since there is no server here to hold those credentials.</p>
+          <button class="btn secondary" id="btn-fetch-registry">Try live fetch from Google Patents</button>
         </div>
       </div>
     </div>
@@ -620,8 +632,8 @@
         <div class="panel-head"><h3>Where the Clemson Registry data comes from, and its limits</h3></div>
         <div class="panel-body">
           <div class="bp-item">
-            <div class="who">USPTO PatentsView, not a Google Patents scraper</div>
-            <div class="what">The Clemson Registry tab queries the official USPTO PatentsView API for patents where Clemson University or the Clemson University Research Foundation is the assignee of record, sorted by grant date. Google Patents has no public bulk query API suited to this, and scraping it at volume sits outside Google's terms of service, so PatentsView, the government run equivalent built from the same underlying grant data, is the sanctioned path.</div>
+            <div class="who">Google Patents Public Data on BigQuery, not a Google Patents scraper</div>
+            <div class="what">The live Clemson Registry pull queries Google's patents-public-data.patents.publications table for US records whose assignee name contains Clemson, most recent first. The default list on this tab is a manually checked snapshot and does not need that query. Google Patents has no public bulk query API suited to this, and scraping it at volume sits outside Google's terms of service, so the published BigQuery dataset is the path this app actually uses.</div>
           </div>
           <div class="bp-item">
             <div class="who">What it cannot do</div>
@@ -645,7 +657,9 @@
   let patents = [];      // {id, title, dept, text, status, evaluation, error}
   let queue = [];        // patents waiting to be evaluated
   let nextId = 1;
-  let registryResults = []; // real patents fetched from the live source or the known snapshot, filtered to hide already evaluated ones
+  let registryResults = []; // the filtered page source, after hiding already evaluated patents
+  let registryAll = []; // the unfiltered list for the current registry source (snapshot or live pull)
+  let registryStatusBase = '';
   let registryPage = 0;
   const REGISTRY_PAGE_SIZE = 20;
   let hiddenAlreadyEvaluatedCount = 0;
@@ -675,6 +689,40 @@
   const PATENT_RECORDS_KEY = 'curf_docket_patent_records';
   let evaluatedPatentIds = new Set();
   let localStorageAvailable = true;
+  let openCaseId = null;
+  const evaluationInFlight = new Set();
+
+  // Snapshot numbers are bare ("12602036", "PP36741"). Live BigQuery
+  // ids look like "US-12602036-B2". Treat those as the same patent so
+  // an evaluation from either list hides the other.
+  function normalizePatentKey(id){
+    if(!id) return '';
+    let s = String(id).replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+    if(s.startsWith('us')) s = s.slice(2);
+    // Kind codes are a short suffix (B2, A1, P2), not the digits of the
+    // patent number itself. Plant patents such as PP36741 must keep
+    // their letter prefix.
+    const stripped = s.replace(/[abpseh]\d?$/, '');
+    if(stripped !== s && /\d/.test(stripped)) s = stripped;
+    return s;
+  }
+
+  function isPatentEvaluated(id){
+    if(!id) return false;
+    if(evaluatedPatentIds.has(id)) return true;
+    const key = normalizePatentKey(id);
+    if(!key) return false;
+    for(const stored of evaluatedPatentIds){
+      if(normalizePatentKey(stored) === key) return true;
+    }
+    return false;
+  }
+
+  function docketHasPatent(id){
+    const key = normalizePatentKey(id);
+    if(!key) return false;
+    return patents.some(p => p.sourcePatentId && normalizePatentKey(p.sourcePatentId) === key);
+  }
 
   function loadEvaluatedIdsFromStorage(){
     try{
@@ -710,6 +758,7 @@
       evaluation: p.evaluation,
       error: p.error,
       sourcePatentId: p.sourcePatentId || null,
+      remoteKey: p.remoteKey || null,
       staffInput: p.staffInput || null,
       archived: !!p.archived,
       patentabilityScreen: p.patentabilityScreen || null
@@ -740,20 +789,45 @@
     }
   }
 
-  // Called once an evaluation actually completes. Records the id as
-  // evaluated (so it drops off the registry), and persists the full
-  // record locally always, and to Supabase when the patent has a real,
-  // stable patent number to key it by. Manually pasted or sample
-  // patents have no such number and so cannot be matched across a
-  // different browser or device, they still persist fully in
-  // localStorage on this one.
+  // Every completed case is saved locally and sent to Supabase.
+  // Registry patents keep their patent number as the key. Intake and
+  // sample cases get a stable remoteKey so a later save updates the
+  // same row instead of being skipped, which is what used to happen.
+  function remotePatentId(p){
+    if(p.sourcePatentId) return String(p.sourcePatentId);
+    if(!p.remoteKey){
+      p.remoteKey = 'docket-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
+    }
+    return p.remoteKey;
+  }
+
+  function sameRemoteRecord(p, patentId){
+    if(!patentId) return false;
+    return p.sourcePatentId === patentId || p.remoteKey === patentId;
+  }
+
+  function noteRemoteSaveFailure(message){
+    const el = document.getElementById('remote-save-status');
+    if(!el) return;
+    el.style.display = 'block';
+    el.textContent = 'Saved in this browser only. Shared save failed: ' + message;
+  }
+
+  function clearRemoteSaveFailure(){
+    const el = document.getElementById('remote-save-status');
+    if(!el) return;
+    el.style.display = 'none';
+    el.textContent = '';
+  }
+
   function markPatentEvaluatedAndPersist(p){
+    remotePatentId(p);
     if(p.sourcePatentId){
       evaluatedPatentIds.add(p.sourcePatentId);
       saveEvaluatedIdsToStorage();
     }
     savePatentRecordsToStorage();
-    if(p.sourcePatentId) pushPatentRecordToRemote(p);
+    pushPatentRecordToRemote(p);
   }
 
   // Archiving is reversible by design: it never deletes anything or
@@ -767,8 +841,9 @@
     const p = patents.find(x => x.id === patentId);
     if(!p) return;
     p.archived = !p.archived;
+    remotePatentId(p);
     savePatentRecordsToStorage();
-    if(p.sourcePatentId) pushPatentRecordToRemote(p);
+    pushPatentRecordToRemote(p);
     renderAll();
   }
 
@@ -780,16 +855,23 @@
   // deliberately fire-and-forget: a failed sync here should never block
   // or interrupt the evaluation flow itself.
   async function pushPatentRecordToRemote(p){
+    const patentId = remotePatentId(p);
     try{
-      await fetch('/api/evaluated-patents', {
+      const res = await fetch('/api/evaluated-patents', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ patent_id: p.sourcePatentId, record: serializePatentForStorage(p) })
+        body: JSON.stringify({ patent_id: patentId, record: serializePatentForStorage(p) })
       });
+      const data = await res.json().catch(() => ({}));
+      if(!res.ok || (data && data.error)){
+        noteRemoteSaveFailure((data && data.error) || ('Shared save failed (' + res.status + ').'));
+        return;
+      }
+      clearRemoteSaveFailure();
     }catch(err){
-      // Silently ignored on purpose, see comment above. localStorage
-      // already has this patent's full record regardless of whether
-      // the remote sync succeeded.
+      // localStorage already has the record. The banner says the
+      // shared copy did not update, instead of failing the evaluation.
+      noteRemoteSaveFailure(err.message || 'Could not reach the shared save endpoint.');
     }
   }
 
@@ -799,6 +881,10 @@
       if(!res.ok) return;
       const data = await res.json();
       if(!data.configured) return; // Supabase not set up, nothing to merge
+      if(data.error){
+        noteRemoteSaveFailure(data.error);
+        return;
+      }
 
       const remoteIds = Array.isArray(data.patent_ids) ? data.patent_ids : [];
       let idsChanged = false;
@@ -816,7 +902,7 @@
       let patentsChanged = false;
       remoteRecords.forEach(r => {
         if(!r.record) return;
-        const alreadyLocal = patents.some(p => p.sourcePatentId === r.patent_id);
+        const alreadyLocal = patents.some(p => sameRemoteRecord(p, r.patent_id));
         if(!alreadyLocal){
           patents.push({ ...r.record, id: nextId++ });
           patentsChanged = true;
@@ -826,11 +912,27 @@
 
       if(idsChanged || patentsChanged){
         renderAll();
-        if(registryResults.length){
-          registryResults = applyEvaluatedFilter(registryResults);
+        if(registryAll.length){
+          registryResults = applyEvaluatedFilter(registryAll);
           renderRegistry();
         }
       }
+
+      // Evaluations that completed in this browser while shared save
+      // was failing are still in localStorage. Once the server accepts
+      // writes, opening the app uploads those missing rows.
+      const known = new Set(remoteIds);
+      let backfill = false;
+      patents.forEach(p => {
+        if(p.status !== 'evaluated' || !p.evaluation) return;
+        const id = remotePatentId(p);
+        if(!known.has(id)){
+          known.add(id);
+          backfill = true;
+          pushPatentRecordToRemote(p);
+        }
+      });
+      if(backfill) savePatentRecordsToStorage();
     }catch(err){
       // No backend proxy yet, or offline, fall back to localStorage only.
     }
@@ -869,9 +971,10 @@
   // Pulled directly from patents.justia.com's public, maintained index of
   // patents assigned to Clemson University, most recent first, on
   // August 29, 2026. This is a manually refreshed snapshot, not a live
-  // feed, since the live USPTO API path requires an account and key this
-  // deployment doesn't yet have configured. Ask for this list to be
-  // regenerated periodically rather than treating it as always current.
+  // feed. The live pull is the BigQuery function behind "Try live fetch
+  // from Google Patents", which needs GCP_PROJECT_ID and
+  // GCP_SERVICE_ACCOUNT_KEY_BASE64. Ask for this list to be regenerated
+  // periodically rather than treating it as always current.
   // Every entry below is a real, verifiable patent or published
   // application, not sample or placeholder data.
   const KNOWN_CLEMSON_PATENTS = [
@@ -902,13 +1005,13 @@
       hiddenAlreadyEvaluatedCount = 0;
       return allResults;
     }
-    const visible = allResults.filter(p => !evaluatedPatentIds.has(p.patent_id));
+    const visible = allResults.filter(p => !isPatentEvaluated(p.patent_id));
     hiddenAlreadyEvaluatedCount = allResults.length - visible.length;
     return visible;
   }
 
   function loadKnownRegistry(){
-    const all = KNOWN_CLEMSON_PATENTS.map(p => ({
+    registryAll = KNOWN_CLEMSON_PATENTS.map(p => ({
       patent_id: p.number,
       title: p.title,
       date: p.date,
@@ -918,8 +1021,15 @@
       record_type: p.type,
       google_patents_url: "https://patents.justia.com/patent/" + p.number
     })).sort((a,b)=> (a.date < b.date ? 1 : -1));
-    registryResults = applyEvaluatedFilter(all);
+    registryResults = applyEvaluatedFilter(registryAll);
     registryPage = 0;
+  }
+
+  function refilterRegistry(){
+    registryResults = applyEvaluatedFilter(registryAll);
+    registryPage = 0;
+    renderRegistryStatus(registryStatusBase);
+    renderRegistry();
   }
 
   const SAMPLE_PATENTS = [
@@ -959,6 +1069,7 @@
       b.classList.toggle('active', b.dataset.view === name);
     });
     window.scrollTo(0,0);
+    if(name !== 'casefile') openCaseId = null;
     if(name === 'pubwatch') loadPublicationWatch();
   }
   document.querySelectorAll('[data-view]').forEach(el=>{
@@ -970,7 +1081,9 @@
 
   // ---------- sample data ----------
   document.getElementById('btn-load-sample').addEventListener('click', ()=>{
+    let added = 0;
     SAMPLE_PATENTS.forEach(sp=>{
+      if(patents.some(p => p.title === sp.title)) return;
       patents.push({
         id: nextId++,
         title: sp.title,
@@ -980,7 +1093,14 @@
         evaluation: null,
         error: null
       });
+      added++;
     });
+    const btn = document.getElementById('btn-load-sample');
+    if(added === 0){
+      btn.textContent = 'Sample portfolio already loaded';
+      btn.disabled = true;
+      return;
+    }
     renderAll();
     evaluateAllPending();
   });
@@ -997,6 +1117,7 @@
   });
 
   function renderRegistryStatus(baseMessage){
+    registryStatusBase = baseMessage;
     const statusEl = document.getElementById('registry-status');
     let html = escapeHtml(baseMessage);
     if(hiddenAlreadyEvaluatedCount > 0 && !showAlreadyEvaluated){
@@ -1006,9 +1127,9 @@
     }
     statusEl.innerHTML = html;
     const showBtn = document.getElementById('btn-show-evaluated');
-    if(showBtn) showBtn.addEventListener('click', ()=>{ showAlreadyEvaluated = true; loadKnownRegistry(); renderRegistryStatus('Loaded ' + KNOWN_CLEMSON_PATENTS.length + ' known Clemson assigned patents.'); renderRegistry(); });
+    if(showBtn) showBtn.addEventListener('click', ()=>{ showAlreadyEvaluated = true; refilterRegistry(); });
     const hideBtn = document.getElementById('btn-hide-evaluated');
-    if(hideBtn) hideBtn.addEventListener('click', ()=>{ showAlreadyEvaluated = false; loadKnownRegistry(); renderRegistryStatus('Loaded ' + KNOWN_CLEMSON_PATENTS.length + ' known Clemson assigned patents.'); renderRegistry(); });
+    if(hideBtn) hideBtn.addEventListener('click', ()=>{ showAlreadyEvaluated = false; refilterRegistry(); });
   }
 
   async function fetchClemsonRegistry(){
@@ -1022,13 +1143,15 @@
         throw new Error(body.error || ('Request failed with status ' + res.status));
       }
       const data = await res.json();
-      const all = data.patents || [];
-      registryResults = applyEvaluatedFilter(all);
+      registryAll = data.patents || [];
+      registryResults = applyEvaluatedFilter(registryAll);
       registryPage = 0;
-      renderRegistryStatus('Loaded ' + all.length + ' patents, most recent first.');
+      renderRegistryStatus('Loaded ' + registryAll.length + ' patents from Google Patents Public Data, most recent first.');
       renderRegistry();
     }catch(err){
+      registryAll = [];
       registryResults = [];
+      hiddenAlreadyEvaluatedCount = 0;
       registryPage = 0;
       document.getElementById('registry-status').innerHTML = '<span style="color:var(--red);">Could not load the registry: ' + escapeHtml(err.message) + '.</span> This feature requires the app to be deployed with its backend proxy (see DEPLOYMENT.md) and Google Cloud credentials set. It will not work from this in chat preview, since there is no server here to hold those credentials.';
       renderRegistry();
@@ -1045,10 +1168,10 @@
       emptyEl.style.display = 'block';
       paginationEl.style.display = 'none';
       emptyEl.innerHTML = hiddenAlreadyEvaluatedCount > 0
-        ? '<h3>All caught up</h3><p>Every known patent has already been evaluated. ' + hiddenAlreadyEvaluatedCount + ' hidden. <button class="btn secondary small" id="btn-show-evaluated-empty">Show them anyway</button></p>'
+        ? '<h3>All caught up</h3><p>Every patent in this list has already been evaluated. ' + hiddenAlreadyEvaluatedCount + ' hidden. <button class="btn secondary small" id="btn-show-evaluated-empty">Show them anyway</button></p>'
         : '<h3>No results yet</h3><p>Click "Load known Clemson patents" above for the real, verified snapshot, no API key needed. A live pull is also available further down once this loads.</p>';
       const showBtnEmpty = document.getElementById('btn-show-evaluated-empty');
-      if(showBtnEmpty) showBtnEmpty.addEventListener('click', ()=>{ showAlreadyEvaluated = true; loadKnownRegistry(); renderRegistryStatus('Loaded ' + KNOWN_CLEMSON_PATENTS.length + ' known Clemson assigned patents.'); renderRegistry(); });
+      if(showBtnEmpty) showBtnEmpty.addEventListener('click', ()=>{ showAlreadyEvaluated = true; refilterRegistry(); });
       return;
     }
     emptyEl.style.display = 'none';
@@ -1067,7 +1190,7 @@
       const sector = guessSector(p.title, p.abstract);
       const inventorsStr = (p.inventors || []).join(', ') || 'Not listed';
       const typeLabel = p.record_type ? (' <span class="tag ' + (p.record_type === 'Grant' ? 'license' : 'pending') + '" style="margin-left:6px;">' + escapeHtml(p.record_type) + '</span>') : '';
-      const evaluatedLabel = evaluatedPatentIds.has(p.patent_id) ? ' <span class="tag mature">Already evaluated</span>' : '';
+      const evaluatedLabel = isPatentEvaluated(p.patent_id) ? ' <span class="tag mature">Already evaluated</span>' : '';
       const citationLabel = (typeof p.backward_citation_count === 'number') ? (' <span class="key-badge" title="Backward citations: prior art this patent cites">' + p.backward_citation_count + ' citations</span>') : '';
       const link = p.google_patents_url ? '<a href="' + escapeHtml(p.google_patents_url) + '" target="_blank" rel="noopener">' + escapeHtml(p.patent_id) + '</a>' : escapeHtml(p.patent_id || '');
       return '<tr>' +
@@ -1082,6 +1205,11 @@
       btn.addEventListener('click', ()=>{
         const p = registryResults[parseInt(btn.dataset.importRegistry)];
         if(!p) return;
+        if(docketHasPatent(p.patent_id) || isPatentEvaluated(p.patent_id)){
+          btn.textContent = 'Already on the docket';
+          btn.disabled = true;
+          return;
+        }
         const citationNote = (typeof p.backward_citation_count === 'number') ? ('\nBackward citations (prior art cited by this patent): ' + p.backward_citation_count) : '';
         patents.push({
           id: nextId++,
@@ -1125,8 +1253,8 @@
 
   document.getElementById('btn-pick-files').addEventListener('click', ()=> document.getElementById('file-input').click());
   document.getElementById('btn-pick-folder').addEventListener('click', ()=> document.getElementById('folder-input').click());
-  document.getElementById('file-input').addEventListener('change', (e)=> handleFiles(e.target.files));
-  document.getElementById('folder-input').addEventListener('change', (e)=> handleFiles(e.target.files));
+  document.getElementById('file-input').addEventListener('change', (e)=>{ handleFiles(e.target.files); e.target.value = ''; });
+  document.getElementById('folder-input').addEventListener('change', (e)=>{ handleFiles(e.target.files); e.target.value = ''; });
 
   const dropZone = document.getElementById('drop-zone');
   ['dragover','dragenter'].forEach(evt => dropZone.addEventListener(evt, (e)=>{ e.preventDefault(); dropZone.classList.add('drag'); }));
@@ -1134,7 +1262,11 @@
   dropZone.addEventListener('drop', (e)=>{ handleFiles(e.dataTransfer.files); });
 
   async function handleFiles(fileListRaw){
-    const files = Array.from(fileListRaw).filter(f => /\.(txt|pdf)$/i.test(f.name));
+    const all = Array.from(fileListRaw);
+    const files = all.filter(f => /\.(txt|pdf)$/i.test(f.name));
+    all.filter(f => !/\.(txt|pdf)$/i.test(f.name)).forEach(f=>{
+      pendingFiles.push({ name: f.name, text: '', extractError: 'Use a .txt or .pdf file. Word files need to be exported first.' });
+    });
     for(const file of files){
       let text = '';
       let extractError = null;
@@ -1213,11 +1345,17 @@
 
   // ---------- AI evaluation ----------
   async function evaluateAllPending(){
-    const toRun = patents.filter(p => p.status === 'pending' || p.status === 'error');
+    // Failed patents stay failed until someone explicitly retries from
+    // the case file. Picking them up here re-billed every previous
+    // failure whenever a new disclosure was added.
+    const toRun = patents.filter(p => p.status === 'pending' && !evaluationInFlight.has(p.id));
     if(toRun.length === 0) return;
     for(const p of toRun){
+      if(evaluationInFlight.has(p.id) || p.status !== 'pending') continue;
+      evaluationInFlight.add(p.id);
       p.status = 'evaluating';
       renderAll();
+      refreshOpenCaseIfShowing(p.id);
       try{
         const result = await callEvaluationAPI(p);
         p.evaluation = result;
@@ -1234,17 +1372,33 @@
         p.evaluation.evaluated_at = new Date().toISOString();
         p.evaluation.value_score_snapshot = computeValueScore(p);
         markPatentEvaluatedAndPersist(p);
-        if(p.sourcePatentId && registryResults.length){
-          registryResults = registryResults.filter(r => r.patent_id !== p.sourcePatentId);
+        if(p.sourcePatentId && registryAll.length){
+          registryResults = applyEvaluatedFilter(registryAll);
           renderRegistry();
         }
       }catch(err){
         p.status = 'error';
         p.error = err.message || 'Evaluation failed';
         savePatentRecordsToStorage();
+      }finally{
+        evaluationInFlight.delete(p.id);
       }
       renderAll();
+      refreshOpenCaseIfShowing(p.id);
     }
+  }
+
+  function refreshOpenCaseIfShowing(patentId){
+    const view = document.getElementById('view-casefile');
+    if(openCaseId === patentId && view && view.classList.contains('active')){
+      openCaseFile(patentId);
+    }
+  }
+
+  function readApiError(errBody, status){
+    if(errBody && typeof errBody.error === 'string' && errBody.error) return errBody.error;
+    if(errBody && errBody.error && typeof errBody.error.message === 'string') return errBody.error.message;
+    return 'API request failed with status ' + status;
   }
 
   // ---------- backend proxy configuration ----------
@@ -1295,7 +1449,7 @@
 
     if(!response.ok){
       const errBody = await response.json().catch(()=>({}));
-      throw new Error(errBody.error && errBody.error.message ? errBody.error.message : ('API request failed with status ' + response.status));
+      throw new Error(readApiError(errBody, response.status));
     }
     const data = await response.json();
     if(data.stop_reason === 'max_tokens'){
@@ -1464,7 +1618,10 @@
     let riskPoints = 1; // neutral default when no risk factors were returned at all
     if(risks.length){
       const levelPoints = { low: 2, medium: 1, high: 0 };
-      const sum = risks.reduce((s, r) => s + (levelPoints[r.level] !== undefined ? levelPoints[r.level] : 1), 0);
+      const sum = risks.reduce((s, r) => {
+        const level = String(r.level || '').toLowerCase();
+        return s + (levelPoints[level] !== undefined ? levelPoints[level] : 1);
+      }, 0);
       riskPoints = Math.round((sum / risks.length) * 10) / 10;
     }
     breakdown.push({ label: 'Adoption risk, lower risk scores higher', points: riskPoints, max: 2 });
@@ -1592,7 +1749,7 @@
 
       if(!response.ok){
         const errBody = await response.json().catch(()=>({}));
-        throw new Error(errBody.error && errBody.error.message ? errBody.error.message : ('Request failed with status ' + response.status));
+        throw new Error(readApiError(errBody, response.status));
       }
       const data = await response.json();
       if(data.stop_reason === 'max_tokens'){
@@ -1668,6 +1825,13 @@
   // same behavior, not a separate code path to maintain.
 
   function addKnownPatentAndEvaluate(knownPatent, buttonEl){
+    if(docketHasPatent(knownPatent.number) || isPatentEvaluated(knownPatent.number)){
+      if(buttonEl){
+        buttonEl.textContent = 'Already on the docket';
+        buttonEl.disabled = true;
+      }
+      return;
+    }
     patents.push({
       id: nextId++,
       title: knownPatent.title,
@@ -1687,12 +1851,12 @@
   }
 
   function renderKnownPatentMatch(container, p){
-    const alreadyDone = evaluatedPatentIds.has(p.number);
+    const alreadyDone = isPatentEvaluated(p.number) || docketHasPatent(p.number);
     const typeLabel = ' <span class="tag ' + (p.type === 'Grant' ? 'license' : 'pending') + '" style="margin-left:6px;">' + escapeHtml(p.type) + '</span>';
-    const doneLabel = alreadyDone ? ' <span class="tag mature">Already evaluated</span>' : '';
+    const doneLabel = alreadyDone ? ' <span class="tag mature">' + (isPatentEvaluated(p.number) ? 'Already evaluated' : 'Already on the docket') + '</span>' : '';
     const link = 'https://patents.justia.com/patent/' + encodeURIComponent(p.number);
     const btnHtml = alreadyDone
-      ? '<button class="btn secondary small" disabled>Already evaluated</button>'
+      ? '<button class="btn secondary small" disabled>' + (isPatentEvaluated(p.number) ? 'Already evaluated' : 'Already on the docket') + '</button>'
       : '<button class="btn secondary small" data-eval-known="' + escapeHtml(p.number) + '">Run evaluation</button>';
     const el = document.createElement('div');
     el.className = 'archetype';
@@ -1764,6 +1928,8 @@
       const res = await fetch('/api/run-publication-scan');
       const data = await res.json();
       if(!data.configured){
+        statusPanel.style.display = 'block';
+        statusEl.textContent = 'Shared storage is not configured, so findings cannot be loaded or saved. Set SUPABASE_URL and SUPABASE_SERVICE_KEY, then run supabase-setup.sql.';
         renderPublicationWatchList([]);
         return;
       }
@@ -1817,6 +1983,14 @@
     try{
       const res = await fetch('/api/run-publication-scan');
       const data = await res.json();
+      if(data && data.configured === false){
+        statusEl.textContent = 'The scan cannot store results until SUPABASE_URL and SUPABASE_SERVICE_KEY are set.';
+        return;
+      }
+      if(data && data.error){
+        statusEl.textContent = data.error;
+        return;
+      }
       const currentCount = (data.findings || []).length;
       if(currentCount > countBefore){
         statusEl.textContent = 'New findings appeared.';
@@ -1867,6 +2041,7 @@
     if(p.status === 'pending') return '<span class="tag pending">Queued</span>';
     if(p.status === 'evaluating') return '<span class="tag pending"><span class="spinner" style="border-color: rgba(107,100,112,0.3); border-top-color: var(--slate);"></span>Evaluating</span>';
     if(p.status === 'error') return '<span class="tag error">Error</span>';
+    if(!p.evaluation) return '<span class="tag pending">Queued</span>';
     const path = p.evaluation.recommended_path;
     if(path === 'LICENSE') return '<span class="tag license">License candidate</span>';
     if(path === 'VENTURE') return '<span class="tag venture">Venture candidate</span>';
@@ -2011,7 +2186,7 @@
     });
     if(!response.ok){
       const errBody = await response.json().catch(()=>({}));
-      throw new Error(errBody.error && errBody.error.message ? errBody.error.message : ('Request failed with status ' + response.status));
+      throw new Error(readApiError(errBody, response.status));
     }
     const data = await response.json();
     if(data.stop_reason === 'max_tokens') throw new Error('The response was cut off before finishing (hit the token limit). Try again.');
@@ -2080,8 +2255,9 @@
       try{
         const result = await runPatentabilityScreen(p, feedback);
         p.patentabilityScreen = { ...result, run_at: new Date().toISOString(), staff_feedback_used: feedback || '' };
+        remotePatentId(p);
         savePatentRecordsToStorage();
-        if(p.sourcePatentId) pushPatentRecordToRemote(p);
+        pushPatentRecordToRemote(p);
         openCaseFile(patentId);
       }catch(err){
         if(statusEl) statusEl.innerHTML = '<span style="color:var(--red);">Failed: ' + escapeHtml(err.message || 'unknown error') + '</span>';
@@ -2146,8 +2322,9 @@
         try{
           const draft = await generateOutreachDraft(p, target, p.evaluation.marketing_abstract);
           target.outreach_draft = draft;
+          remotePatentId(p);
           savePatentRecordsToStorage();
-          if(p.sourcePatentId) pushPatentRecordToRemote(p);
+          pushPatentRecordToRemote(p);
           openCaseFile(p.id);
         }catch(err){
           if(container) container.innerHTML = '<p style="font-size:12px; color:var(--red); margin-top:6px;">Could not generate a draft: ' + escapeHtml(err.message || 'unknown error') + '</p>';
@@ -2185,6 +2362,7 @@
   function openCaseFile(id){
     const p = patents.find(x => x.id === id);
     if(!p) return;
+    openCaseId = id;
     const el = document.getElementById('casefile-body');
 
     if(p.status === 'pending'){
@@ -2200,7 +2378,7 @@
       return;
     }
     if(p.status === 'error'){
-      el.innerHTML = '<h2>' + escapeHtml(p.title) + '</h2>' + renderArchiveControl(p) + '<div class="caveat-box" style="background:var(--red-bg); border-color:#E0B4A6; color:var(--red);">Evaluation failed: ' + escapeHtml(p.error) + '. You can retry from the Dashboard or Intake screen.</div>' + renderStaffInputPanel(p);
+      el.innerHTML = '<h2>' + escapeHtml(p.title) + '</h2>' + renderArchiveControl(p) + '<div class="caveat-box" style="background:var(--red-bg); border-color:#E0B4A6; color:var(--red);">Evaluation failed: ' + escapeHtml(p.error) + '. Use "Save and retry evaluation" below to try again. Adding another disclosure will not retry this one.</div>' + renderStaffInputPanel(p);
       showView('casefile');
       attachStaffInputHandler();
       attachArchiveButtonHandler();
@@ -2225,7 +2403,8 @@
     const demandTagClass = demandColor[ev.market_demand_verdict] || 'pending';
 
     let risksHtml = (ev.adoption_risks || []).map(r=>{
-      return '<div class="risk-row"><span class="risk-dot ' + escapeHtml(r.level) + '"></span><span class="factor"><strong>' + escapeHtml(r.factor) + '</strong> — ' + escapeHtml(r.note) + '</span></div>';
+      const level = String(r.level || '').toLowerCase();
+      return '<div class="risk-row"><span class="risk-dot ' + escapeHtml(level) + '"></span><span class="factor"><strong>' + escapeHtml(r.factor) + '</strong> — ' + escapeHtml(r.note) + '</span></div>';
     }).join('') || '<p style="color:var(--slate); font-size:13px;">No adoption risk factors returned.</p>';
 
     let archetypesHtml = '';

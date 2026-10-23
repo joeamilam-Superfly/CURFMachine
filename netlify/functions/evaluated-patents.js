@@ -35,6 +35,33 @@
 
 const TABLE = "evaluated_patents";
 
+const WRONG_KEY_MESSAGE = "SUPABASE_SERVICE_KEY is not the service_role key. Reads then look empty and writes are rejected by row level security (Postgres 42501). In Supabase open Project Settings, API, and copy the service_role key, not the anon key, into that Netlify variable, then redeploy.";
+
+// The service_role JWT is the only key that bypasses RLS. The anon key
+// is a JWT whose role claim is "anon". A non-JWT secret (newer sb_secret
+// keys) returns null here and is left for the request itself to accept
+// or reject.
+function jwtRole(apiKey){
+  const parts = String(apiKey || "").split(".");
+  if (parts.length < 2) return null;
+  try {
+    const padded = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const json = JSON.parse(Buffer.from(padded, "base64").toString("utf8"));
+    return json && json.role ? String(json.role) : null;
+  } catch (err) {
+    return null;
+  }
+}
+
+function wrongKeyResponse(){
+  return new Response(JSON.stringify({
+    configured: true,
+    patent_ids: [],
+    records: [],
+    error: WRONG_KEY_MESSAGE
+  }), { status: 200, headers: { "Content-Type": "application/json" } });
+}
+
 function supabaseHeaders(apiKey){
   return {
     "apikey": apiKey,
@@ -54,6 +81,11 @@ export default async (req, context) => {
       status: 200,
       headers: { "Content-Type": "application/json" }
     });
+  }
+
+  const role = jwtRole(supabaseKey);
+  if (role && role !== "service_role") {
+    return wrongKeyResponse();
   }
 
   if (req.method === "GET") {
@@ -106,7 +138,12 @@ export default async (req, context) => {
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        return new Response(JSON.stringify({ configured: true, error: "Supabase rejected the write", detail: data }), {
+        const rlsRejected = data && (data.code === "42501" || (data.message && String(data.message).indexOf("row-level security") !== -1));
+        return new Response(JSON.stringify({
+          configured: true,
+          error: rlsRejected ? WRONG_KEY_MESSAGE : "Supabase rejected the write",
+          detail: data
+        }), {
           status: res.status, headers: { "Content-Type": "application/json" }
         });
       }
