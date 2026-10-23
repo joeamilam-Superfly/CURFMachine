@@ -269,6 +269,7 @@
       <strong>Handle with care.</strong> This app is deployed with a backend proxy and does not expose an API key to the browser, but that alone is not clearance to submit real, unpublished Clemson disclosures. Two live requirements still apply: a Zero Data Retention arrangement should be confirmed on the Anthropic account this uses (see SECURITY-AND-PRIVACY.md), and, now that AI evaluation uses live web search to identify acquirer targets, the search queries built from a patent's title and abstract are sent to public web search infrastructure, not just to Anthropic's model. That is a non issue for already published patents, but it means a pending, unfiled disclosure must never be run through evaluation, doing so would push its confidential content out to a public search engine.
     </div>
     <div id="remote-save-status" style="display:none; background:#FBF0DA; border:1px solid #E4C990; color:#6B4E0E; padding:12px 16px; border-radius:3px; font-size:12.5px; margin-bottom:20px; max-width:1120px;"></div>
+    <div id="eval-progress" style="display:none; background:#E4E9F7; border:1px solid #C5D0EA; color:#243056; padding:12px 16px; border-radius:3px; font-size:12.5px; margin-bottom:20px; max-width:1120px;"></div>
 
     <!-- DASHBOARD -->
     <div class="view active" id="view-dashboard">
@@ -296,7 +297,11 @@
         <div class="panel-body" id="dashboard-recent">
           <div class="empty">
             <h3>No patents on the docket yet</h3>
-            <p>Load the sample portfolio or go to Intake to submit real disclosures.</p>
+            <p>Start from the Clemson registry, submit a disclosure, or load the sample portfolio.</p>
+            <div style="margin-top:12px; display:flex; gap:8px; justify-content:center; flex-wrap:wrap;">
+              <button class="btn small" data-view="registry">Open the Clemson registry</button>
+              <button class="btn secondary small" data-view="intake">Submit a disclosure</button>
+            </div>
           </div>
         </div>
       </div>
@@ -308,10 +313,10 @@
         <div>
           <div class="eyebrow">Known Clemson assigned patents, snapshot dated August 29, 2026</div>
           <h1>Clemson Patent Registry</h1>
-          <p>Patents and published applications where Clemson University (or a co-assignee alongside Clemson) is the assignee of record, most recent first. Loaded below by default is a manually pulled snapshot, real, verified, individually sourced patents, not a live feed. A live pull from Google Patents Public Data is also available as a secondary option once Google Cloud credentials are configured. Once a patent has been added to the docket and evaluated, it drops off this list automatically, so working through the backlog over time never re-evaluates or re-bills the same patent twice. That memory stays in this browser, and is shared with other browsers when Supabase is configured.</p>
+          <p>Patents and published applications where Clemson University (or a co-assignee alongside Clemson) is the assignee of record, most recent first. Loaded below by default is a manually pulled snapshot, real, verified, individually sourced patents, not a live feed. Rank the list for a cheap licensing read before running a full evaluation. Patents whose technology lines up with completed South Carolina investment since 2023 sort higher. Once a patent has been added to the docket and evaluated, it drops off this list automatically, so working through the backlog over time never re-evaluates or re-bills the same patent twice.</p>
         </div>
         <div>
-          <button class="btn" id="btn-load-known-registry">Load known Clemson patents</button>
+          <button class="btn secondary" id="btn-load-known-registry">Reload known snapshot</button>
         </div>
       </div>
 
@@ -323,17 +328,55 @@
         <div class="panel-body" id="registry-status"></div>
       </div>
 
+      <div class="panel" id="registry-rank-panel">
+        <div class="panel-body">
+          <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end;">
+            <button class="btn" id="btn-rank-registry">Rank this list</button>
+            <div class="field" style="margin:0; min-width:140px;">
+              <label for="registry-tier-filter">Tier</label>
+              <select id="registry-tier-filter">
+                <option value="all">All tiers</option>
+                <option value="High">High</option>
+                <option value="Medium">Medium</option>
+                <option value="Low">Low</option>
+                <option value="Needs work">Needs work</option>
+                <option value="Unranked">Not ranked yet</option>
+              </select>
+            </div>
+            <div class="field" style="margin:0; min-width:180px;">
+              <label for="registry-align-filter">SC investment alignment</label>
+              <select id="registry-align-filter">
+                <option value="all">All technologies</option>
+                <option value="focus">Stated CURF focus only</option>
+                <option value="gte70">Score 70 or higher</option>
+                <option value="gte55">Score 55 or higher</option>
+                <option value="unmatched">Unmatched</option>
+              </select>
+            </div>
+            <div class="field" style="margin:0; min-width:160px;">
+              <label for="registry-sort">Sort</label>
+              <select id="registry-sort">
+                <option value="priority">Priority</option>
+                <option value="alignment">SC alignment</option>
+                <option value="date">Newest</option>
+              </select>
+            </div>
+          </div>
+          <p id="registry-rank-status" style="font-size:12.5px; color:var(--slate); margin:12px 0 0;">SC alignment is computed on this page from CPC codes and keywords, using South Carolina deal counts since 2023. Rank this list to add the model’s licensing tier. A full 300 is planned under $0.30 and usually finishes in 2 to 4 minutes. Patents already in the cache are skipped. Ranking is not a full evaluation.</p>
+        </div>
+      </div>
+
       <div class="panel">
         <div class="panel-body" style="padding:0;">
           <table class="docket">
             <thead>
-              <tr><th>Date</th><th>Title</th><th>Inventors</th><th>Sector (first pass)</th><th></th></tr>
+              <tr><th>Tier</th><th>Date</th><th>Title</th><th>SC alignment</th><th>Sector</th><th></th></tr>
             </thead>
             <tbody id="registry-body"></tbody>
           </table>
           <div class="empty" id="registry-empty">
-            <h3>No results yet</h3>
-            <p>Click "Load known Clemson patents" above for the real, verified snapshot, no API key needed. A live Google Patents pull is also available further down once this loads.</p>
+            <h3>No patents in this view</h3>
+            <p>The known snapshot loads with this page. If everything is hidden, show already evaluated patents, or run the live Google Patents pull below.</p>
           </div>
           <div id="registry-pagination" style="display:none; padding:14px 16px; border-top:1px solid var(--line); align-items:center; justify-content:space-between;">
             <span id="registry-pagination-label" style="font-size:12.5px; color:var(--slate);"></span>
@@ -346,9 +389,9 @@
       </div>
 
       <div class="panel" style="margin-top:20px;">
-        <div class="panel-head"><h3>Optional: try a live USPTO pull instead</h3></div>
+        <div class="panel-head"><h3>Live pull from Google Patents Public Data</h3></div>
         <div class="panel-body">
-          <p style="font-size:13px; color:var(--slate); margin-bottom:12px;">Requires the deployed backend proxy and Google Cloud credentials (GCP_PROJECT_ID and GCP_SERVICE_ACCOUNT_KEY_BASE64). This queries Google Patents Public Data on BigQuery, not the USPTO PatentsView API. It will not work from a local file preview, since there is no server here to hold those credentials.</p>
+          <p style="font-size:13px; color:var(--slate); margin-bottom:12px;">This is the 300-record Clemson list. It needs the deployed backend and Google Cloud credentials (GCP_PROJECT_ID and GCP_SERVICE_ACCOUNT_KEY_BASE64). The query uses Google Patents Public Data on BigQuery, not the USPTO PatentsView API. It will not work from a local file preview, since there is no server here to hold those credentials. After it loads, rank the list before running a full evaluation.</p>
           <button class="btn secondary" id="btn-fetch-registry">Try live fetch from Google Patents</button>
         </div>
       </div>
@@ -424,7 +467,7 @@
         <div>
           <div class="eyebrow">Step Two</div>
           <h1>Submit Patents</h1>
-          <p>Attach one disclosure at a time, or select a whole folder of files at once. Supported formats: plain text (.txt) and PDF. For Word files, save or export as PDF or text first.</p>
+          <p>Drop a .txt or PDF and it is added to the docket. One file starts evaluation immediately. More than three files asks before the deep evaluation runs, because each one uses the full model. For Word files, export to PDF or text first.</p>
         </div>
       </div>
 
@@ -470,7 +513,7 @@
           <div class="panel">
             <div class="panel-head"><h3>Queued for evaluation</h3></div>
             <div class="panel-body" id="queue-body">
-              <div class="empty" style="padding:24px 10px;">Nothing queued yet. Adding a file or pasted disclosure below evaluates it automatically.</div>
+              <div class="empty" style="padding:24px 10px;">Nothing in progress. Add a file or paste a disclosure and the case shows up here, with a status and an Open button.</div>
             </div>
           </div>
         </div>
@@ -483,7 +526,7 @@
         <div>
           <div class="eyebrow">Full Docket, best scoring first</div>
           <h1>Portfolio</h1>
-          <p>Sorted by value score, highest tier first, evaluated ahead of unevaluated. Click a row to open the full case file. Archiving a patent hides it here without deleting anything, it can be brought back at any time.</p>
+          <p>Sorted by value score, highest first. When two scores tie, the stronger South Carolina investment alignment comes first. Click a row to open the full case file. Archiving a patent hides it here without deleting anything, it can be brought back at any time.</p>
         </div>
       </div>
       <div id="portfolio-archive-status" style="margin-bottom:10px; font-size:12.5px; color:var(--slate);"></div>
@@ -491,13 +534,17 @@
         <div class="panel-body" style="padding:0;">
           <table class="docket">
             <thead>
-              <tr><th>Case</th><th>Title</th><th>Recommended path</th><th>TRL</th><th>Value</th><th>Confidence</th><th></th></tr>
+              <tr><th>Case</th><th>Title</th><th>Recommended path</th><th>TRL</th><th>Value</th><th>SC alignment</th><th>Confidence</th><th></th></tr>
             </thead>
             <tbody id="portfolio-body"></tbody>
           </table>
           <div class="empty" id="portfolio-empty">
             <h3>The docket is empty</h3>
-            <p>Go to Intake to submit patents, or load the sample portfolio from the Dashboard.</p>
+            <p>Open the registry to pick a Clemson patent, or submit a disclosure from Intake.</p>
+            <div style="margin-top:12px; display:flex; gap:8px; justify-content:center; flex-wrap:wrap;">
+              <button class="btn small" data-view="registry">Open the Clemson registry</button>
+              <button class="btn secondary small" data-view="intake">Submit a disclosure</button>
+            </div>
           </div>
         </div>
       </div>
@@ -515,7 +562,7 @@
         <div>
           <div class="eyebrow">Optional, public search only</div>
           <h1>Publication Watch</h1>
-          <p>Searches for new Clemson research publications using public web search only, titles, abstracts, press releases, anything already publicly indexed. This cannot get behind Clemson library's paywalled full text subscriptions, that would need a specific integration to Clemson's own library systems that does not exist here, so treat this as a partial, best effort signal, not comprehensive coverage.</p>
+          <p>Pulls recent public Clemson research from the Clemson news feed, PubMed, OpenAlex, and arXiv. The model only scores commercial relevance after those rows are saved. A scoring failure still leaves the items here. This cannot read paywalled full text.</p>
         </div>
         <div>
           <button class="btn" id="btn-run-pubwatch-scan">Run scan now</button>
@@ -523,7 +570,7 @@
       </div>
 
       <div class="caveat-box" style="margin-bottom:20px;">
-        Runs automatically once a week too, on a much tighter budget (scheduled functions get 30 seconds, versus the 15 minutes this button's background run gets), so the weekly automatic scan deliberately does a single, narrower search while this button does a fuller one. An email alert only goes out when a genuinely new finding scores HIGH for commercial relevance, and only if RESEND_API_KEY and CURF_ALERT_EMAIL are both configured, see DEPLOYMENT.md. Clicking the button starts the scan and checks back automatically for about a minute; an open-ended search like this can take longer, if nothing's shown yet, it's still running, just check back or click the button again later.
+        The same sources run on the weekly schedule. That run has 30 seconds, so it may save items as "Not scored" and leave scoring for the next button click. An email goes out only for a new HIGH score, and only when RESEND_API_KEY and CURF_ALERT_EMAIL are set. The status line under this note is the last scan's time, counts, and error. An empty list with no error is not the same thing as a failed save.
       </div>
 
       <div class="panel" id="pubwatch-status-panel" style="display:none;">
@@ -534,13 +581,13 @@
         <div class="panel-body" style="padding:0;">
           <table class="docket">
             <thead>
-              <tr><th>Found</th><th>Title</th><th>Relevance</th><th></th></tr>
+              <tr><th>Found</th><th>Title</th><th>Relevance</th><th>Source</th></tr>
             </thead>
             <tbody id="pubwatch-body"></tbody>
           </table>
           <div class="empty" id="pubwatch-empty">
-            <h3>No findings yet</h3>
-            <p>Click "Run scan now" to search once immediately, or wait for the weekly automatic run.</p>
+            <h3>No findings stored yet</h3>
+            <p>Run a scan, or read the status above. If it names the Supabase key, the scan cannot save until that key is the service_role key.</p>
           </div>
         </div>
       </div>
@@ -581,7 +628,11 @@
           </div>
           <div class="bp-item">
             <div class="who">The value score is computed, not guessed</div>
-            <div class="what">Every patent gets a letter tier (A through D) and a points total out of 13, built entirely from what the evaluation already produced: market demand verdict, technology readiness level, adoption risk, whether a real acquirer was confirmed via search rather than just a sector guess, and whether staff or the inventor confirmed real engagement. It is computed with a fixed formula, not asked of the AI, so the same inputs always produce the same score and every point is traceable back to something already on the page. It deliberately does not produce a dollar figure, there is no comparable licensing deal data or revenue projection behind one, so a specific number would be invented, not estimated. Backward citation counts and patent family IDs are shown for reference on live registry pulls but are not folded into this score, the direction that signal should point wasn't something this could confirm with confidence.</div>
+            <div class="what">Every patent gets a letter tier (A through D) and a points total out of 15. Thirteen points come from the evaluation itself: market demand verdict, technology readiness level, adoption risk, whether a real acquirer was confirmed via search rather than just a sector guess, and whether staff or the inventor confirmed real engagement. Up to two more points come from South Carolina investment alignment, described below. The letter thresholds stay at 10, 7, and 4, so alignment can raise a grade and cannot raise the bar for A. It is computed with a fixed formula, not asked of the AI, so the same inputs always produce the same score and every point is traceable back to something already on the page. It deliberately does not produce a licensing-value dollar figure. The dollar amount in the alignment note is PitchBook's reported median check size, not a sum of capital and not a valuation of the patent. Backward citation counts and patent family IDs are shown for reference on live registry pulls but are not folded into this score. Evaluations stored before this change keep the score they were given. Re-run one to include the alignment points.</div>
+          </div>
+          <div class="bp-item">
+            <div class="who">South Carolina investment alignment</div>
+            <div class="what">A separate reference table counts completed South Carolina deals from 2023 through 2026 year to date, by PitchBook industry group, with the focus-area labels already on that export. Software and IT, medical devices, life sciences, advanced materials, agriculture, and energy and grid are the stated focus areas. Each patent is mapped to one industry group from its CPC codes and from keywords in the title and abstract. When that local read is uncertain, the ranking model or the full evaluation may pick a group from the same closed list. The score is 0 to 100: deal volume on a log scale, the share of those deals in 2025 or 2026, and 40 points when the group is a stated focus. Seventy or higher adds two value-score points. Fifty-five or higher adds one. In the quick rank, 75 or higher can lift Low or Needs work to Medium, and 80 or higher can lift Medium to High, but only when an abstract is present and the estimated term has not run out. A High tier is never lowered because the match is weak. Investor names are not sent to the model. The registry can filter to a focus area, a score band, or an unmatched technology.</div>
           </div>
           <div class="bp-item">
             <div class="who">Evaluation runs as two calls, not one</div>
@@ -650,6 +701,7 @@
   </div>
 </div>
 
+<script src="sc-investment.js"></script>
 <script>
 (function(){
 
@@ -673,7 +725,7 @@
   // exactly what it showed originally, not a live recomputation under
   // whatever logic is current by then. See openCaseFile for where the
   // mismatch gets surfaced to the user rather than hidden.
-  const EVALUATION_SCHEMA_VERSION = 'v1';
+  const EVALUATION_SCHEMA_VERSION = 'v2';
 
   // ---------- full evaluation persistence ----------
   // Two layers, deliberately redundant. localStorage always works, no
@@ -691,6 +743,7 @@
   let localStorageAvailable = true;
   let openCaseId = null;
   const evaluationInFlight = new Set();
+  let evaluationBatch = null;
 
   // Snapshot numbers are bare ("12602036", "PP36741"). Live BigQuery
   // ids look like "US-12602036-B2". Treat those as the same patent so
@@ -761,7 +814,12 @@
       remoteKey: p.remoteKey || null,
       staffInput: p.staffInput || null,
       archived: !!p.archived,
-      patentabilityScreen: p.patentabilityScreen || null
+      patentabilityScreen: p.patentabilityScreen || null,
+      cpcCodes: p.cpcCodes || [],
+      filingDate: p.filingDate || null,
+      kindCode: p.kindCode || null,
+      publicationDate: p.publicationDate || null,
+      recordType: p.recordType || null
     };
   }
 
@@ -1019,6 +1077,9 @@
       assignees: p.assignees || ["Clemson University"],
       inventors: p.inventors,
       record_type: p.type,
+      cpc_codes: [],
+      filing_date: null,
+      kind_code: null,
       google_patents_url: "https://patents.justia.com/patent/" + p.number
     })).sort((a,b)=> (a.date < b.date ? 1 : -1));
     registryResults = applyEvaluatedFilter(registryAll);
@@ -1072,9 +1133,14 @@
     if(name !== 'casefile') openCaseId = null;
     if(name === 'pubwatch') loadPublicationWatch();
   }
-  document.querySelectorAll('[data-view]').forEach(el=>{
-    el.addEventListener('click', (e)=>{ e.preventDefault(); showView(el.dataset.view); });
-  });
+  function bindViewButtons(root){
+    (root || document).querySelectorAll('[data-view]').forEach(el=>{
+      if(el.dataset.viewBound === '1') return;
+      el.dataset.viewBound = '1';
+      el.addEventListener('click', (e)=>{ e.preventDefault(); showView(el.dataset.view); });
+    });
+  }
+  bindViewButtons(document);
   document.getElementById('back-to-portfolio').addEventListener('click', (e)=>{
     e.preventDefault(); showView('portfolio');
   });
@@ -1158,83 +1224,282 @@
     }
   }
 
+  const TIER_RANK = { High: 0, Medium: 1, Low: 2, "Needs work": 3, Unranked: 4 };
+  const TIER_TAG = { High: "license", Medium: "venture", Low: "mature", "Needs work": "error", Unranked: "pending" };
+  let triageById = new Map();
+  let triageError = "";
+  let registryTierFilter = "all";
+  let registryAlignFilter = "all";
+  let registrySort = "priority";
+  let rankInFlight = false;
+
+  function registryAlignment(p){
+    const cached = triageById.get(p.patent_id);
+    if(cached && cached.signals && cached.signals.sc_alignment) return cached.signals.sc_alignment;
+    if(cached && cached.sc_industry_group){
+      const focus = cached.sc_focus_area || "";
+      return {
+        industry_group: cached.sc_industry_group,
+        focus_area: focus || null,
+        is_focus: focus.indexOf("not a stated focus") === -1 && focus.length > 0,
+        alignment_score: Number(cached.sc_alignment_score) || 0,
+        short: cached.sc_alignment_note || "",
+        source: cached.sc_alignment_source || "cache"
+      };
+    }
+    if(!window.CURF_SC) return null;
+    return window.CURF_SC.scoreAlignment({
+      title: p.title,
+      text: p.abstract || "",
+      cpc_codes: p.cpc_codes || []
+    });
+  }
+
+  function registryTier(p){
+    const cached = triageById.get(p.patent_id);
+    return cached && cached.tier ? cached.tier : "Unranked";
+  }
+
+  function alignmentPassesFilter(align){
+    if(registryAlignFilter === "all") return true;
+    if(!align || !align.industry_group || align.industry_group === "Unmatched") return registryAlignFilter === "unmatched";
+    if(registryAlignFilter === "unmatched") return false;
+    if(registryAlignFilter === "focus") return !!align.is_focus;
+    if(registryAlignFilter === "gte70") return align.alignment_score >= 70;
+    if(registryAlignFilter === "gte55") return align.alignment_score >= 55;
+    return align.focus_area === registryAlignFilter;
+  }
+
+  function visibleRegistryRows(){
+    const rows = registryResults.filter(p => {
+      if(registryTierFilter !== "all" && registryTier(p) !== registryTierFilter) return false;
+      return alignmentPassesFilter(registryAlignment(p));
+    });
+    rows.sort((a, b) => {
+      if(registrySort === "date") return String(b.date || "").localeCompare(String(a.date || ""));
+      const alignA = registryAlignment(a);
+      const alignB = registryAlignment(b);
+      const scoreA = alignA ? alignA.alignment_score : 0;
+      const scoreB = alignB ? alignB.alignment_score : 0;
+      if(registrySort === "alignment"){
+        if(scoreB !== scoreA) return scoreB - scoreA;
+        return String(b.date || "").localeCompare(String(a.date || ""));
+      }
+      const tierDelta = (TIER_RANK[registryTier(a)] ?? 4) - (TIER_RANK[registryTier(b)] ?? 4);
+      if(tierDelta !== 0) return tierDelta;
+      if(scoreB !== scoreA) return scoreB - scoreA;
+      return String(b.date || "").localeCompare(String(a.date || ""));
+    });
+    return rows;
+  }
+
+  function alignmentCell(align){
+    if(!align || align.industry_group === "Unmatched") return '<span class="tag pending">Unmatched</span>';
+    const tag = align.is_focus ? "license" : "mature";
+    const title = align.short || align.note || "";
+    return '<span class="tag ' + tag + '" title="' + escapeHtml(title) + '">' + align.alignment_score + '</span>' +
+      '<div style="font-size:12px; color:var(--slate); margin-top:4px;">' + escapeHtml(align.industry_group) + '</div>';
+  }
+
   function renderRegistry(){
     const body = document.getElementById('registry-body');
     const emptyEl = document.getElementById('registry-empty');
     const paginationEl = document.getElementById('registry-pagination');
+    const viewRows = visibleRegistryRows();
 
-    if(registryResults.length === 0){
+    if(viewRows.length === 0){
       body.innerHTML = '';
       emptyEl.style.display = 'block';
       paginationEl.style.display = 'none';
-      emptyEl.innerHTML = hiddenAlreadyEvaluatedCount > 0
+      emptyEl.innerHTML = hiddenAlreadyEvaluatedCount > 0 && registryResults.length === 0
         ? '<h3>All caught up</h3><p>Every patent in this list has already been evaluated. ' + hiddenAlreadyEvaluatedCount + ' hidden. <button class="btn secondary small" id="btn-show-evaluated-empty">Show them anyway</button></p>'
-        : '<h3>No results yet</h3><p>Click "Load known Clemson patents" above for the real, verified snapshot, no API key needed. A live pull is also available further down once this loads.</p>';
+        : '<h3>No patents in this view</h3><p>Change the tier or SC alignment filter, reload the known snapshot, or run the live Google Patents pull below.</p>';
       const showBtnEmpty = document.getElementById('btn-show-evaluated-empty');
       if(showBtnEmpty) showBtnEmpty.addEventListener('click', ()=>{ showAlreadyEvaluated = true; refilterRegistry(); });
       return;
     }
     emptyEl.style.display = 'none';
 
-    const totalPages = Math.max(1, Math.ceil(registryResults.length / REGISTRY_PAGE_SIZE));
+    const totalPages = Math.max(1, Math.ceil(viewRows.length / REGISTRY_PAGE_SIZE));
     if(registryPage >= totalPages) registryPage = totalPages - 1;
     if(registryPage < 0) registryPage = 0;
     const start = registryPage * REGISTRY_PAGE_SIZE;
-    const end = Math.min(start + REGISTRY_PAGE_SIZE, registryResults.length);
-    // Keep each row's ORIGINAL index into the full registryResults array,
-    // not its position within this page slice, since the Add to docket
-    // button below looks patents up by that index.
-    const pageItems = registryResults.map((p, idx) => ({ p, idx })).slice(start, end);
+    const end = Math.min(start + REGISTRY_PAGE_SIZE, viewRows.length);
+    const pageItems = viewRows.slice(start, end);
 
-    body.innerHTML = pageItems.map(({p, idx})=>{
+    body.innerHTML = pageItems.map(p => {
       const sector = guessSector(p.title, p.abstract);
       const inventorsStr = (p.inventors || []).join(', ') || 'Not listed';
       const typeLabel = p.record_type ? (' <span class="tag ' + (p.record_type === 'Grant' ? 'license' : 'pending') + '" style="margin-left:6px;">' + escapeHtml(p.record_type) + '</span>') : '';
       const evaluatedLabel = isPatentEvaluated(p.patent_id) ? ' <span class="tag mature">Already evaluated</span>' : '';
       const citationLabel = (typeof p.backward_citation_count === 'number') ? (' <span class="key-badge" title="Backward citations: prior art this patent cites">' + p.backward_citation_count + ' citations</span>') : '';
       const link = p.google_patents_url ? '<a href="' + escapeHtml(p.google_patents_url) + '" target="_blank" rel="noopener">' + escapeHtml(p.patent_id) + '</a>' : escapeHtml(p.patent_id || '');
+      const onDocket = docketHasPatent(p.patent_id) || isPatentEvaluated(p.patent_id);
+      const tier = registryTier(p);
+      const cached = triageById.get(p.patent_id);
+      const tierTitle = cached && cached.reason ? cached.reason : "Not ranked yet. The SC alignment score is already available.";
+      const actionBtn = onDocket
+        ? '<button class="btn secondary small" data-open-source="' + escapeHtml(p.patent_id || '') + '">Open case</button>'
+        : '<button class="btn secondary small" data-import-registry="' + escapeHtml(p.patent_id || '') + '">Full evaluation</button>';
       return '<tr>' +
+        '<td><span class="tag ' + (TIER_TAG[tier] || 'pending') + '" title="' + escapeHtml(tierTitle) + '">' + escapeHtml(tier) + '</span></td>' +
         '<td class="mono">' + escapeHtml(p.date || '') + '</td>' +
-        '<td><div class="patent-title">' + escapeHtml(p.title || 'Untitled') + typeLabel + evaluatedLabel + '</div><div class="patent-sub">' + link + citationLabel + '</div></td>' +
-        '<td style="font-size:12.5px; color:var(--slate);">' + escapeHtml(inventorsStr) + '</td>' +
+        '<td><div class="patent-title">' + escapeHtml(p.title || 'Untitled') + typeLabel + evaluatedLabel + '</div><div class="patent-sub">' + link + ' · ' + escapeHtml(inventorsStr) + citationLabel + '</div></td>' +
+        '<td>' + alignmentCell(registryAlignment(p)) + '</td>' +
         '<td><span class="tag mature">' + escapeHtml(sector) + '</span></td>' +
-        '<td><button class="btn secondary small" data-import-registry="' + idx + '">Add to docket</button></td>' +
+        '<td>' + actionBtn + '</td>' +
         '</tr>';
     }).join('');
     body.querySelectorAll('[data-import-registry]').forEach(btn=>{
       btn.addEventListener('click', ()=>{
-        const p = registryResults[parseInt(btn.dataset.importRegistry)];
+        const p = registryAll.find(item => item.patent_id === btn.dataset.importRegistry);
         if(!p) return;
-        if(docketHasPatent(p.patent_id) || isPatentEvaluated(p.patent_id)){
-          btn.textContent = 'Already on the docket';
-          btn.disabled = true;
+        if(!importRegistryPatent(p)){
+          openDocketPatent(p.patent_id);
           return;
         }
-        const citationNote = (typeof p.backward_citation_count === 'number') ? ('\nBackward citations (prior art cited by this patent): ' + p.backward_citation_count) : '';
-        patents.push({
-          id: nextId++,
-          title: p.title || 'Untitled',
-          dept: 'Sourced from Google Patents Public Data, sector: ' + guessSector(p.title, p.abstract),
-          text: (p.abstract || '') + '\n\nInventors: ' + (p.inventors || []).join(', ') + citationNote,
-          status: 'pending',
-          evaluation: null,
-          error: null,
-          sourcePatentId: p.patent_id || null
-        });
         renderAll();
-        btn.textContent = 'Added, evaluating...';
+        btn.textContent = 'On the docket';
         btn.disabled = true;
         evaluateAllPending();
       });
     });
+    body.querySelectorAll('[data-open-source]').forEach(btn=>{
+      btn.addEventListener('click', ()=> openDocketPatent(btn.dataset.openSource));
+    });
 
     paginationEl.style.display = 'flex';
     document.getElementById('registry-pagination-label').textContent =
-      'Showing ' + (start + 1) + '–' + end + ' of ' + registryResults.length;
+      'Showing ' + (start + 1) + '–' + end + ' of ' + viewRows.length;
     const prevBtn = document.getElementById('btn-registry-prev');
     const nextBtn = document.getElementById('btn-registry-next');
     prevBtn.disabled = registryPage === 0;
-    nextBtn.disabled = end >= registryResults.length;
+    nextBtn.disabled = end >= viewRows.length;
+  }
+
+  function setRankStatus(message){
+    const el = document.getElementById('registry-rank-status');
+    if(el) el.textContent = message;
+  }
+
+  function fillAlignmentFilter(){
+    const select = document.getElementById('registry-align-filter');
+    if(!select || !window.CURF_SC) return;
+    window.CURF_SC.focusAreaNames().forEach(name => {
+      const option = document.createElement('option');
+      option.value = name;
+      option.textContent = name;
+      select.appendChild(option);
+    });
+  }
+
+  async function loadTriageCache(){
+    try{
+      const res = await fetch('/api/triage-patents');
+      if(res.status === 404) return;
+      const data = await res.json().catch(() => ({}));
+      if(!res.ok){
+        triageError = data.error || ('Triage cache request failed with status ' + res.status);
+        return;
+      }
+      if(data.error){
+        triageError = data.error;
+        triageById = new Map();
+        return;
+      }
+      triageError = '';
+      const next = new Map();
+      (data.records || []).forEach(row => {
+        if(row && row.patent_id) next.set(row.patent_id, row);
+      });
+      triageById = next;
+    }catch(err){
+      triageError = '';
+    }
+  }
+
+  function compactRegistryPatent(p){
+    return {
+      patent_id: p.patent_id,
+      title: p.title || '',
+      abstract: p.abstract || '',
+      cpc_codes: p.cpc_codes || [],
+      filing_date: p.filing_date || null,
+      publication_date: p.date || null,
+      kind_code: p.kind_code || null,
+      record_type: p.record_type || null,
+      assignees: p.assignees || [],
+      backward_citation_count: p.backward_citation_count
+    };
+  }
+
+  async function pollTriage(ids, attempt){
+    if(triageError){
+      setRankStatus(triageError);
+      rankInFlight = false;
+      const btn = document.getElementById('btn-rank-registry');
+      if(btn) btn.disabled = false;
+      return;
+    }
+    if(attempt > 96){
+      setRankStatus('Still waiting after about 8 minutes. Reload this tab in a moment. Patents already stored will not be sent to the model again.');
+      rankInFlight = false;
+      const btn = document.getElementById('btn-rank-registry');
+      if(btn) btn.disabled = false;
+      return;
+    }
+    await loadTriageCache();
+    renderRegistry();
+    const pending = ids.filter(id => !triageById.has(id));
+    if(pending.length === 0){
+      setRankStatus('Rank stored for this list. Another click skips patents already in the cache.');
+      rankInFlight = false;
+      const btn = document.getElementById('btn-rank-registry');
+      if(btn) btn.disabled = false;
+      return;
+    }
+    setRankStatus('Ranking. ' + (ids.length - pending.length) + ' of ' + ids.length + ' stored. This page checks every few seconds.');
+    await new Promise(resolve => setTimeout(resolve, 5000));
+    return pollTriage(ids, attempt + 1);
+  }
+
+  async function rankRegistry(){
+    if(rankInFlight) return;
+    if(!registryAll.length){
+      setRankStatus('Load a patent list before ranking.');
+      return;
+    }
+    if(triageError){
+      setRankStatus(triageError);
+      return;
+    }
+    const uncached = registryAll.filter(p => p.patent_id && !triageById.has(p.patent_id));
+    if(uncached.length === 0){
+      setRankStatus('Every patent in this list is already ranked. Change the filters to read the tiers.');
+      return;
+    }
+    const ok = window.confirm('Rank ' + uncached.length + ' patents that are not already cached (' + registryAll.length + ' in this list). A full 300 is planned under $0.30 and usually finishes in 2 to 4 minutes. This does not run a full evaluation.');
+    if(!ok) return;
+    rankInFlight = true;
+    const btn = document.getElementById('btn-rank-registry');
+    if(btn) btn.disabled = true;
+    setRankStatus('Starting the rank for ' + uncached.length + ' patents.');
+    try{
+      const res = await fetch('/api/triage-patents-background', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ patents: registryAll.map(compactRegistryPatent) })
+      });
+      if(res.status !== 202 && !res.ok){
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || ('Rank request failed with status ' + res.status));
+      }
+      await pollTriage(uncached.map(p => p.patent_id), 0);
+    }catch(err){
+      rankInFlight = false;
+      if(btn) btn.disabled = false;
+      setRankStatus(err.message || 'The rank could not be started. Deploy the app with the triage functions and a service_role Supabase key.');
+    }
   }
 
   document.getElementById('btn-registry-prev').addEventListener('click', ()=>{
@@ -1243,6 +1508,22 @@
   });
   document.getElementById('btn-registry-next').addEventListener('click', ()=>{
     registryPage = registryPage + 1;
+    renderRegistry();
+  });
+  document.getElementById('btn-rank-registry').addEventListener('click', rankRegistry);
+  document.getElementById('registry-tier-filter').addEventListener('change', (e)=>{
+    registryTierFilter = e.target.value;
+    registryPage = 0;
+    renderRegistry();
+  });
+  document.getElementById('registry-align-filter').addEventListener('change', (e)=>{
+    registryAlignFilter = e.target.value;
+    registryPage = 0;
+    renderRegistry();
+  });
+  document.getElementById('registry-sort').addEventListener('change', (e)=>{
+    registrySort = e.target.value;
+    registryPage = 0;
     renderRegistry();
   });
 
@@ -1260,6 +1541,36 @@
   ['dragover','dragenter'].forEach(evt => dropZone.addEventListener(evt, (e)=>{ e.preventDefault(); dropZone.classList.add('drag'); }));
   ['dragleave','drop'].forEach(evt => dropZone.addEventListener(evt, (e)=>{ e.preventDefault(); dropZone.classList.remove('drag'); }));
   dropZone.addEventListener('drop', (e)=>{ handleFiles(e.dataTransfer.files); });
+
+  function importRegistryPatent(p){
+    if(!p || docketHasPatent(p.patent_id) || isPatentEvaluated(p.patent_id)) return false;
+    const citationNote = (typeof p.backward_citation_count === 'number') ? ('\nBackward citations (prior art cited by this patent): ' + p.backward_citation_count) : '';
+    const cpcNote = (p.cpc_codes && p.cpc_codes.length) ? ('\nCPC codes: ' + p.cpc_codes.slice(0, 12).join(', ')) : '';
+    const filingNote = p.filing_date ? ('\nFiling date: ' + p.filing_date) : '';
+    patents.push({
+      id: nextId++,
+      title: p.title || 'Untitled',
+      dept: 'Sourced from the Clemson registry, sector: ' + guessSector(p.title, p.abstract),
+      text: (p.abstract || '') + '\n\nInventors: ' + (p.inventors || []).join(', ') + citationNote + cpcNote + filingNote,
+      status: 'pending',
+      evaluation: null,
+      error: null,
+      sourcePatentId: p.patent_id || null,
+      cpcCodes: Array.isArray(p.cpc_codes) ? p.cpc_codes.slice() : [],
+      filingDate: p.filing_date || null,
+      kindCode: p.kind_code || null,
+      publicationDate: p.date || null,
+      recordType: p.record_type || null
+    });
+    return true;
+  }
+
+  function openDocketPatent(sourceId){
+    const key = normalizePatentKey(sourceId);
+    const hit = patents.find(p => p.sourcePatentId && normalizePatentKey(p.sourcePatentId) === key);
+    if(hit) openCaseFile(hit.id);
+    else showView('portfolio');
+  }
 
   async function handleFiles(fileListRaw){
     const all = Array.from(fileListRaw);
@@ -1282,6 +1593,39 @@
       pendingFiles.push({ name: file.name, text, extractError });
     }
     renderFileList();
+    const readable = pendingFiles.filter(f => f.text && f.text.trim().length > 0 && !f.extractError);
+    if(readable.length > 3){
+      const ok = window.confirm('Full evaluation uses the deep model on each disclosure and can take about a minute each. Add and evaluate ' + readable.length + ' files?');
+      if(!ok) return;
+    }
+    if(readable.length > 0) queueReadableFiles();
+  }
+
+  function queueReadableFiles(){
+    let added = 0;
+    const remain = [];
+    pendingFiles.forEach(f=>{
+      if(f.text && f.text.trim().length > 0 && !f.extractError){
+        patents.push({
+          id: nextId++,
+          title: f.name.replace(/\.(txt|pdf)$/i,''),
+          dept: 'Unspecified',
+          text: f.text,
+          status: 'pending',
+          evaluation: null,
+          error: null
+        });
+        added++;
+      } else {
+        remain.push(f);
+      }
+    });
+    pendingFiles = remain;
+    renderFileList();
+    if(added > 0){
+      renderAll();
+      evaluateAllPending();
+    }
   }
 
   async function extractPdfText(file){
@@ -1302,29 +1646,13 @@
 
   function renderFileList(){
     if(pendingFiles.length === 0){ fileListEl.innerHTML = ''; return; }
+    const readableLeft = pendingFiles.some(f => f.text && f.text.trim().length > 0 && !f.extractError);
     fileListEl.innerHTML = pendingFiles.map((f,i)=>{
       const status = f.extractError ? '<span style="color:var(--red);">' + escapeHtml(f.extractError) + '</span>' : (f.text.length + ' chars read');
       return '<div class="f"><span>' + escapeHtml(f.name) + '</span><span>' + status + '</span></div>';
-    }).join('') + '<button class="btn small" style="margin-top:10px;" id="btn-queue-files">Add ' + pendingFiles.length + ' file(s) to docket</button>';
-    document.getElementById('btn-queue-files').addEventListener('click', ()=>{
-      pendingFiles.forEach(f=>{
-        if(f.text && f.text.trim().length > 0){
-          patents.push({
-            id: nextId++,
-            title: f.name.replace(/\.(txt|pdf)$/i,''),
-            dept: 'Unspecified',
-            text: f.text,
-            status: 'pending',
-            evaluation: null,
-            error: null
-          });
-        }
-      });
-      pendingFiles = [];
-      renderFileList();
-      renderAll();
-      evaluateAllPending();
-    });
+    }).join('') + (readableLeft ? '<button class="btn small" style="margin-top:10px;" id="btn-queue-files">Add readable files and evaluate</button>' : '');
+    const queueBtn = document.getElementById('btn-queue-files');
+    if(queueBtn) queueBtn.addEventListener('click', queueReadableFiles);
   }
 
   document.getElementById('btn-add-manual').addEventListener('click', ()=>{
@@ -1350,10 +1678,14 @@
     // failure whenever a new disclosure was added.
     const toRun = patents.filter(p => p.status === 'pending' && !evaluationInFlight.has(p.id));
     if(toRun.length === 0) return;
-    for(const p of toRun){
+    evaluationBatch = { index: 0, total: toRun.length };
+    for(let i = 0; i < toRun.length; i++){
+      const p = toRun[i];
       if(evaluationInFlight.has(p.id) || p.status !== 'pending') continue;
       evaluationInFlight.add(p.id);
+      evaluationBatch.index = i + 1;
       p.status = 'evaluating';
+      p.evalStage = 'Core read';
       renderAll();
       refreshOpenCaseIfShowing(p.id);
       try{
@@ -1386,6 +1718,33 @@
       renderAll();
       refreshOpenCaseIfShowing(p.id);
     }
+    evaluationBatch = null;
+    renderAll();
+  }
+
+  function renderEvalProgress(){
+    const el = document.getElementById('eval-progress');
+    if(!el) return;
+    const current = patents.find(p => p.status === 'evaluating');
+    if(current && evaluationBatch){
+      const stage = current.evalStage || 'Starting';
+      el.style.display = 'block';
+      el.innerHTML = '<span class="spinner" style="border-color: rgba(36,48,86,0.25); border-top-color: #243056;"></span>Evaluating ' +
+        evaluationBatch.index + ' of ' + evaluationBatch.total + ' — ' + escapeHtml(current.title) + ' — ' + escapeHtml(stage) +
+        '. This is the full evaluation. The registry rank is the cheap first pass.';
+      return;
+    }
+    const pending = patents.filter(p => p.status === 'pending' && !evaluationInFlight.has(p.id));
+    if(pending.length > 0){
+      el.style.display = 'block';
+      el.innerHTML = pending.length + ' disclosure' + (pending.length === 1 ? ' is' : 's are') +
+        ' queued and not running. <button class="btn small" id="btn-resume-eval" style="margin-left:8px;">Resume evaluation</button>';
+      const resume = document.getElementById('btn-resume-eval');
+      if(resume) resume.addEventListener('click', ()=> evaluateAllPending());
+      return;
+    }
+    el.style.display = 'none';
+    el.innerHTML = '';
   }
 
   function refreshOpenCaseIfShowing(patentId){
@@ -1484,7 +1843,7 @@
   // smaller call means most patents (anything not LICENSE) now only
   // ever make this one fast call.
   async function runCoreEvaluation(patent){
-    const systemPrompt = "You are a skeptical technology transfer analyst supporting a university research foundation's patent portfolio triage. Your job is not to describe the disclosure favorably, it is to pressure test it the way a hardnosed licensing officer or investor would, and to catch overclaimed readiness or invented demand rather than rubber stamp it. The central question for every patent is: is there real market demand for what this solves, not just technical novelty. Follow this decision order exactly. Step one, assess market demand critically: look for actual evidence in the disclosure of a real problem someone would pay to solve (named interest, a pilot, a competitor's existing product, a cited pain point), versus mere assertion that something 'could be used for' or 'may have applications in' a market with no supporting evidence. Rate demand as STRONG, MODERATE, WEAK, or NONE, and explicitly say what claim in the disclosure is asserted but not actually backed by evidence in the text, do not skip this even if you have to say 'none, the abstract asserts market need without evidence.' Step two, only if demand is at least MODERATE, decide the path: LICENSE fits when the problem is narrow and specific enough that an existing company would view it as an incremental addition to a product line they already have, VENTURE fits when the opportunity is a broader market problem no single incumbent already serves well, better suited to a new company built around it. If demand is WEAK or NONE, the path is NO_DEMAND regardless of how technically impressive the patent is, do not recommend LICENSE or VENTURE just because the technology is good. If demand is at least MODERATE but the Technology Readiness Level (1 to 9, NASA or DOD scale) is too low for either outside licensing or a venture to move on right now, the path is MATURE. Also score adoption risk factors modeled on the Adoption Readiness Level concept (market pull, supply chain, workforce, or regulatory friction). If the user message includes a section of staff or inventor provided input, treat known industry contacts and the inventor's own feasibility read as real evidence for the market demand assessment, generally stronger than the disclosure text's own unsupported claims, but note in market_demand_rationale that it is self-reported and not independently verified. If a funding source is provided and is federal (NIH, NSF, DOD, or Other federal), add a one sentence compliance note to critical_challenge or caveat that the federal government retains a royalty free use license and possible march-in rights under the Bayh-Dole Act; if the funding source is specifically NIH, also note the NIH affordability mandate adopted in October 2025 may constrain licensing terms. Also write a marketing_abstract: two to three plain language sentences pitching this technology to a business audience, no patent jargon, suitable to send to a prospective licensee, distinct in tone and content from the internal analysis above. Every rationale, note, or reason field must be one short sentence, under 20 words, this is a triage tool, not a full memo. Respond with ONLY valid JSON as your final message, no markdown fences, no commentary, matching exactly this shape: {\"trl\": number, \"trl_rationale\": string, \"market_demand_verdict\": \"STRONG|MODERATE|WEAK|NONE\", \"market_demand_rationale\": string, \"unsupported_claims\": string, \"adoption_risks\": [{\"factor\": string, \"level\": \"low|medium|high\", \"note\": string}], \"recommended_path\": \"LICENSE|VENTURE|NO_DEMAND|MATURE\", \"path_rationale\": string, \"venture_plan\": {\"team\": string, \"next_steps\": [string]}, \"marketing_abstract\": string, \"critical_challenge\": string, \"confidence\": \"low|medium|high\", \"caveat\": string}. Keep adoption_risks to at most 4 items. venture_plan.next_steps should only be filled in when recommended_path is VENTURE, otherwise leave team empty and next_steps an empty array. critical_challenge must state the single strongest reason this specific evaluation could be wrong, a weak assumption, a gap in the disclosure, or a reason a skeptical reviewer would push back, never a generic disclaimer. Do not mention acquirer targets or companies at all, that is handled in a separate step you are not part of.";
+    const systemPrompt = "You are a skeptical technology transfer analyst supporting a university research foundation's patent portfolio triage. Your job is not to describe the disclosure favorably, it is to pressure test it the way a hardnosed licensing officer or investor would, and to catch overclaimed readiness or invented demand rather than rubber stamp it. The central question for every patent is: is there real market demand for what this solves, not just technical novelty. Follow this decision order exactly. Step one, assess market demand critically: look for actual evidence in the disclosure of a real problem someone would pay to solve (named interest, a pilot, a competitor's existing product, a cited pain point), versus mere assertion that something 'could be used for' or 'may have applications in' a market with no supporting evidence. Rate demand as STRONG, MODERATE, WEAK, or NONE, and explicitly say what claim in the disclosure is asserted but not actually backed by evidence in the text, do not skip this even if you have to say 'none, the abstract asserts market need without evidence.' Step two, only if demand is at least MODERATE, decide the path: LICENSE fits when the problem is narrow and specific enough that an existing company would view it as an incremental addition to a product line they already have, VENTURE fits when the opportunity is a broader market problem no single incumbent already serves well, better suited to a new company built around it. If demand is WEAK or NONE, the path is NO_DEMAND regardless of how technically impressive the patent is, do not recommend LICENSE or VENTURE just because the technology is good. If demand is at least MODERATE but the Technology Readiness Level (1 to 9, NASA or DOD scale) is too low for either outside licensing or a venture to move on right now, the path is MATURE. Also score adoption risk factors modeled on the Adoption Readiness Level concept (market pull, supply chain, workforce, or regulatory friction). If the user message includes a section of staff or inventor provided input, treat known industry contacts and the inventor's own feasibility read as real evidence for the market demand assessment, generally stronger than the disclosure text's own unsupported claims, but note in market_demand_rationale that it is self-reported and not independently verified. If a funding source is provided and is federal (NIH, NSF, DOD, or Other federal), add a one sentence compliance note to critical_challenge or caveat that the federal government retains a royalty free use license and possible march-in rights under the Bayh-Dole Act; if the funding source is specifically NIH, also note the NIH affordability mandate adopted in October 2025 may constrain licensing terms. Also write a marketing_abstract: two to three plain language sentences pitching this technology to a business audience, no patent jargon, suitable to send to a prospective licensee, distinct in tone and content from the internal analysis above. Every rationale, note, or reason field must be one short sentence, under 20 words, this is a triage tool, not a full memo. Respond with ONLY valid JSON as your final message, no markdown fences, no commentary, matching exactly this shape: {\"trl\": number, \"trl_rationale\": string, \"market_demand_verdict\": \"STRONG|MODERATE|WEAK|NONE\", \"market_demand_rationale\": string, \"unsupported_claims\": string, \"adoption_risks\": [{\"factor\": string, \"level\": \"low|medium|high\", \"note\": string}], \"recommended_path\": \"LICENSE|VENTURE|NO_DEMAND|MATURE\", \"path_rationale\": string, \"venture_plan\": {\"team\": string, \"next_steps\": [string]}, \"marketing_abstract\": string, \"critical_challenge\": string, \"confidence\": \"low|medium|high\", \"caveat\": string, \"sc_industry_group\": string}. Keep adoption_risks to at most 4 items. venture_plan.next_steps should only be filled in when recommended_path is VENTURE, otherwise leave team empty and next_steps an empty array. critical_challenge must state the single strongest reason this specific evaluation could be wrong, a weak assumption, a gap in the disclosure, or a reason a skeptical reviewer would push back, never a generic disclaimer. Do not mention acquirer targets or companies at all, that is handled in a separate step you are not part of.";
 
     let staffInputText = "";
     if(patent.staffInput){
@@ -1496,11 +1855,14 @@
       if(si.feasibilityNote) parts.push("Inventor's own market feasibility read (staff/inventor reported): " + si.feasibilityNote);
       if(parts.length) staffInputText = "\n\nStaff and inventor provided input, treat as real evidence but self-reported, not independently verified:\n" + parts.join("\n");
     }
+    const groupLine = window.CURF_SC
+      ? " Set sc_industry_group to exactly one of these PitchBook industry group names, or Unmatched: " + window.CURF_SC.listGroupNames().join("; ") + ". Classify the technology only. Do not name investors, funds, check sizes, or dollar amounts."
+      : "";
     const userMsg = "Department: " + patent.dept + "\nTitle: " + patent.title + "\nDisclosure text:\n" + patent.text.slice(0, 6000) + staffInputText;
 
     const startedAt = Date.now();
     try{
-      return await callAnthropicJson(systemPrompt, userMsg, false);
+      return await callAnthropicJson(systemPrompt + groupLine, userMsg, false);
     }catch(err){
       const elapsedMs = Date.now() - startedAt;
       // Prefixed explicitly so a failure here is never confused with a
@@ -1545,11 +1907,17 @@
   }
 
   async function callEvaluationAPI(patent){
+    patent.evalStage = 'Core read';
+    renderAll();
+    refreshOpenCaseIfShowing(patent.id);
     const core = await runCoreEvaluation(patent);
     core.top_acquirer_targets = [];
     core.acquirer_search_error = "";
 
     if(core.recommended_path === 'LICENSE'){
+      patent.evalStage = 'Acquirer search';
+      renderAll();
+      refreshOpenCaseIfShowing(patent.id);
       const searchStartedAt = Date.now();
       try{
         core.top_acquirer_targets = await runAcquirerSearch(patent);
@@ -1565,7 +1933,30 @@
         core.acquirer_search_error = "Failed after " + elapsedMs + "ms: " + (err.message || 'Acquirer search failed');
       }
     }
+    core.sc_alignment = alignmentForPatent(patent, core.sc_industry_group);
     return core;
+  }
+
+  function alignmentForPatent(patent, chosenGroup){
+    if(!window.CURF_SC){
+      return {
+        industry_group: "Unmatched",
+        focus_area: null,
+        is_focus: false,
+        alignment_score: 0,
+        value_points: 0,
+        short: "SC alignment data did not load.",
+        note: "SC alignment data did not load.",
+        source: "unmatched",
+        confidence: "none"
+      };
+    }
+    return window.CURF_SC.scoreAlignment({
+      title: patent.title,
+      text: patent.text || "",
+      cpc_codes: patent.cpcCodes || [],
+      chosen_group: chosenGroup
+    });
   }
 
   // Pulls out the first complete top level JSON object from a string,
@@ -1636,6 +2027,14 @@
     const hasEngagement = (si.industryContacts && si.industryContacts.trim().length > 0) || si.inventorWillingness === 'Willing to engage';
     breakdown.push({ label: 'Confirmed inventor or industry engagement', points: hasEngagement ? 1 : 0, max: 1 });
 
+    const align = ev.sc_alignment;
+    const alignPoints = align && typeof align.value_points === 'number'
+      ? align.value_points
+      : (window.CURF_SC ? window.CURF_SC.valuePointsForAlignment(align && align.alignment_score) : 0);
+    const alignName = (align && align.industry_group) ? align.industry_group : 'not classified';
+    const alignScore = align && typeof align.alignment_score === 'number' ? ', score ' + align.alignment_score : '';
+    breakdown.push({ label: 'SC investment alignment (' + alignName + alignScore + ')', points: alignPoints, max: 2 });
+
     const totalPoints = breakdown.reduce((s, b) => s + b.points, 0);
     const maxPoints = breakdown.reduce((s, b) => s + b.max, 0);
 
@@ -1669,8 +2068,28 @@
     return '<div class="panel"><div class="panel-head"><h3>Value score</h3><span class="tag ' + tierInfo.tagClass + '">Tier ' + tierInfo.label + '</span></div><div class="panel-body">' +
       '<p style="font-size:13px; color:var(--slate); margin-bottom:10px;">' + score.totalPoints + ' of ' + score.maxPoints + ' points. Computed directly from this evaluation\'s own outputs, not a separate AI guess, every line below is auditable against what\'s already on this page. Frozen at the time this evaluation ran, it will not change on its own even if the scoring formula is later revised.</p>' +
       rows +
-      '<div class="caveat-box" style="margin-top:12px;">This is a relative triage score for comparing patents in this docket, not a dollar valuation. No comparable licensing deal data or revenue projection backs a specific monetary figure, so this deliberately doesn\'t produce one.</div>' +
+      '<div class="caveat-box" style="margin-top:12px;">This is a relative triage score for comparing patents in this docket, not a dollar valuation. Letter thresholds stay at 10, 7, and 4 out of 15. The dollar figure in the South Carolina alignment note is a typical PitchBook check size, not a sum of capital invested and not a value for this patent.</div>' +
     '</div></div>';
+  }
+
+  function renderScAlignmentPanel(p){
+    const stored = p.evaluation && p.evaluation.sc_alignment;
+    const align = stored || alignmentForPatent(p);
+    const inScore = !!(p.evaluation && p.evaluation.value_score_snapshot && (p.evaluation.value_score_snapshot.breakdown || []).some(row => String(row.label).indexOf('SC investment alignment') === 0));
+    const unmatched = !align || align.industry_group === 'Unmatched';
+    const tag = unmatched ? 'pending' : (align.is_focus ? 'license' : 'mature');
+    const scoreLabel = align && typeof align.alignment_score === 'number' ? String(align.alignment_score) : '0';
+    const frozen = inScore
+      ? ''
+      : '<p style="font-size:12.5px; color:var(--slate); margin-top:8px;">This read is on the case file now. Its points join the frozen value score when the evaluation is run again under the current methodology.</p>';
+    const focusLine = align && align.focus_area
+      ? '<p style="font-size:12.5px; color:var(--slate); margin-top:8px;">Focus area: ' + escapeHtml(align.focus_area) + '. Matched by ' + escapeHtml(align.source || 'local rules') + '.</p>'
+      : '';
+    return '<div class="panel"><div class="panel-head"><h3>SC investment alignment</h3><span class="tag ' + tag + '">' + escapeHtml(scoreLabel) + '</span></div><div class="panel-body">' +
+      '<p style="font-size:13.5px;">' + escapeHtml((align && (align.note || align.short)) || '') + '</p>' +
+      focusLine + frozen +
+      '<div class="caveat-box" style="margin-top:12px;">Deal counts are completed South Carolina transactions from 2023 through 7 Oct 2026, by PitchBook industry group. The dollar figure is a deal-weighted median check size, not the sum of dollars invested. Investor names are not used.</div>' +
+      '</div></div>';
   }
 
   function extractJsonObject(text){
@@ -1780,13 +2199,23 @@
     const matches = result.clemson_matches || [];
     let matchesHtml;
     if(matches.length === 0){
-      matchesHtml = '<div class="empty" style="padding:24px 10px;"><h3>No Clemson match found</h3><p>' + escapeHtml(result.no_strong_match_note || 'Nothing in the known Clemson patent list plausibly addresses this problem.') + '</p></div>';
+      matchesHtml = '<div class="empty" style="padding:24px 10px;"><h3>No Clemson match found</h3><p>' + escapeHtml(result.no_strong_match_note || 'Nothing in the known Clemson patent list plausibly addresses this problem.') + '</p>' +
+        '<button class="btn secondary small" data-view="registry">Browse the registry anyway</button></div>';
     } else {
       matchesHtml = matches.map(m => {
         const link = 'https://patents.justia.com/patent/' + encodeURIComponent(m.patent_number || '');
+        const known = findKnownPatent(m.patent_number);
+        let action;
+        if(!known){
+          action = '<span style="font-size:12px; color:var(--slate);">Not in the loaded snapshot.</span> <button class="btn secondary small" data-view="registry">Open the registry</button>';
+        } else if(docketHasPatent(known.number) || isPatentEvaluated(known.number)){
+          action = '<button class="btn secondary small" data-open-known="' + escapeHtml(known.number) + '">Open case</button>';
+        } else {
+          action = '<button class="btn secondary small" data-eval-known-match="' + escapeHtml(known.number) + '">Full evaluation</button>';
+        }
         return '<div class="archetype"><div class="sector"><a href="' + escapeHtml(link) + '" target="_blank" rel="noopener">' + escapeHtml(m.patent_number) + '</a> &middot; ' + escapeHtml(m.title) +
           ' <span class="tag ' + (fitClass[m.fit] || 'pending') + '" style="margin-left:6px;">' + escapeHtml(m.fit || 'unspecified') + ' fit</span></div>' +
-          '<div class="why">' + escapeHtml(m.rationale) + '</div></div>';
+          '<div class="why">' + escapeHtml(m.rationale) + '</div><div style="margin-top:8px;">' + action + '</div></div>';
       }).join('');
       if(result.no_strong_match_note){
         matchesHtml += '<div class="caveat-box" style="margin-top:10px;">' + escapeHtml(result.no_strong_match_note) + '</div>';
@@ -1813,8 +2242,25 @@
       '<div class="panel"><div class="panel-head"><h3>Overall recommendation</h3></div><div class="panel-body">' +
         '<p style="font-size:13.5px;">' + escapeHtml(result.overall_recommendation || '') + '</p>' +
         '<p style="font-size:12px; color:var(--slate); margin-top:8px;">Model confidence: <strong>' + escapeHtml(result.confidence || 'unspecified') + '</strong></p>' +
+        '<div style="margin-top:12px;"><button class="btn secondary small" data-view="portfolio">Review the portfolio</button></div>' +
       '</div></div>' +
       '<div class="caveat-box">Named companies and examples above were found through live web search, not invented from memory, but treat every one as a lead to verify, not a confirmed fact. This is a first pass, not a substitute for a Technology Commercialization Officer\'s own review.</div>';
+    bindViewButtons(resultsEl);
+    resultsEl.querySelectorAll('[data-eval-known-match]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const known = findKnownPatent(btn.dataset.evalKnownMatch);
+        if(known) addKnownPatentAndEvaluate(known, btn);
+      });
+    });
+    resultsEl.querySelectorAll('[data-open-known]').forEach(btn=>{
+      btn.addEventListener('click', ()=> openDocketPatent(btn.dataset.openKnown));
+    });
+  }
+
+  function findKnownPatent(number){
+    const key = normalizePatentKey(number);
+    if(!key) return null;
+    return KNOWN_CLEMSON_PATENTS.find(p => normalizePatentKey(p.number) === key) || null;
   }
 
   // ---------- direct patent lookup and evaluate, on the Problem Match page ----------
@@ -1843,8 +2289,8 @@
       sourcePatentId: knownPatent.number
     });
     renderAll();
-    if(buttonEl){
-      buttonEl.textContent = 'Added, evaluating...';
+        if(buttonEl){
+      buttonEl.textContent = 'On the docket';
       buttonEl.disabled = true;
     }
     evaluateAllPending();
@@ -1919,30 +2365,58 @@
   });
 
   // ---------- Publication Watch ----------
-  const pubwatchRelevanceClass = { HIGH: 'license', MODERATE: 'venture', LOW: 'mature' };
+  const pubwatchRelevanceClass = { HIGH: 'license', MODERATE: 'venture', LOW: 'mature', UNSCORED: 'pending' };
 
-  async function loadPublicationWatch(){
+  function describePublicationScan(data){
+    if(!data) return '';
+    const parts = [];
+    const scan = data.last_scan;
+    if(scan){
+      const when = scan.finished_at || scan.started_at;
+      const whenText = when ? new Date(when).toLocaleString() : 'an unknown time';
+      parts.push('Last scan (' + (scan.trigger || 'scan') + ') ' + (scan.status || 'unknown') + ' at ' + whenText + '.');
+      parts.push('Found ' + (scan.found_count == null ? '—' : scan.found_count) + ', stored ' + (scan.stored_count == null ? '—' : scan.stored_count) + ', scored ' + (scan.scored_count == null ? '—' : scan.scored_count) + '.');
+      if(scan.error) parts.push(scan.error);
+      const sources = scan.detail && scan.detail.sources;
+      if(Array.isArray(sources) && sources.length){
+        parts.push(sources.map(source => source.name + ': ' + (source.error || ((source.fetched || 0) + ' kept'))).join('; ') + '.');
+      }
+    }
+    if(data.scan_log_error) parts.push(data.scan_log_error);
+    if(data.error) parts.push(data.error);
+    return parts.join(' ');
+  }
+
+  function showPublicationStatus(data, fallback){
     const statusPanel = document.getElementById('pubwatch-status-panel');
     const statusEl = document.getElementById('pubwatch-status');
+    const text = describePublicationScan(data) || fallback || '';
+    if(!text){
+      statusPanel.style.display = 'none';
+      statusEl.textContent = '';
+      return;
+    }
+    statusPanel.style.display = 'block';
+    const failed = data && (data.error || (data.last_scan && (data.last_scan.status === 'error' || data.last_scan.status === 'partial')));
+    statusEl.innerHTML = failed ? '<span style="color:var(--red);">' + escapeHtml(text) + '</span>' : escapeHtml(text);
+  }
+
+  async function loadPublicationWatch(){
     try{
       const res = await fetch('/api/run-publication-scan');
       const data = await res.json();
       if(!data.configured){
-        statusPanel.style.display = 'block';
-        statusEl.textContent = 'Shared storage is not configured, so findings cannot be loaded or saved. Set SUPABASE_URL and SUPABASE_SERVICE_KEY, then run supabase-setup.sql.';
+        showPublicationStatus(null, 'Shared storage is not configured, so findings cannot be loaded or saved. Set SUPABASE_URL and SUPABASE_SERVICE_KEY, then run supabase-setup.sql.');
         renderPublicationWatchList([]);
-        return;
+        return data;
       }
-      if(data.error){
-        statusPanel.style.display = 'block';
-        const detailText = data.detail ? (typeof data.detail === 'string' ? data.detail : JSON.stringify(data.detail)) : '';
-        statusEl.innerHTML = '<span style="color:var(--red);">' + escapeHtml(data.error) + (detailText ? ': ' + escapeHtml(detailText) : '') + '</span>';
-        renderPublicationWatchList([]);
-        return;
-      }
+      showPublicationStatus(data);
       renderPublicationWatchList(data.findings || []);
+      return data;
     }catch(err){
+      showPublicationStatus(null, 'Could not reach the publication scan endpoint.');
       renderPublicationWatchList([]);
+      return null;
     }
   }
 
@@ -1960,9 +2434,9 @@
       const relevance = f.commercial_relevance_score || 'Unspecified';
       return '<tr>' +
         '<td class="mono">' + escapeHtml(date) + '</td>' +
-        '<td><div class="patent-title"><a href="' + escapeHtml(f.source_url || '#') + '" target="_blank" rel="noopener">' + escapeHtml(f.title || 'Untitled') + '</a></div><div class="patent-sub">' + escapeHtml(f.authors || '') + '</div><div class="patent-sub">' + escapeHtml(f.commercial_rationale || '') + '</div></td>' +
-        '<td><span class="tag ' + (pubwatchRelevanceClass[relevance] || 'pending') + '">' + escapeHtml(relevance) + '</span></td>' +
-        '<td></td>' +
+        '<td><div class="patent-title"><a href="' + escapeHtml(f.source_url || '#') + '" target="_blank" rel="noopener">' + escapeHtml(f.title || 'Untitled') + '</a></div><div class="patent-sub">' + escapeHtml(f.authors || '') + '</div><div class="patent-sub">' + escapeHtml(f.summary || '') + '</div><div class="patent-sub">' + escapeHtml(f.commercial_rationale || '') + '</div></td>' +
+        '<td><span class="tag ' + (pubwatchRelevanceClass[relevance] || 'pending') + '">' + escapeHtml(relevance === 'UNSCORED' ? 'Not scored' : relevance) + '</span></td>' +
+        '<td>' + (f.source_url ? '<a href="' + escapeHtml(f.source_url) + '" target="_blank" rel="noopener">Open source</a>' : '—') + '</td>' +
         '</tr>';
     }).join('');
   }
@@ -1974,33 +2448,45 @@
   // findings list until the count of stored findings increases, or
   // give up gracefully after a bounded number of attempts rather than
   // polling forever.
-  async function pollForNewFindings(countBefore, attemptsLeft){
-    const statusEl = document.getElementById('pubwatch-status');
+  function scanFinishedSince(data, startedMs){
+    const scan = data && data.last_scan;
+    if(!scan || !scan.finished_at) return false;
+    const started = Date.parse(scan.started_at || scan.finished_at);
+    return Number.isFinite(started) && started >= startedMs - 15000 && scan.status !== 'running';
+  }
+
+  async function pollForNewFindings(countBefore, attemptsLeft, attemptsTotal, startedMs){
+    const total = attemptsTotal || attemptsLeft;
     if(attemptsLeft <= 0){
-      statusEl.textContent = 'Scan is still running in the background. This can take a few minutes for an open-ended search like this one. Check back shortly, or click "Run scan now" again later, it will not duplicate anything already found.';
+      const latest = await loadPublicationWatch();
+      if(!describePublicationScan(latest)){
+        showPublicationStatus(null, 'The scan is still running, or it could not write a status row. Check again shortly. Rows already stored are not scanned again.');
+      }
       return;
     }
+    showPublicationStatus(null, 'Scan running. Check ' + (total - attemptsLeft + 1) + ' of ' + total + '.');
     try{
       const res = await fetch('/api/run-publication-scan');
       const data = await res.json();
       if(data && data.configured === false){
-        statusEl.textContent = 'The scan cannot store results until SUPABASE_URL and SUPABASE_SERVICE_KEY are set.';
+        showPublicationStatus(null, 'The scan cannot store results until SUPABASE_URL and SUPABASE_SERVICE_KEY are set.');
         return;
       }
       if(data && data.error){
-        statusEl.textContent = data.error;
-        return;
-      }
-      const currentCount = (data.findings || []).length;
-      if(currentCount > countBefore){
-        statusEl.textContent = 'New findings appeared.';
+        showPublicationStatus(data);
         renderPublicationWatchList(data.findings || []);
         return;
       }
+      renderPublicationWatchList(data.findings || []);
+      if(scanFinishedSince(data, startedMs) || (data.findings || []).length > countBefore){
+        showPublicationStatus(data, 'New findings are listed below.');
+        return;
+      }
     }catch(err){
-      // Keep polling, a transient failure here shouldn't stop the loop.
+      // Keep polling. A single failed status read should not hide a scan that is still writing.
     }
-    setTimeout(()=> pollForNewFindings(countBefore, attemptsLeft - 1), 8000);
+    await new Promise(resolve => setTimeout(resolve, 5000));
+    return pollForNewFindings(countBefore, attemptsLeft - 1, total, startedMs);
   }
 
   document.getElementById('btn-run-pubwatch-scan').addEventListener('click', async ()=>{
@@ -2009,37 +2495,51 @@
     const statusEl = document.getElementById('pubwatch-status');
     btn.disabled = true;
     statusPanel.style.display = 'block';
-    statusEl.innerHTML = '<span class="spinner" style="border-color: rgba(107,100,112,0.3); border-top-color: var(--slate);"></span>Starting the scan...';
+    showPublicationStatus(null, 'Starting the scan...');
 
     let countBefore = 0;
+    let currentData = null;
     try{
       const currentRes = await fetch('/api/run-publication-scan');
-      const currentData = await currentRes.json();
+      currentData = await currentRes.json();
       countBefore = (currentData.findings || []).length;
     }catch(err){
-      // If this fails, countBefore just stays 0, the poll loop below
-      // still works, it will just treat any findings at all as new.
+      // If this fails, countBefore stays 0. The poll still stops on a real error once the GET responds.
+    }
+    if(currentData && currentData.configured === false){
+      showPublicationStatus(null, 'The scan cannot store results until SUPABASE_URL and SUPABASE_SERVICE_KEY are set. Nothing was started.');
+      btn.disabled = false;
+      return;
+    }
+    if(currentData && currentData.error){
+      showPublicationStatus(currentData);
+      btn.disabled = false;
+      return;
     }
 
     try{
       const res = await fetch('/api/run-publication-scan-background', { method: 'POST' });
       if(!res.ok && res.status !== 202){
-        statusEl.innerHTML = '<span style="color:var(--red);">Could not start the scan (status ' + res.status + ').</span>';
+        showPublicationStatus(null, 'Could not start the scan (status ' + res.status + ').');
         btn.disabled = false;
         return;
       }
-      statusEl.innerHTML = '<span class="spinner" style="border-color: rgba(107,100,112,0.3); border-top-color: var(--slate);"></span>Scan started in the background, this can take a few minutes for an open-ended search. Checking for results...';
-      pollForNewFindings(countBefore, 8); // roughly 8 x 8s = up to about a minute of active checking before giving up gracefully
+      showPublicationStatus(null, 'Scan started. Results are saved as they are found, then scored. This page checks for the status row.');
+      pollForNewFindings(countBefore, 24, 24, Date.now()).finally(() => { btn.disabled = false; });
     }catch(err){
-      statusEl.innerHTML = '<span style="color:var(--red);">Could not reach the scan endpoint: ' + escapeHtml(err.message || 'unknown error') + '. This requires the app\'s backend proxy to be deployed with ANTHROPIC_API_KEY and Supabase configured, it will not work from this in chat preview.</span>';
+      showPublicationStatus(null, 'Could not reach the scan endpoint: ' + (err.message || 'unknown error') + '. This requires the deployed app.');
+      btn.disabled = false;
     }
-    btn.disabled = false;
   });
 
   // ---------- rendering ----------
   function pathTagHtml(p){
     if(p.status === 'pending') return '<span class="tag pending">Queued</span>';
-    if(p.status === 'evaluating') return '<span class="tag pending"><span class="spinner" style="border-color: rgba(107,100,112,0.3); border-top-color: var(--slate);"></span>Evaluating</span>';
+    if(p.status === 'evaluating'){
+      const stage = p.evalStage || 'Starting';
+      const pos = evaluationBatch ? (evaluationBatch.index + ' of ' + evaluationBatch.total + ' · ') : '';
+      return '<span class="tag pending"><span class="spinner" style="border-color: rgba(107,100,112,0.3); border-top-color: var(--slate);"></span>' + escapeHtml(pos + stage) + '</span>';
+    }
     if(p.status === 'error') return '<span class="tag error">Error</span>';
     if(!p.evaluation) return '<span class="tag pending">Queued</span>';
     const path = p.evaluation.recommended_path;
@@ -2053,16 +2553,19 @@
     renderQueue();
     renderDashboard();
     renderPortfolio();
+    renderEvalProgress();
   }
 
   function renderQueue(){
     if(patents.length === 0){
-      queueBodyEl.innerHTML = '<div class="empty" style="padding:24px 10px;">Nothing queued yet. Adding a file or pasted disclosure below evaluates it automatically.</div>';
+      queueBodyEl.innerHTML = '<div class="empty" style="padding:24px 10px;">Nothing in progress. Add a file or paste a disclosure and the case shows up here, with a status and an Open button.</div>';
       return;
     }
     queueBodyEl.innerHTML = patents.map(p=>{
-      return '<div class="risk-row"><span class="factor"><strong>' + escapeHtml(p.title) + '</strong><br><span style="color:var(--slate); font-size:12px;">' + escapeHtml(p.dept) + '</span></span>' + pathTagHtml(p) + '</div>';
+      const err = (p.status === 'error' && p.error) ? '<div style="color:var(--red); font-size:12px; margin-top:4px;">' + escapeHtml(p.error) + '</div>' : '';
+      return '<div class="risk-row"><span class="factor"><strong>' + escapeHtml(p.title) + '</strong><br><span style="color:var(--slate); font-size:12px;">' + escapeHtml(p.dept) + '</span>' + err + '</span><span style="white-space:nowrap;">' + pathTagHtml(p) + ' <button class="btn secondary small" data-open-btn="' + p.id + '">Open</button></span></div>';
     }).join('');
+    attachOpenHandlers(queueBodyEl);
   }
 
   function renderDashboard(){
@@ -2076,8 +2579,9 @@
     const recentEl = document.getElementById('dashboard-recent');
     if(active.length === 0){
       recentEl.innerHTML = patents.length > 0
-        ? '<div class="empty"><h3>Everything is archived</h3><p>Every patent currently in the docket has been archived. Visit Portfolio and click "Show archived" to see them.</p></div>'
-        : '<div class="empty"><h3>No patents on the docket yet</h3><p>Load the sample portfolio or go to Intake to submit real disclosures.</p></div>';
+        ? '<div class="empty"><h3>Everything is archived</h3><p>Every patent currently in the docket has been archived.</p><div style="margin-top:12px;"><button class="btn small" data-view="portfolio">Open portfolio</button></div></div>'
+        : '<div class="empty"><h3>No patents on the docket yet</h3><p>Start from the Clemson registry, submit a disclosure, or load the sample portfolio.</p><div style="margin-top:12px; display:flex; gap:8px; justify-content:center; flex-wrap:wrap;"><button class="btn small" data-view="registry">Open the Clemson registry</button><button class="btn secondary small" data-view="intake">Submit a disclosure</button></div></div>';
+      bindViewButtons(recentEl);
       return;
     }
     const recent = active.slice(-6).reverse();
@@ -2106,10 +2610,10 @@
       body.innerHTML = '';
       emptyEl.style.display = 'block';
       const allArchived = patents.length > 0 && archivedCount === patents.length;
-      emptyEl.querySelector('h3').textContent = allArchived ? 'Everything here is archived' : 'The docket is empty';
-      emptyEl.querySelector('p').textContent = allArchived
-        ? 'Click "Show archived" above to see it.'
-        : 'Go to Intake to submit patents, or load the sample portfolio from the Dashboard.';
+      emptyEl.innerHTML = allArchived
+        ? '<h3>Everything here is archived</h3><p>Use "Show archived" above to see those cases.</p>'
+        : '<h3>The docket is empty</h3><p>Open the registry to pick a Clemson patent, or submit a disclosure from Intake.</p><div style="margin-top:12px; display:flex; gap:8px; justify-content:center; flex-wrap:wrap;"><button class="btn small" data-view="registry">Open the Clemson registry</button><button class="btn secondary small" data-view="intake">Submit a disclosure</button></div>';
+      bindViewButtons(emptyEl);
       return;
     }
     emptyEl.style.display = 'none';
@@ -2122,7 +2626,12 @@
     const sorted = visible.slice().sort((a, b) => {
       const scoreA = getDisplayValueScore(a);
       const scoreB = getDisplayValueScore(b);
-      if(scoreA && scoreB) return scoreB.totalPoints - scoreA.totalPoints;
+      if(scoreA && scoreB && scoreB.totalPoints !== scoreA.totalPoints) return scoreB.totalPoints - scoreA.totalPoints;
+      if(scoreA && scoreB){
+        const alignA = (a.evaluation && a.evaluation.sc_alignment) || alignmentForPatent(a);
+        const alignB = (b.evaluation && b.evaluation.sc_alignment) || alignmentForPatent(b);
+        return (alignB.alignment_score || 0) - (alignA.alignment_score || 0);
+      }
       if(scoreA && !scoreB) return -1;
       if(!scoreA && scoreB) return 1;
       return b.id - a.id;
@@ -2133,6 +2642,10 @@
       const conf = (p.evaluation && p.evaluation.confidence) ? p.evaluation.confidence : '—';
       const score = getDisplayValueScore(p);
       const valueCell = score ? '<span class="tag ' + VALUE_TIER_INFO[score.tier].tagClass + '">' + score.tier + ' &middot; ' + score.totalPoints + '/' + score.maxPoints + '</span>' : '—';
+      const align = (p.evaluation && p.evaluation.sc_alignment) || alignmentForPatent(p);
+      const alignCell = !align || align.industry_group === 'Unmatched'
+        ? '<span class="tag pending">Unmatched</span>'
+        : '<span class="tag ' + (align.is_focus ? 'license' : 'mature') + '" title="' + escapeHtml(align.short || '') + '">' + align.alignment_score + '</span><div style="font-size:12px; color:var(--slate); margin-top:4px;">' + escapeHtml(align.industry_group) + '</div>';
       const archivedLabel = p.archived ? ' <span class="tag pending">Archived</span>' : '';
       const archiveBtnLabel = p.archived ? 'Restore' : 'Archive';
       return '<tr class="clickable" data-open="'+p.id+'">' +
@@ -2141,6 +2654,7 @@
         '<td>' + pathTagHtml(p) + '</td>' +
         '<td class="mono">' + trl + (trl !== '—' ? '/9' : '') + '</td>' +
         '<td>' + valueCell + '</td>' +
+        '<td>' + alignCell + '</td>' +
         '<td>' + conf + '</td>' +
         '<td style="white-space:nowrap;"><button class="btn secondary small" data-open-btn="'+p.id+'">Open</button> <button class="btn secondary small" data-archive-btn="'+p.id+'">' + archiveBtnLabel + '</button></td>' +
         '</tr>';
@@ -2366,19 +2880,20 @@
     const el = document.getElementById('casefile-body');
 
     if(p.status === 'pending'){
-      el.innerHTML = '<h2>' + escapeHtml(p.title) + '</h2>' + renderArchiveControl(p) + '<p style="color:var(--slate);">Not yet evaluated. Run the evaluation from Intake or Dashboard first, or add staff input below before running it.</p>' + renderStaffInputPanel(p);
+      el.innerHTML = '<h2>' + escapeHtml(p.title) + '</h2>' + renderArchiveControl(p) + '<p style="color:var(--slate);">Not yet evaluated. Run the evaluation from Intake or Dashboard first, or add staff input below before running it.</p>' + renderScAlignmentPanel(p) + renderStaffInputPanel(p);
       showView('casefile');
       attachStaffInputHandler();
       attachArchiveButtonHandler();
       return;
     }
     if(p.status === 'evaluating'){
-      el.innerHTML = '<h2>' + escapeHtml(p.title) + '</h2><p style="color:var(--slate);">Evaluation in progress.</p>';
+      const pos = evaluationBatch ? (' Patent ' + evaluationBatch.index + ' of ' + evaluationBatch.total + '.') : '';
+      el.innerHTML = '<h2>' + escapeHtml(p.title) + '</h2><p style="color:var(--slate);">Evaluation in progress.' + pos + ' Current step: ' + escapeHtml(p.evalStage || 'Starting') + '.</p>';
       showView('casefile');
       return;
     }
     if(p.status === 'error'){
-      el.innerHTML = '<h2>' + escapeHtml(p.title) + '</h2>' + renderArchiveControl(p) + '<div class="caveat-box" style="background:var(--red-bg); border-color:#E0B4A6; color:var(--red);">Evaluation failed: ' + escapeHtml(p.error) + '. Use "Save and retry evaluation" below to try again. Adding another disclosure will not retry this one.</div>' + renderStaffInputPanel(p);
+      el.innerHTML = '<h2>' + escapeHtml(p.title) + '</h2>' + renderArchiveControl(p) + '<div class="caveat-box" style="background:var(--red-bg); border-color:#E0B4A6; color:var(--red);">Evaluation failed: ' + escapeHtml(p.error) + '. Use "Save and retry evaluation" below to try again. Adding another disclosure will not retry this one.</div>' + renderScAlignmentPanel(p) + renderStaffInputPanel(p);
       showView('casefile');
       attachStaffInputHandler();
       attachArchiveButtonHandler();
@@ -2459,6 +2974,8 @@
 
       renderValueScorePanel(p) +
 
+      renderScAlignmentPanel(p) +
+
       '<div class="panel"><div class="panel-head"><h3>Market demand, the gating question</h3><span class="tag ' + demandTagClass + '">' + escapeHtml(ev.market_demand_verdict || 'Unspecified') + '</span></div><div class="panel-body">' +
         '<p style="font-size:13.5px;">' + escapeHtml(ev.market_demand_rationale || '') + '</p>' +
         '<div class="caveat-box" style="background:#F7E7E2; border-color:#E0B4A6; color:var(--red);"><strong>What the disclosure asserts but does not actually back up:</strong> ' + escapeHtml(ev.unsupported_claims || 'Not specified.') + '</div>' +
@@ -2507,7 +3024,15 @@
       .replace(/"/g,'&quot;').replace(/'/g,'&#039;');
   }
 
+  loadKnownRegistry();
+  fillAlignmentFilter();
+  renderRegistryStatus('Loaded ' + KNOWN_CLEMSON_PATENTS.length + ' known Clemson assigned patents and published applications, most recent first, from a snapshot dated August 29, 2026.');
   renderAll();
+  renderRegistry();
+  loadTriageCache().then(() => {
+    if(triageError) setRankStatus(triageError);
+    renderRegistry();
+  });
 })();
 </script>
 
