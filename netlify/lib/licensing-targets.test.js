@@ -187,7 +187,7 @@ test("the page script parses and the case file markup includes licensing targets
   });
   assert.match(html, /id="licensing-targets"/);
   assert.match(html, /Who to sell or license this to/);
-  assert.match(html, /This stored evaluation does not include licensing targets/);
+  assert.match(html, /This review does not include buyer names/);
   assert.match(html, /data-reevaluate/);
   assert.match(html, /data-download-report/);
   assert.match(html, /task: "licensing_targets"/);

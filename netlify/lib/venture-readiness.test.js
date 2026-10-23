@@ -55,13 +55,13 @@ test("a commentary with no buyer scores as not commercial and does not invent a 
   }), { asOf: AS_OF, alignmentScore: 0 });
   assert.equal(scored.total, 3);
   assert.equal(scored.band, "not_commercial");
-  assert.equal(scored.bandLabel, "Not commercial now");
+  assert.equal(scored.bandLabel, "Not ready to sell");
   assert.equal(scored.paths.primary.id, "not_ready");
-  assert.match(scored.paths.primary.detail, /prototype or a named application/);
+  assert.match(scored.paths.primary.detail, /prototype or a named use/);
   assert.equal(scored.flag.level, "unknown");
   assert.equal(scored.flag.label, "Publication date unknown");
-  assert.match(scored.advice, /not a commercial project/);
-  assert.match(scored.caveat, /Not legal advice/);
+  assert.match(scored.advice, /not ready to sell/);
+  assert.match(scored.caveat, /This is not legal advice/);
 });
 
 test("a quantified lab method inside the US grace period files first and can still explore a startup", () => {
@@ -88,14 +88,15 @@ test("a quantified lab method inside the US grace period files first and can sti
   assert.equal(scored.total, 93);
   assert.equal(scored.band, "venture_ready");
   assert.equal(scored.paths.primary.id, "file_disclosure");
-  assert.equal(scored.paths.primary.label, "File invention disclosure now");
-  assert.match(scored.paths.primary.detail, /US bar date 2027-07-01, 251 days left/);
+  assert.equal(scored.paths.primary.label, "File with CURF now");
+  assert.match(scored.paths.primary.detail, /2027-07-01/);
+  assert.match(scored.paths.primary.detail, /251 days left/);
   assert.equal(scored.paths.secondary.id, "explore_startup");
   assert.match(scored.paths.secondary.detail, /NSF I-Corps/);
   assert.equal(scored.flag.level, "amber");
-  assert.equal(scored.flag.label, "US grace period only, foreign rights likely lost");
-  assert.match(scored.advice, /File an invention disclosure with CURF now/);
-  assert.match(scored.advice, /Not legal advice/);
+  assert.equal(scored.flag.label, "US filing window only. Other countries are likely closed.");
+  assert.match(scored.advice, /File with CURF now/);
+  assert.match(scored.advice, /This is not legal advice/);
   assert.equal(scored.criteria.find(row => row.id === "novelty").evidence, "Yield rose 40 percent against the prior reactor.");
 });
 
@@ -124,7 +125,7 @@ test("a passed US bar date is red and blocks a new filing unless something is al
     trl: 5
   }), { asOf: AS_OF });
   assert.equal(open.flag.level, "red");
-  assert.equal(open.flag.label, "US bar date passed");
+  assert.equal(open.flag.label, "Too late to file in the US");
   assert.equal(open.criteria.find(row => row.id === "protectability").points, 0);
   assert.equal(open.paths.primary.id, "sponsored_research");
   assert.notEqual(open.paths.primary.id, "file_disclosure");
@@ -154,7 +155,7 @@ test("gap funding, know-how licensing, and pre-publication each follow their own
   }), { asOf: AS_OF });
   assert.equal(gap.criteria.find(row => row.id === "protectability").points, 10);
   assert.equal(gap.paths.primary.id, "gap_funding");
-  assert.match(gap.advice, /gap or proof-of-concept funding/);
+  assert.match(gap.advice, /early funding/);
   assert.ok(gap.total < 65);
 
   const license = scoreVentureReadiness(evidence({
@@ -175,7 +176,7 @@ test("gap funding, know-how licensing, and pre-publication each follow their own
     market: "none"
   }), { asOf: AS_OF });
   assert.equal(early.flag.level, "green");
-  assert.equal(early.flag.label, "Pre-publication");
+  assert.equal(early.flag.label, "Not published yet");
   assert.equal(early.paths.primary.id, "file_disclosure");
   assert.match(early.advice, /before you publish/);
 });
@@ -360,11 +361,11 @@ test("the publication portfolio sorts and filters by band and path, and the case
   assert.equal(filters.hidden, false);
   const body = document.querySelector("#portfolio-body").textContent;
   assert.match(body, /Quantified reactor paper/);
-  assert.match(body, /Venture-ready candidate/);
-  assert.match(body, /File invention disclosure now/);
-  assert.match(body, /US grace period only/);
+  assert.match(body, /Ready to pursue/);
+  assert.match(body, /File with CURF now/);
+  assert.match(body, /US filing window only/);
   assert.match(body, /Ward culture commentary/);
-  assert.match(body, /Not commercial now/);
+  assert.match(body, /Not ready to sell/);
   assert.doesNotMatch(body, /A granted patent/);
   const titles = Array.from(document.querySelectorAll("#portfolio-body .patent-title")).map(node => node.textContent);
   assert.match(titles[0], /Quantified reactor paper/);
@@ -387,12 +388,12 @@ test("the publication portfolio sorts and filters by band and path, and the case
   const panel = document.querySelector("#venture-readiness");
   assert.ok(panel);
   assert.match(panel.textContent, /93 \/ 100/);
-  assert.match(panel.textContent, /Venture-ready candidate/);
-  assert.match(panel.textContent, /File invention disclosure now/);
-  assert.match(panel.textContent, /Explore startup/);
+  assert.match(panel.textContent, /Ready to pursue/);
+  assert.match(panel.textContent, /File with CURF now/);
+  assert.match(panel.textContent, /Look at a startup/);
   assert.match(panel.textContent, /Yield rose 40 percent/);
-  assert.match(panel.textContent, /Advice for the authors/);
-  assert.match(panel.textContent, /Not legal advice; confirm with CURF \/ patent counsel/);
+  assert.match(panel.textContent, /What to tell the authors/);
+  assert.match(panel.textContent, /This is not legal advice/);
   assert.equal(document.querySelector("#value-score"), null);
   const licensing = document.querySelector("#licensing-targets").textContent;
   assert.match(licensing, /optional/);
@@ -404,6 +405,6 @@ test("the publication portfolio sorts and filters by band and path, and the case
   assert.equal(document.querySelector("#publication-score-filters").hidden, true);
   const patents = document.querySelector("#portfolio-body").textContent;
   assert.match(patents, /A granted patent/);
-  assert.match(patents, /Hard pass/);
+  assert.match(patents, /No real market/);
   assert.doesNotMatch(patents, /Quantified reactor paper/);
 });

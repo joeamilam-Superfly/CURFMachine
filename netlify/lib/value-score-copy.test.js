@@ -82,14 +82,14 @@ test("a real 8.5 case gets specific copy, rank, and a pilot lever", () => {
   const patent = realCase();
   const copy = buildValueScoreCopy(patent, patent.evaluation.value_score_snapshot, portfolioAroundRealCase(), { asOf: "2026-10-23" });
   assert.equal(copy.headline, "8.5 / 15: moderate market pull and 4 named licensees, held back by no prototype and demand short of strong.");
-  assert.equal(copy.rank, "Tied for 3rd of 15 viable patents. Ahead of 67% of viable patents.");
-  assert.equal(copy.earned, "Market demand is MODERATE (4 of 6). SC investment alignment is Software, score 86 (2 of 2). Adoption risk scores 1.5 of 2.");
-  assert.equal(copy.cost, "No prototype yet: technology readiness is TRL 3 (0 of 2). Market demand is MODERATE, 2 short of the top of this component (4 of 6). No confirmed inventor or industry engagement (0 of 1).");
-  assert.equal(copy.lever, "A pilot proving this works beyond the lab would add ~2 pts; see Pilot targets.");
+  assert.equal(copy.rank, "Tied for 3rd of 15 patents with real demand. Ahead of 67%.");
+  assert.equal(copy.earned, "Market interest is MODERATE (4 of 6). South Carolina fit is Software, score 86 (2 of 2). How hard it is to adopt scores 1.5 of 2.");
+  assert.equal(copy.cost, "No prototype yet. How far along: level 3 (0 of 2). Market interest is MODERATE, 2 short of the top (4 of 6). No inventor or company contact is confirmed (0 of 1).");
+  assert.equal(copy.lever, "A pilot proving this works beyond the lab would add about 2 points. See Pilot targets.");
   assert.equal(copy.seePilotTargets, true);
   assert.doesNotMatch(copy.headline, /2031|2043|expiry/);
-  assert.match(copy.methodNote, /Computed directly from this evaluation's own outputs/);
-  assert.match(copy.methodNote, /Frozen at the time this evaluation ran/);
+  assert.match(copy.methodNote, /added up from the lines already on this page/);
+  assert.match(copy.methodNote, /saved when this review ran/);
 });
 
 test("a near-term expiry is named only when the filing date supports it", () => {
@@ -138,7 +138,7 @@ test("an early prototype points at field performance for the one point still ope
   patent.staffInput = { inventorWillingness: "Willing to engage" };
   const copy = buildValueScoreCopy(patent, patent.evaluation.value_score_snapshot, [peer(3, 13, { demand: "STRONG", path: "LICENSE" })], { asOf: "2026-10-23" });
   assert.match(copy.headline, /^13 \/ 15: strong market pull and 4 named licensees, held back by an early prototype\./);
-  assert.equal(copy.lever, "A pilot proving field performance would add ~1 pt; see Pilot targets.");
+  assert.equal(copy.lever, "A pilot proving field performance would add about 1 point. See Pilot targets.");
   assert.equal(copy.seePilotTargets, true);
   assert.doesNotMatch(copy.cost, /engagement/);
 });
@@ -169,8 +169,8 @@ test("a hard pass does not recommend a pilot and is left out of the viable rank"
   const copy = buildValueScoreCopy(patent, patent.evaluation.value_score_snapshot, portfolioAroundRealCase(), { asOf: "2026-10-23" });
   assert.equal(copy.seePilotTargets, false);
   assert.doesNotMatch(copy.lever, /Pilot targets/);
-  assert.match(copy.lever, /add ~4 pts/);
-  assert.equal(copy.rank, "Not in the viable set (demand is WEAK). 15 portfolio patents have moderate or strong demand.");
+  assert.match(copy.lever, /add about 4 points/);
+  assert.equal(copy.rank, "Not in the comparison (market interest is weak). 15 portfolio patents have moderate or strong market interest.");
   assert.doesNotMatch(copy.headline, /named licensee/);
 });
 
@@ -181,7 +181,7 @@ test("an empty breakdown still narrates the stored fields and keeps the frozen t
   assert.match(copy.headline, /^3\.5 \/ 13:/);
   assert.match(copy.headline, /moderate market pull/);
   assert.match(copy.headline, /4 named licensees/);
-  assert.equal(copy.rank, "The only viable patent in the portfolio.");
+  assert.equal(copy.rank, "The only patent with real demand in the portfolio.");
 });
 
 test("publications rank among publications", () => {
@@ -194,7 +194,7 @@ test("publications rank among publications", () => {
     peer(5, 12)
   ];
   const copy = buildValueScoreCopy(patent, patent.evaluation.value_score_snapshot, peers, { asOf: "2026-10-23" });
-  assert.equal(copy.rank, "Ranks 2nd of 2 viable publications.");
+  assert.equal(copy.rank, "Ranks 2nd of 2 publications with real demand.");
 });
 
 test("the case file replaces the repeated boilerplate with this case's copy", () => {
@@ -220,26 +220,26 @@ test("the case file replaces the repeated boilerplate with this case's copy", ()
     panel.querySelector(".score-headline").textContent,
     "8.5 / 15: moderate market pull and 4 named licensees, held back by no prototype and demand short of strong."
   );
-  assert.match(panel.querySelector(".score-rank").textContent, /Tied for 3rd of 15 viable patents/);
-  assert.match(panel.querySelector(".score-earned").textContent, /What earned points/);
+  assert.match(panel.querySelector(".score-rank").textContent, /Tied for 3rd of 15 patents with real demand/);
+  assert.match(panel.querySelector(".score-earned").textContent, /What raised the score/);
   assert.match(panel.querySelector(".score-earned").textContent, /Software, score 86 \(2 of 2\)/);
-  assert.match(panel.querySelector(".score-cost").textContent, /What cost points/);
-  assert.match(panel.querySelector(".score-cost").textContent, /TRL 3 \(0 of 2\)/);
-  assert.match(panel.querySelector(".score-lever").textContent, /Fastest way to raise it/);
-  assert.match(panel.querySelector(".score-lever").textContent, /would add ~2 pts/);
+  assert.match(panel.querySelector(".score-cost").textContent, /What lowered the score/);
+  assert.match(panel.querySelector(".score-cost").textContent, /level 3 \(0 of 2\)/);
+  assert.match(panel.querySelector(".score-lever").textContent, /Fastest way to raise the score/);
+  assert.match(panel.querySelector(".score-lever").textContent, /would add about 2 points/);
   const pilotLink = panel.querySelector('.score-lever a[href="#pilot-targets"]');
   assert.equal(pilotLink.textContent, "Pilot targets");
   assert.doesNotMatch(body, /Computed directly from this evaluation/);
   assert.doesNotMatch(body, /Frozen at the time this evaluation ran/);
-  assert.match(panel.querySelector(".score-tip").textContent, /Frozen at the time this evaluation ran/);
-  assert.match(panel.querySelector(".score-tip").textContent, /not a dollar valuation/);
+  assert.match(panel.querySelector(".score-tip").textContent, /saved when this review ran/);
+  assert.match(panel.querySelector(".score-tip").textContent, /not a dollar value/);
   assert.match(body, /Market demand \(MODERATE\)/);
   assert.match(body, /4 \/ 6/);
   assert.equal(document.querySelector("#pilot-targets") != null, true);
 
   document.querySelector('#portfolio-body [data-open-btn="90"]').click();
   const hardPass = document.querySelector("#value-score");
-  assert.match(hardPass.querySelector(".score-rank").textContent, /Not in the viable set \(demand is WEAK\)/);
+  assert.match(hardPass.querySelector(".score-rank").textContent, /Not in the comparison \(market interest is weak\)/);
   assert.equal(hardPass.querySelector('.score-lever a[href="#pilot-targets"]'), null);
   assert.doesNotMatch(hardPass.querySelector(".panel-body").textContent, /Computed directly from this evaluation/);
 });

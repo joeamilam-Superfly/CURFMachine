@@ -10,22 +10,22 @@ root.CURF_VENTURE = (function(){
 
 const PUBLICATION_SCHEMA_VERSION = "publication-venture-v1";
 
-const CAVEAT = "Not legal advice; confirm with CURF / patent counsel.";
+const CAVEAT = "This is not legal advice. Check with CURF or a patent lawyer.";
 
 const BANDS = [
-  { id: "venture_ready", label: "Venture-ready candidate", min: 75 },
-  { id: "promising", label: "Promising, needs de-risking", min: 55 },
-  { id: "early", label: "Early/exploratory", min: 35 },
-  { id: "not_commercial", label: "Not commercial now", min: 0 }
+  { id: "venture_ready", label: "Ready to pursue", min: 75 },
+  { id: "promising", label: "Promising, lower the risk first", min: 55 },
+  { id: "early", label: "Early research", min: 35 },
+  { id: "not_commercial", label: "Not ready to sell", min: 0 }
 ];
 
 const PATHS = [
-  { id: "file_disclosure", label: "File invention disclosure now" },
-  { id: "explore_startup", label: "Explore startup" },
-  { id: "gap_funding", label: "Seek gap/proof-of-concept funding" },
-  { id: "sponsored_research", label: "Sponsored research / industry partner" },
-  { id: "license_knowhow", label: "License know-how/software/materials" },
-  { id: "not_ready", label: "Not ready yet / monitor" }
+  { id: "file_disclosure", label: "File with CURF now" },
+  { id: "explore_startup", label: "Look at a startup" },
+  { id: "gap_funding", label: "Ask for early funding" },
+  { id: "sponsored_research", label: "Find a company partner" },
+  { id: "license_knowhow", label: "License the know-how" },
+  { id: "not_ready", label: "Check back later" }
 ];
 
 const NOVELTY = {
@@ -187,19 +187,19 @@ function clock(evidence, asOf){
 function disclosureFlag(evidence, asOf){
   const timing = clock(evidence || {}, asOf);
   if(timing.state === "pre_publication"){
-    return { level: "green", label: "Pre-publication", detail: "The work is not public yet.", barDate: null, daysLeft: null, caveat: CAVEAT };
+    return { level: "green", label: "Not published yet", detail: "This work is not public yet.", barDate: null, daysLeft: null, caveat: CAVEAT };
   }
   if(timing.state === "unknown"){
-    return { level: "unknown", label: "Publication date unknown", detail: "The US bar date cannot be counted without a publication date in the record.", barDate: null, daysLeft: null, caveat: CAVEAT };
+    return { level: "unknown", label: "Publication date unknown", detail: "We need a publication date before we can count the US filing window.", barDate: null, daysLeft: null, caveat: CAVEAT };
   }
   if(timing.state === "bar_passed"){
-    return { level: "red", label: "US bar date passed", detail: "The one-year US grace period ended on " + timing.barDate + ".", barDate: timing.barDate, daysLeft: timing.daysLeft, caveat: CAVEAT };
+    return { level: "red", label: "Too late to file in the US", detail: "The one-year US filing window ended on " + timing.barDate + ".", barDate: timing.barDate, daysLeft: timing.daysLeft, caveat: CAVEAT };
   }
   const dayWord = timing.daysLeft === 1 ? "day" : "days";
   return {
     level: "amber",
-    label: "US grace period only, foreign rights likely lost",
-    detail: "US bar date " + timing.barDate + ", " + timing.daysLeft + " " + dayWord + " left.",
+    label: "US filing window only. Other countries are likely closed.",
+    detail: "You can still file in the US until " + timing.barDate + ". " + timing.daysLeft + " " + dayWord + " left.",
     barDate: timing.barDate,
     daysLeft: timing.daysLeft,
     caveat: CAVEAT
@@ -272,24 +272,24 @@ function evidenceLine(text, fallback){
 function adviceFor(primary, evidence, flag, trl){
   if(primary.id === "file_disclosure"){
     if(flag.level === "green"){
-      return "File an invention disclosure with CURF before you publish. After publication the US grace period is one year, and foreign rights are usually lost. " + CAVEAT;
+      return "File with CURF before you publish. After you publish, you have one year to file in the US. Rights in other countries are usually lost. " + CAVEAT;
     }
-    return "File an invention disclosure with CURF now. " + flag.detail + " Foreign rights are likely already lost. " + CAVEAT;
+    return "File with CURF now. " + flag.detail + " Rights in other countries are likely already lost. " + CAVEAT;
   }
   if(primary.id === "explore_startup"){
-    return "Talk with CURF about a startup path. Start with NSF I-Corps to test the buyer named in the paper, then SCRA / SC Launch if a South Carolina company is the right vehicle.";
+    return "Talk with CURF about a startup. Start with NSF I-Corps to test the buyer named in the paper. Then look at SCRA or SC Launch if a South Carolina company is the right next step.";
   }
   if(primary.id === "gap_funding"){
-    return "The paper describes a quantified step beyond the literature, and the work is still at TRL " + trl + ". Ask CURF about gap or proof-of-concept funding before you look for a company.";
+    return "The paper shows a measured step past earlier work, and it is still early (level " + trl + "). Ask CURF about early funding before you look for a company.";
   }
   if(primary.id === "sponsored_research"){
-    return "A specific buyer has a costly problem, and this paper is a weak patent candidate. Ask CURF about sponsored research or an industry partnership.";
+    return "A specific buyer has a costly problem, and this paper is a weak patent. Ask CURF about a research contract or a company partner.";
   }
   if(primary.id === "license_knowhow"){
     const asset = evidence.asset_form === "software" ? "software" : (evidence.asset_form === "materials" ? "materials" : "know-how");
-    return "The useful asset is " + asset + ". Ask CURF about licensing that directly to a partner.";
+    return "The useful piece is " + asset + ". Ask CURF about licensing that directly to a partner.";
   }
-  return "This is not a commercial project on the current record. " + (primary.detail || "Re-check when a buyer, a prototype, or a filing position is in the record.");
+  return "This is not ready to sell on what we have now. " + (primary.detail || "Check again when a buyer, a prototype, or a filing plan is written down.");
 }
 
 function scoreVentureReadiness(raw, options){
@@ -305,13 +305,13 @@ function scoreVentureReadiness(raw, options){
   const team = teamPoints(evidence.team_signals);
   const fit = scPoints(settings.alignmentScore);
   const criteria = [
-    { id: "novelty", label: "Novelty and technical advantage", points: novelty, max: 20, evidence: evidenceLine(evidence.novelty_evidence, novelty === 20 ? "A quantified step-change is in the text." : "The text does not show a quantified step-change.") },
-    { id: "trl", label: "Maturity (NASA TRL)", points: maturity, max: 15, evidence: evidenceLine(evidence.trl_evidence, "Technology readiness is TRL " + evidence.trl + ".") },
-    { id: "protectability", label: "Protectability and IP status", points: protectability, max: 20, evidence: evidenceLine(evidence.protectability_evidence, protectability === 0 ? "Nothing claimable is filed, or the US bar date has passed." : "A claimable position is still open or already filed.") },
-    { id: "market", label: "Problem and market pull", points: market, max: 20, evidence: evidenceLine(evidence.market_evidence, market === 0 ? "No buyer or sector is named." : "A market signal is in the text.") },
-    { id: "path", label: "Path to a product or business", points: route, max: 10, evidence: evidenceLine(evidence.path_evidence, route === 0 ? "No product path is described." : "A product path is described.") },
-    { id: "team", label: "Team and founder signal", points: team, max: 10, evidence: evidenceLine(evidence.team_evidence, team === 0 ? "No industry co-author, prior patent, startup, or SBIR is in the text." : "A founder signal is in the text.") },
-    { id: "sc_fit", label: "SC and Clemson strategic fit", points: fit, max: 5, evidence: settings.industryGroup ? ("South Carolina investment alignment is " + settings.industryGroup + (settings.alignmentScore ? ", score " + settings.alignmentScore : "") + ".") : "No South Carolina investment group was matched." }
+    { id: "novelty", label: "What is new", points: novelty, max: 20, evidence: evidenceLine(evidence.novelty_evidence, novelty === 20 ? "The text shows a measured leap." : "The text does not show a measured leap.") },
+    { id: "trl", label: "How far along it is", points: maturity, max: 15, evidence: evidenceLine(evidence.trl_evidence, "How far along: level " + evidence.trl + ".") },
+    { id: "protectability", label: "Can it be protected", points: protectability, max: 20, evidence: evidenceLine(evidence.protectability_evidence, protectability === 0 ? "Nothing that can be claimed is filed, or the US filing window has closed." : "A claim is still possible, or a filing already exists.") },
+    { id: "market", label: "Who needs this", points: market, max: 20, evidence: evidenceLine(evidence.market_evidence, market === 0 ? "No buyer or industry is named." : "The text names a market.") },
+    { id: "path", label: "Path to a product", points: route, max: 10, evidence: evidenceLine(evidence.path_evidence, route === 0 ? "No product path is described." : "A product path is described.") },
+    { id: "team", label: "Signs of a founding team", points: team, max: 10, evidence: evidenceLine(evidence.team_evidence, team === 0 ? "No industry co-author, earlier patent, startup, or SBIR award is in the text." : "The text names a founder signal.") },
+    { id: "sc_fit", label: "Fit with South Carolina", points: fit, max: 5, evidence: settings.industryGroup ? ("South Carolina fit is " + settings.industryGroup + (settings.alignmentScore ? ", score " + settings.alignmentScore : "") + ".") : "No South Carolina industry group matched." }
   ];
   const total = criteria.reduce((sum, row) => sum + row.points, 0);
   const band = bandFor(total);
@@ -320,35 +320,35 @@ function scoreVentureReadiness(raw, options){
   const withinWindow = timing.state === "grace" || timing.state === "pre_publication";
   if(protectability >= 10 && evidence.claimable && !evidence.ip_filed && withinWindow){
     const file = pathById("file_disclosure");
-    matches.push({ id: file.id, label: file.label, detail: flag.level === "green" ? "File before publication. There is no US bar date yet." : flag.detail });
+    matches.push({ id: file.id, label: file.label, detail: flag.level === "green" ? "File before you publish. There is no US deadline yet." : flag.detail });
   }
   if(total >= 65 && market >= 15 && route >= 7){
     const startup = pathById("explore_startup");
-    matches.push({ id: startup.id, label: startup.label, detail: "NSF I-Corps, then SCRA / SC Launch." });
+    matches.push({ id: startup.id, label: startup.label, detail: "NSF I-Corps, then SCRA or SC Launch." });
   }
   if(novelty >= 15 && evidence.trl >= 3 && evidence.trl <= 4){
     const gap = pathById("gap_funding");
-    matches.push({ id: gap.id, label: gap.label, detail: "Novelty is a quantified step-change and readiness is TRL " + evidence.trl + "." });
+    matches.push({ id: gap.id, label: gap.label, detail: "The work shows a measured leap and is still early (level " + evidence.trl + ")." });
   }
   if(market >= 15 && protectability === 0){
     const sponsored = pathById("sponsored_research");
-    matches.push({ id: sponsored.id, label: sponsored.label, detail: "Market pull is specific and the patent position is weak." });
+    matches.push({ id: sponsored.id, label: sponsored.label, detail: "A specific buyer has a costly problem, and a patent is a weak fit." });
   }
   if((evidence.asset_form === "software" || evidence.asset_form === "materials" || evidence.asset_form === "know_how") && market >= 10){
     const license = pathById("license_knowhow");
-    matches.push({ id: license.id, label: license.label, detail: "The licensable asset is non-patent " + (evidence.asset_form === "know_how" ? "know-how" : evidence.asset_form) + "." });
+    matches.push({ id: license.id, label: license.label, detail: "What a partner could take is " + (evidence.asset_form === "know_how" ? "know-how" : evidence.asset_form) + ", not a patent." });
   }
   const basicOnly = evidence.trl <= 2 && market === 0;
   if(total < 35 || basicOnly){
     const monitor = pathById("not_ready");
     const detail = basicOnly
-      ? "Re-check when there is a prototype or a named application."
-      : "Re-check when the work names a buyer or moves past a concept.";
+      ? "Check again when there is a prototype or a named use."
+      : "Check again when the work names a buyer or moves past an idea.";
     matches.push({ id: monitor.id, label: monitor.label, detail });
   }
   if(!matches.length){
     const monitor = pathById("not_ready");
-    matches.push({ id: monitor.id, label: monitor.label, detail: "Re-check when a buyer, a prototype, or a filing position is in the record." });
+    matches.push({ id: monitor.id, label: monitor.label, detail: "Check again when a buyer, a prototype, or a filing plan is written down." });
   }
   const primary = matches[0];
   const secondary = matches[1] || null;

@@ -748,9 +748,9 @@ function explain(group){
   const recentLabel = group.recent_deals === 1 ? "1 of them" : group.recent_deals + " of them";
   const money = group.median_capital_musd === null || group.median_capital_musd === undefined
     ? "PitchBook did not report a median capital invested for these deals."
-    : "The typical PitchBook median check is about " + formatMillions(group.median_capital_musd) + ". That is a typical check size, not the sum of dollars invested.";
+    : "A typical deal in this group is about " + formatMillions(group.median_capital_musd) + ". That is one deal, not the total dollars invested.";
   const note = "Aligns with " + group.industry_group + " (" + where + "). " +
-    dealLabel + " since 2023, " + recentLabel + " in 2025 or 2026 YTD. " + money;
+    dealLabel + " since 2023, " + recentLabel + " in 2025 or 2026 so far. " + money;
   const dollars = formatMillions(group.median_capital_musd);
   const countLabel = group.deal_count === 1 ? "1 SC deal" : group.deal_count + " SC deals";
   const short = dollars
@@ -789,8 +789,8 @@ function unmatched(confidence){
     deal_count: 0,
     recent_deals: 0,
     median_capital_musd: null,
-    note: "No PitchBook industry group matched. SC investment alignment is 0.",
-    short: "No SC industry match.",
+    note: "No South Carolina industry group matched. The fit score is 0.",
+    short: "No South Carolina industry match.",
     source: "unmatched",
     confidence: confidence || "none",
     as_of: AS_OF

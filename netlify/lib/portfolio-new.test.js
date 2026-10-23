@@ -120,7 +120,7 @@ test("portfolio marks recent unopened patents and keeps triage and licensing int
   assert.match(activeBody.textContent, /Already opened assay/);
   assert.match(activeBody.textContent, /Second fresh patent/);
   assert.doesNotMatch(activeBody.textContent, /Archived fresh patent/);
-  assert.match(activeBody.textContent, /Hard pass: no viable market/);
+  assert.match(activeBody.textContent, /No real market for a sale or license/);
   assert.equal(activeBody.querySelectorAll("tr.portfolio-new").length, 2);
 
   chooseView(document, window, "new");

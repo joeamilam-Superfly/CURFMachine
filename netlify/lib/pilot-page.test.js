@@ -120,8 +120,8 @@ test("opening a case without pilots asks for that section and keeps the licensin
   const { document } = dom.window;
   openCase(document, 1);
   let pilots = document.querySelector("#pilot-targets");
-  assert.match(pilots.textContent, /Finding pilot targets…/);
-  assert.match(pilots.textContent, /Add pilot targets/);
+  assert.match(pilots.textContent, /Looking for pilot sites…/);
+  assert.match(pilots.textContent, /Add pilot sites/);
   assert.equal(pilots.querySelector("button").disabled, true);
   assert.doesNotMatch(document.body.textContent, /Re-evaluate to add pilot targets/);
   const licensing = document.querySelector("#licensing-targets");
@@ -131,7 +131,7 @@ test("opening a case without pilots asks for that section and keeps the licensin
   await settle();
   await settle();
   pilots = document.querySelector("#pilot-targets");
-  assert.match(pilots.textContent, /Refresh pilot targets/);
+  assert.match(pilots.textContent, /Refresh pilot sites/);
   assert.match(pilots.textContent, /Spartanburg film trial/);
   assert.match(pilots.textContent, /https:\/\/example.com\/milliken-program/);
   assert.equal(document.querySelector("#licensing-targets").querySelectorAll(".archetype").length, 3);
@@ -148,8 +148,8 @@ test("a failed pilot lookup keeps the case and offers Add pilot targets", async 
   await settle();
   await settle();
   const pilots = document.querySelector("#pilot-targets");
-  assert.match(pilots.textContent, /Add pilot targets/);
-  assert.match(pilots.textContent, /Pilot targets were not updated/);
+  assert.match(pilots.textContent, /Add pilot sites/);
+  assert.match(pilots.textContent, /Pilot sites were not updated/);
   assert.equal(pilots.querySelector("button").disabled, false);
   assert.doesNotMatch(document.body.textContent, /Re-evaluate to add pilot targets/);
   assert.match(document.querySelector("#licensing-targets").textContent, /Milliken/);
@@ -219,8 +219,8 @@ test("pilot targets show prior-work links first and flag unverified names last",
   const { document } = dom.window;
   openCase(document, 2);
   const pilots = document.querySelector("#pilot-targets");
-  assert.match(pilots.textContent, /Pilot & proof-of-concept targets/);
-  assert.match(pilots.textContent, /Refresh pilot targets/);
+  assert.match(pilots.textContent, /Pilot sites/);
+  assert.match(pilots.textContent, /Refresh pilot sites/);
   assert.equal(calls.filter(url => url.includes("/api/generate-pilot-targets")).length, 0);
   assert.match(pilots.textContent, /Biggest proof gap/);
   assert.match(pilots.textContent, /No field data/);
@@ -228,8 +228,8 @@ test("pilot targets show prior-work links first and flag unverified names last",
   assert.match(pilots.textContent, /Relevant prior pilots/);
   assert.match(pilots.textContent, /Spartanburg film trial/);
   assert.match(pilots.textContent, /2023/);
-  assert.match(pilots.textContent, /No verified prior pilot found/);
-  assert.match(pilots.textContent, /Unverified/);
+  assert.match(pilots.textContent, /No public page about an earlier pilot was found/);
+  assert.match(pilots.textContent, /No proof link/);
   const links = [...pilots.querySelectorAll("a")].map(link => link.getAttribute("href"));
   assert.ok(links.includes("https://example.com/spartanburg-trial"));
   assert.ok(links.includes("https://example.com/milliken-program"));
@@ -245,11 +245,11 @@ test("pilot targets show prior-work links first and flag unverified names last",
 
   openCase(document, 3);
   const skipped = document.querySelector("#pilot-targets");
-  assert.match(skipped.textContent, /Pilots aren't recommended/);
-  assert.match(skipped.textContent, /Refresh pilot targets/);
+  assert.match(skipped.textContent, /not a good next step/);
+  assert.match(skipped.textContent, /Refresh pilot sites/);
   assert.equal(skipped.querySelector("[data-pilot-verified]"), null);
   const hardPass = document.querySelector("#licensing-targets");
-  assert.match(hardPass.textContent, /Hard pass/);
+  assert.match(hardPass.textContent, /No real market/);
   assert.match(hardPass.textContent, /One Diagnostics/);
   assert.deepEqual(errors, [], errors.join("\n"));
 });
@@ -329,14 +329,14 @@ test("refresh keeps the current pilot cards visible until the new search finishe
   openCase(document, 2);
   document.querySelector("[data-pilot-action]").click();
   const during = document.querySelector("#pilot-targets");
-  assert.match(during.textContent, /Finding pilot targets…/);
+  assert.match(during.textContent, /Looking for pilot sites…/);
   assert.match(during.textContent, /Stored Lab/);
   assert.equal(during.querySelector("button").disabled, true);
   await flush();
   const after = document.querySelector("#pilot-targets");
   assert.match(after.textContent, /Fresh Lab/);
   assert.doesNotMatch(after.textContent, /Stored Lab/);
-  assert.doesNotMatch(after.textContent, /Finding pilot targets/);
+  assert.doesNotMatch(after.textContent, /Looking for pilot sites/);
   assert.equal(after.querySelector("button").disabled, false);
   assert.match(document.querySelector("#licensing-targets").textContent, /Milliken/);
   assert.ok(calls.some(url => url.includes("/api/generate-pilot-targets-background")));
@@ -369,7 +369,7 @@ test("a failed refresh leaves the current pilot cards in place", async () => {
   await flush();
   const pilots = document.querySelector("#pilot-targets");
   assert.match(pilots.textContent, /Stored Lab/);
-  assert.match(pilots.textContent, /Pilot targets were not updated/);
+  assert.match(pilots.textContent, /Pilot sites were not updated/);
   assert.match(pilots.textContent, /could not be started/);
   assert.equal(pilots.querySelector("button").disabled, false);
   assert.match(document.querySelector("#licensing-targets").textContent, /Milliken/);
