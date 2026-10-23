@@ -174,6 +174,9 @@
   .tag.new{ background:#FFF1E6; color: var(--orange-deep); }
   table.docket tr.portfolio-new td{ background:#FFF6EF; }
   table.docket tr.clickable.portfolio-new:hover td{ background:#FDEFE2; }
+  .portfolio-kinds{ display:flex; gap:8px; flex-wrap:wrap; margin:0 0 14px 0; }
+  .portfolio-kinds button[aria-pressed="true"]{ background:var(--orange); color:#fff; border-color:var(--orange); }
+  .portfolio-kinds button[aria-pressed="true"] .tag.new{ background:#fff; color:var(--orange-deep); }
 
   /* intake */
   .intake-grid{ display:grid; grid-template-columns: 1.1fr 1fr; gap:20px; }
@@ -551,7 +554,7 @@
         <div>
           <div class="eyebrow">Step 2</div>
           <h1>Portfolio</h1>
-          <p>Full evaluations land here and stay here. Each row is the stored result, including the demand read, who to sell or license it to, and the marketing abstract. Opening a case does not run the model again. Re-evaluate, on the case file, is the only way to replace a stored result. An older result that has no licensing list says so on the case file. Sorted by value score, then South Carolina alignment. A patent added in the last 7 days wears a New badge until that case is opened, or until Mark all seen. The view menu starts on New when any of those are waiting.</p>
+          <p>Full evaluations land here and stay here. Patents and publications are separate lists, each with its own count, New badge, and view filter. Each row is the stored result, including the demand read, who to sell or license it to, and the marketing abstract. Opening a case does not run the model again. Re-evaluate, on the case file, is the only way to replace a stored result. An older result that has no licensing list says so on the case file. Sorted by value score, then South Carolina alignment. A row added in the last 7 days wears a New badge until that case is opened, or until Mark all seen on that list. The view menu starts on New when any of those are waiting in the list you are looking at.</p>
         </div>
         <div>
           <button class="btn secondary" id="btn-load-sample">Load sample portfolio</button>
@@ -563,6 +566,10 @@
         <div class="stat-card"><div class="label">Venture candidates</div><div class="value" id="stat-venture">0</div><div class="sub">demand fits a new market</div></div>
         <div class="stat-card"><div class="label">Insufficient demand</div><div class="value" id="stat-no-demand">0</div><div class="sub">no real market pull found</div></div>
         <div class="stat-card"><div class="label">Needs maturation</div><div class="value" id="stat-mature">0</div><div class="sub">too early technically</div></div>
+      </div>
+      <div class="portfolio-kinds" role="tablist" aria-label="Portfolio lists">
+        <button type="button" class="btn secondary" id="portfolio-kind-patents" role="tab" aria-pressed="true" aria-controls="portfolio-body">Patents <span class="tag" id="portfolio-patents-count">0</span> <span class="tag new" id="portfolio-patents-new" hidden>New (0)</span></button>
+        <button type="button" class="btn secondary" id="portfolio-kind-publications" role="tab" aria-pressed="false" aria-controls="portfolio-body">Publications <span class="tag" id="portfolio-publications-count">0</span> <span class="tag new" id="portfolio-publications-new" hidden>New (0)</span></button>
       </div>
       <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end; margin-bottom:10px;">
         <div class="field" style="margin:0; min-width:180px;">
@@ -795,11 +802,14 @@
   let publicationFindings = [];
   let publicationRelevanceFilter = 'all';
   const publicationSelected = new Set();
+  const publicationReviewing = new Set();
   const REGISTRY_PAGE_SIZE = 20;
   let hiddenAlreadyEvaluatedCount = 0;
   let showAlreadyEvaluated = false;
+  let portfolioKind = 'patents';
   let portfolioView = 'active';
-  let portfolioViewTouched = false;
+  const portfolioViewByKind = { patents: 'active', publications: 'active' };
+  const portfolioViewTouchedByKind = { patents: false, publications: false };
   const PORTFOLIO_NEW_MS = 7 * 24 * 60 * 60 * 1000;
 
   // Bump this string any time the evaluation schema or the value score
@@ -951,6 +961,15 @@
     return parseTime(ev.evaluated_at);
   }
 
+  function isPortfolioPublication(p){
+    return String((p && (p.recordType || p.portfolioKind)) || '').toLowerCase() === 'publication';
+  }
+
+  function portfolioRecordsForKind(kind){
+    const wanted = kind || portfolioKind;
+    return patents.filter(p => (wanted === 'publications') === isPortfolioPublication(p));
+  }
+
   function isPortfolioNew(p){
     const added = portfolioAddedTime(p);
     if(added == null) return false;
@@ -984,7 +1003,7 @@
   }
 
   function markAllPortfolioSeen(){
-    const fresh = patents.filter(isPortfolioNew);
+    const fresh = portfolioRecordsForKind().filter(isPortfolioNew);
     if(!fresh.length) return;
     const seenAt = new Date().toISOString();
     fresh.forEach(p => {
@@ -1380,9 +1399,17 @@
     e.preventDefault(); showView('portfolio');
   });
   document.getElementById('portfolio-view-filter').addEventListener('change', (e)=>{
-    portfolioViewTouched = true;
-    portfolioView = e.target.value || 'active';
+    portfolioViewTouchedByKind[portfolioKind] = true;
+    portfolioViewByKind[portfolioKind] = e.target.value || 'active';
+    portfolioView = portfolioViewByKind[portfolioKind];
     renderPortfolio();
+  });
+  document.querySelectorAll('#portfolio-kind-patents, #portfolio-kind-publications').forEach(btn => {
+    btn.addEventListener('click', () => {
+      portfolioKind = btn.id === 'portfolio-kind-publications' ? 'publications' : 'patents';
+      portfolioView = portfolioViewByKind[portfolioKind];
+      renderPortfolio();
+    });
   });
   document.getElementById('btn-mark-portfolio-seen').addEventListener('click', markAllPortfolioSeen);
 
@@ -2144,6 +2171,76 @@
   });
 
   // ---------- AI evaluation ----------
+  // One record, the same path the docket uses. A source id that is
+  // already evaluated is not sent to the model again unless
+  // forceReevaluate is set.
+  async function evaluateOnePatent(p){
+    if(!p || evaluationInFlight.has(p.id)) return p;
+    if(p.sourcePatentId && isPatentEvaluated(p.sourcePatentId) && !p.forceReevaluate){
+      const key = normalizePatentKey(p.sourcePatentId);
+      const cached = patents.find(other => other.id !== p.id && other.evaluation && !other.evaluation.cached_only && other.status === 'evaluated' && (
+        (other.sourcePatentId && normalizePatentKey(other.sourcePatentId) === key) ||
+        (other.remoteKey && normalizePatentKey(other.remoteKey) === key)
+      ));
+      if(cached){
+        if(p.status === 'pending') patents = patents.filter(item => item.id !== p.id);
+        return cached;
+      }
+      p.status = 'evaluated';
+      p.forceReevaluate = false;
+      if(!p.evaluation){
+        p.evaluation = {
+          cached_only: true,
+          recommended_path: 'MATURE',
+          market_demand_verdict: 'Unspecified',
+          market_demand_rationale: 'This patent is already marked evaluated in the shared store. The full writeup was not on this browser, so the model was not run again. Use Re-evaluate only if you intend to replace the stored result.',
+          caveat: 'Cached id only. The full evaluation record was not in this response.',
+          schema_version: EVALUATION_SCHEMA_VERSION,
+          evaluated_at: new Date().toISOString()
+        };
+        p.skipRemoteSave = true;
+      }
+      savePatentRecordsToStorage();
+      return p;
+    }
+    p.forceReevaluate = false;
+    evaluationInFlight.add(p.id);
+    p.status = 'evaluating';
+    p.evalStage = 'Core read';
+    renderAll();
+    refreshOpenCaseIfShowing(p.id);
+    try{
+      const result = await callEvaluationAPI(p);
+      p.evaluation = result;
+      p.status = 'evaluated';
+      p.error = null;
+      // Freeze provenance and the value score onto this exact
+      // evaluation, computed once, right now, from the inputs that
+      // actually produced it. Rendering later reads these stored
+      // values rather than recomputing live, so a future change to
+      // the scoring formula (a new EVALUATION_SCHEMA_VERSION) cannot
+      // silently change what this patent shows without it being
+      // re-evaluated on purpose.
+      p.evaluation.schema_version = EVALUATION_SCHEMA_VERSION;
+      p.evaluation.evaluated_at = new Date().toISOString();
+      p.evaluation.value_score_snapshot = computeValueScore(p);
+      markPatentEvaluatedAndPersist(p);
+      if(p.sourcePatentId && registryAll.length){
+        registryResults = applyEvaluatedFilter(registryAll);
+        renderRegistry();
+      }
+    }catch(err){
+      p.status = 'error';
+      p.error = err.message || 'Evaluation failed';
+      savePatentRecordsToStorage();
+    }finally{
+      evaluationInFlight.delete(p.id);
+    }
+    renderAll();
+    refreshOpenCaseIfShowing(p.id);
+    return p;
+  }
+
   async function evaluateAllPending(){
     // Failed patents stay failed until someone explicitly retries from
     // the case file. Picking them up here re-billed every previous
@@ -2156,69 +2253,10 @@
     evaluationBatch = { index: 0, total: toRun.length };
     for(let i = 0; i < toRun.length; i++){
       const p = toRun[i];
+      if(!patents.some(item => item.id === p.id)) continue;
       if(evaluationInFlight.has(p.id) || p.status !== 'pending') continue;
-      if(p.sourcePatentId && isPatentEvaluated(p.sourcePatentId) && !p.forceReevaluate){
-        const key = normalizePatentKey(p.sourcePatentId);
-        const cached = patents.find(other => other.id !== p.id && other.evaluation && !other.evaluation.cached_only && other.status === 'evaluated' && (
-          (other.sourcePatentId && normalizePatentKey(other.sourcePatentId) === key) ||
-          (other.remoteKey && normalizePatentKey(other.remoteKey) === key)
-        ));
-        if(cached){
-          patents = patents.filter(item => item.id !== p.id);
-          continue;
-        }
-        p.status = 'evaluated';
-        p.forceReevaluate = false;
-        if(!p.evaluation){
-          p.evaluation = {
-            cached_only: true,
-            recommended_path: 'MATURE',
-            market_demand_verdict: 'Unspecified',
-            market_demand_rationale: 'This patent is already marked evaluated in the shared store. The full writeup was not on this browser, so the model was not run again. Use Re-evaluate only if you intend to replace the stored result.',
-            caveat: 'Cached id only. The full evaluation record was not in this response.',
-            schema_version: EVALUATION_SCHEMA_VERSION,
-            evaluated_at: new Date().toISOString()
-          };
-          p.skipRemoteSave = true;
-        }
-        continue;
-      }
-      p.forceReevaluate = false;
-      evaluationInFlight.add(p.id);
       evaluationBatch.index = i + 1;
-      p.status = 'evaluating';
-      p.evalStage = 'Core read';
-      renderAll();
-      refreshOpenCaseIfShowing(p.id);
-      try{
-        const result = await callEvaluationAPI(p);
-        p.evaluation = result;
-        p.status = 'evaluated';
-        p.error = null;
-        // Freeze provenance and the value score onto this exact
-        // evaluation, computed once, right now, from the inputs that
-        // actually produced it. Rendering later reads these stored
-        // values rather than recomputing live, so a future change to
-        // the scoring formula (a new EVALUATION_SCHEMA_VERSION) cannot
-        // silently change what this patent shows without it being
-        // re-evaluated on purpose.
-        p.evaluation.schema_version = EVALUATION_SCHEMA_VERSION;
-        p.evaluation.evaluated_at = new Date().toISOString();
-        p.evaluation.value_score_snapshot = computeValueScore(p);
-        markPatentEvaluatedAndPersist(p);
-        if(p.sourcePatentId && registryAll.length){
-          registryResults = applyEvaluatedFilter(registryAll);
-          renderRegistry();
-        }
-      }catch(err){
-        p.status = 'error';
-        p.error = err.message || 'Evaluation failed';
-        savePatentRecordsToStorage();
-      }finally{
-        evaluationInFlight.delete(p.id);
-      }
-      renderAll();
-      refreshOpenCaseIfShowing(p.id);
+      await evaluateOnePatent(p);
     }
     evaluationBatch = null;
     renderAll();
@@ -3073,24 +3111,39 @@
       const data = await res.json();
       if(!data.configured){
         showPublicationStatus(null, 'Shared storage is not configured, so findings cannot be loaded or saved. Set SUPABASE_URL and SUPABASE_SERVICE_KEY, then run supabase-setup.sql.');
-        renderPublicationWatchList([]);
+        if(!publicationFindings.length) renderPublicationWatchList([]);
         return data;
       }
       showPublicationStatus(data);
-      publicationFindings = data.findings || [];
+      if(Array.isArray(data.findings)) publicationFindings = data.findings;
       renderPublicationWatchList(publicationFindings);
       return data;
     }catch(err){
       showPublicationStatus(null, 'Could not reach the publication scan endpoint.');
-      renderPublicationWatchList([]);
+      if(!publicationFindings.length) renderPublicationWatchList([]);
+      else renderPublicationWatchList(publicationFindings);
       return null;
     }
   }
 
+  function portfolioRecordForSource(url){
+    if(!url) return null;
+    return patents.find(p => p.sourcePatentId === url || p.remoteKey === url) || null;
+  }
+
+  function publicationIsReviewing(finding){
+    const url = finding && finding.source_url;
+    if(!url) return false;
+    if(publicationReviewing.has(url)) return true;
+    const record = portfolioRecordForSource(url);
+    return !!(record && (record.status === 'pending' || record.status === 'evaluating'));
+  }
+
   function visiblePublications(findings){
     return (findings || []).filter(f => {
+      if(publicationIsReviewing(f)) return true;
       if(publicationRelevanceFilter === 'all') return true;
-      if(publicationRelevanceFilter === 'reviewed') return !!f.review_json;
+      if(publicationRelevanceFilter === 'reviewed') return !!f.review_json || !!portfolioRecordForSource(f.source_url);
       return (f.commercial_relevance_score || 'UNSCORED') === publicationRelevanceFilter;
     });
   }
@@ -3116,9 +3169,20 @@
       const date = f.found_at ? new Date(f.found_at).toLocaleDateString() : '';
       const relevance = f.commercial_relevance_score || 'UNSCORED';
       const review = f.review_json || null;
-      const reviewHtml = review
-        ? '<div class="patent-sub"><strong>Stored review.</strong> ' + escapeHtml(review.opportunity || '') + '</div><div class="patent-sub">Next: ' + escapeHtml(review.next_step || '') + '</div>'
-        : '<div class="patent-sub">Not reviewed yet.</div>';
+      const record = portfolioRecordForSource(f.source_url);
+      const inPortfolio = record && record.status === 'evaluated' && record.evaluation && !record.evaluation.cached_only;
+      let reviewHtml;
+      if(publicationIsReviewing(f)){
+        reviewHtml = '<div class="patent-sub"><span class="tag pending">Reviewing…</span> The evaluation is running. This row stays here.</div>';
+      }else if(inPortfolio){
+        reviewHtml = '<div class="patent-sub"><span class="tag license">In the portfolio</span> <button type="button" class="btn secondary small" data-open-publication="' + record.id + '">Open case</button></div>';
+      }else if(record && record.status === 'error'){
+        reviewHtml = '<div class="patent-sub"><span class="tag error">Review failed</span> ' + escapeHtml(record.error || 'The evaluation failed.') + '</div>';
+      }else if(review){
+        reviewHtml = '<div class="patent-sub"><strong>Stored note.</strong> ' + escapeHtml(review.opportunity || '') + '</div><div class="patent-sub">Not in the portfolio yet.</div>';
+      }else{
+        reviewHtml = '<div class="patent-sub">Not reviewed yet.</div>';
+      }
       const checked = f.source_url && publicationSelected.has(f.source_url) ? ' checked' : '';
       return '<tr>' +
         '<td><input type="checkbox" data-pub-select="' + escapeHtml(f.source_url || '') + '"' + checked + ' aria-label="Select publication"></td>' +
@@ -3128,6 +3192,9 @@
         '<td>' + reviewHtml + '</td>' +
         '</tr>';
     }).join('');
+    body.querySelectorAll('[data-open-publication]').forEach(btn => {
+      btn.addEventListener('click', () => openCaseFile(parseInt(btn.dataset.openPublication, 10)));
+    });
     body.querySelectorAll('[data-pub-select]').forEach(box => {
       box.addEventListener('change', ()=>{
         const url = box.dataset.pubSelect;
@@ -3160,31 +3227,74 @@
       showPublicationStatus(null, 'Reviewing the first five selected. Run it again for the rest.');
     }
     if(force){
-      const ok = window.confirm('Re-review replaces the stored deeper review for the selected publications.');
+      const ok = window.confirm('Re-review runs the full evaluation again and replaces the stored portfolio result for the selected publications.');
       if(!ok) return;
     }
     const btn = document.getElementById(force ? 'btn-rereview-publications' : 'btn-review-publications');
     if(btn) btn.disabled = true;
-    showPublicationStatus(null, force ? 'Re-reviewing the selected publications.' : 'Reviewing the selected publications. Stored reviews are reused.');
+    urls.forEach(url => publicationReviewing.add(url));
+    renderPublicationWatchList(publicationFindings);
+    showPublicationStatus(null, 'Reviewing ' + urls.length + ' publication' + (urls.length === 1 ? '' : 's') + '. They stay on this list until the evaluation is in the portfolio.');
     try{
-      const res = await fetch('/api/review-publications', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ source_urls: urls, force: !!force })
+      await syncPatentRecordsFromRemote();
+      const queue = [];
+      urls.forEach(url => {
+        const finding = (publicationFindings || []).find(item => item.source_url === url) || { source_url: url, title: url };
+        let record = portfolioRecordForSource(url);
+        if(!record){
+          const summary = [finding.summary || '', finding.commercial_rationale || '', finding.source_url ? ('Source: ' + finding.source_url) : ''].filter(Boolean).join('\n\n');
+          record = addDocketPatent({
+            id: nextId++,
+            title: finding.title || 'Untitled publication',
+            dept: finding.authors ? String(finding.authors).slice(0, 180) : 'Publication',
+            text: summary || finding.title || 'Publication',
+            status: 'pending',
+            evaluation: null,
+            error: null,
+            sourcePatentId: url,
+            recordType: 'publication'
+          });
+        }
+        record.recordType = 'publication';
+        const done = record.status === 'evaluated' && record.evaluation && !record.evaluation.cached_only;
+        if(done && !force){
+          publicationReviewing.delete(url);
+          return;
+        }
+        record.forceReevaluate = !!force;
+        record.status = 'pending';
+        record.skipRemoteSave = false;
+        queue.push(record);
       });
-      const data = await res.json().catch(() => ({}));
-      if(!res.ok || data.error){
-        showPublicationStatus(null, data.error || ('Review failed with status ' + res.status));
-        return;
+      renderPublicationWatchList(publicationFindings);
+      renderPortfolio();
+      let failed = 0;
+      for(let i = 0; i < queue.length; i++){
+        const record = queue[i];
+        evaluationBatch = { index: i + 1, total: queue.length };
+        showPublicationStatus(null, 'Reviewing ' + (i + 1) + ' of ' + urls.length + '. ' + (record.title || 'Publication') + ' stays on this list.');
+        renderPublicationWatchList(publicationFindings);
+        await evaluateOnePatent(record);
+        publicationReviewing.delete(record.sourcePatentId);
+        if(record.status === 'error') failed += 1;
+        renderPublicationWatchList(publicationFindings);
+        renderPortfolio();
       }
-      const failed = (data.reviews || []).filter(item => item.error);
-      await loadPublicationWatch();
-      if(failed.length){
-        showPublicationStatus(null, failed.map(item => item.error).join(' '));
+      evaluationBatch = null;
+      urls.forEach(url => publicationReviewing.delete(url));
+      renderPublicationWatchList(publicationFindings);
+      renderPortfolio();
+      if(failed){
+        showPublicationStatus(null, failed + ' publication' + (failed === 1 ? '' : 's') + ' could not be evaluated. The row is still on this list.');
+      }else{
+        showPublicationStatus(null, 'Reviewed publications are in the Portfolio, on the Publications list.');
       }
     }catch(err){
+      urls.forEach(url => publicationReviewing.delete(url));
+      renderPublicationWatchList(publicationFindings);
       showPublicationStatus(null, err.message || 'The review could not be started.');
     }finally{
+      evaluationBatch = null;
       if(btn) btn.disabled = false;
     }
   }
@@ -3326,7 +3436,8 @@
   }
 
   function renderDashboard(){
-    const active = patents.filter(p => !p.archived);
+    const patentRows = patents.filter(p => !isPortfolioPublication(p));
+    const active = patentRows.filter(p => !p.archived);
     const totalEl = document.getElementById('stat-total');
     if(!totalEl) return;
     totalEl.textContent = active.length;
@@ -3338,7 +3449,7 @@
     const recentEl = document.getElementById('dashboard-recent');
     if(!recentEl) return;
     if(active.length === 0){
-      recentEl.innerHTML = patents.length > 0
+      recentEl.innerHTML = patentRows.length > 0
         ? '<div class="empty"><h3>Everything is archived</h3><p>Every patent currently in the docket has been archived.</p><div style="margin-top:12px;"><button class="btn small" data-view="portfolio">Open portfolio</button></div></div>'
         : '<div class="empty"><h3>No patents on the docket yet</h3><p>Start from Triage, rank the list, then evaluate the ones worth a full read.</p><div style="margin-top:12px; display:flex; gap:8px; justify-content:center; flex-wrap:wrap;"><button class="btn small" data-view="triage">Open triage</button><button class="btn secondary small" data-view="intake">Submit a disclosure</button></div></div>';
       bindViewButtons(recentEl);
@@ -3352,26 +3463,57 @@
     attachOpenHandlers(recentEl);
   }
 
+  function portfolioKindCounts(kind){
+    const rows = portfolioRecordsForKind(kind);
+    return {
+      active: rows.filter(p => !p.archived).length,
+      fresh: rows.filter(isPortfolioNew).length
+    };
+  }
+
+  function paintPortfolioKindTabs(){
+    ['patents', 'publications'].forEach(kind => {
+      const counts = portfolioKindCounts(kind);
+      const countEl = document.getElementById(kind === 'patents' ? 'portfolio-patents-count' : 'portfolio-publications-count');
+      const newEl = document.getElementById(kind === 'patents' ? 'portfolio-patents-new' : 'portfolio-publications-new');
+      const tab = document.getElementById(kind === 'patents' ? 'portfolio-kind-patents' : 'portfolio-kind-publications');
+      if(countEl) countEl.textContent = String(counts.active);
+      if(newEl){
+        newEl.textContent = 'New (' + counts.fresh + ')';
+        newEl.hidden = counts.fresh === 0;
+      }
+      if(tab) tab.setAttribute('aria-pressed', portfolioKind === kind ? 'true' : 'false');
+    });
+  }
+
   function syncPortfolioViewControls(){
-    const newCount = patents.filter(isPortfolioNew).length;
-    if(!portfolioViewTouched) portfolioView = newCount > 0 ? 'new' : 'active';
-    if(['active', 'new', 'archived', 'all'].indexOf(portfolioView) === -1) portfolioView = 'active';
+    const counts = portfolioKindCounts(portfolioKind);
+    if(!portfolioViewTouchedByKind[portfolioKind]){
+      portfolioViewByKind[portfolioKind] = counts.fresh > 0 ? 'new' : 'active';
+    }
+    portfolioView = portfolioViewByKind[portfolioKind];
+    if(['active', 'new', 'archived', 'all'].indexOf(portfolioView) === -1){
+      portfolioView = 'active';
+      portfolioViewByKind[portfolioKind] = 'active';
+    }
     const viewSelect = document.getElementById('portfolio-view-filter');
     if(viewSelect){
       const newOption = viewSelect.querySelector('option[value="new"]');
-      if(newOption) newOption.textContent = 'New (' + newCount + ')';
+      if(newOption) newOption.textContent = 'New (' + counts.fresh + ')';
       if(viewSelect.value !== portfolioView) viewSelect.value = portfolioView;
     }
     const markBtn = document.getElementById('btn-mark-portfolio-seen');
-    if(markBtn) markBtn.disabled = newCount === 0;
-    return newCount;
+    if(markBtn) markBtn.disabled = counts.fresh === 0;
+    paintPortfolioKindTabs();
+    return counts.fresh;
   }
 
   function portfolioRowsForView(){
-    if(portfolioView === 'new') return patents.filter(isPortfolioNew);
-    if(portfolioView === 'archived') return patents.filter(p => p.archived);
-    if(portfolioView === 'all') return patents.slice();
-    return patents.filter(p => !p.archived);
+    const rows = portfolioRecordsForKind();
+    if(portfolioView === 'new') return rows.filter(isPortfolioNew);
+    if(portfolioView === 'archived') return rows.filter(p => p.archived);
+    if(portfolioView === 'all') return rows;
+    return rows.filter(p => !p.archived);
   }
 
   function renderPortfolio(){
@@ -3379,10 +3521,12 @@
     const emptyEl = document.getElementById('portfolio-empty');
     const statusEl = document.getElementById('portfolio-archive-status');
 
-    const archivedCount = patents.filter(p => p.archived).length;
+    const kindRows = portfolioRecordsForKind();
+    const archivedCount = kindRows.filter(p => p.archived).length;
     const newCount = syncPortfolioViewControls();
+    const kindLabel = portfolioKind === 'publications' ? 'publication' : 'patent';
     const statusParts = [];
-    if(newCount > 0) statusParts.push(newCount + ' new, added in the last 7 days and not opened yet.');
+    if(newCount > 0) statusParts.push(newCount + ' new ' + kindLabel + (newCount === 1 ? '' : 's') + ', added in the last 7 days and not opened yet.');
     if(archivedCount > 0) statusParts.push(archivedCount + ' archived. Choose Archived or All in the view menu to see them.');
     statusEl.textContent = statusParts.join(' ');
 
@@ -3391,13 +3535,16 @@
     if(visible.length === 0){
       body.innerHTML = '';
       emptyEl.style.display = 'block';
-      const allArchived = portfolioView === 'active' && patents.length > 0 && archivedCount === patents.length;
+      const allArchived = portfolioView === 'active' && kindRows.length > 0 && archivedCount === kindRows.length;
+      const noun = portfolioKind === 'publications' ? 'publications' : 'patents';
       if(portfolioView === 'new'){
-        emptyEl.innerHTML = '<h3>No new patents</h3><p>New means added to the portfolio in the last 7 days and not opened yet. Choose Active in the view menu to see the rest of the docket.</p>';
+        emptyEl.innerHTML = '<h3>No new ' + noun + '</h3><p>New means added to this list in the last 7 days and not opened yet. Choose Active in the view menu to see the rest.</p>';
       } else if(portfolioView === 'archived'){
-        emptyEl.innerHTML = '<h3>Nothing is archived</h3><p>Archived cases stay on the docket. Choose Active to see the ones still in play.</p>';
+        emptyEl.innerHTML = '<h3>Nothing is archived</h3><p>Archived cases stay on this list. Choose Active to see the ones still in play.</p>';
       } else if(allArchived){
-        emptyEl.innerHTML = '<h3>Everything here is archived</h3><p>Choose Archived or All in the view menu to see those cases.</p>';
+        emptyEl.innerHTML = '<h3>Everything in this list is archived</h3><p>Choose Archived or All in the view menu to see those cases.</p>';
+      } else if(portfolioKind === 'publications'){
+        emptyEl.innerHTML = '<h3>No publications in the portfolio</h3><p>Publications stay on their own list. Patent evaluations are on the Patents tab.</p>';
       } else {
         emptyEl.innerHTML = '<h3>The docket is empty</h3><p>Triage a discovered patent and choose Evaluate selected, or submit a disclosure from Intake.</p><div style="margin-top:12px; display:flex; gap:8px; justify-content:center; flex-wrap:wrap;"><button class="btn small" data-view="triage">Open triage</button><button class="btn secondary small" data-view="intake">Submit a disclosure</button></div>';
       }
@@ -3436,6 +3583,7 @@
         : '<span class="tag ' + (align.is_focus ? 'license' : 'mature') + '" title="' + escapeHtml(align.short || '') + '">' + align.alignment_score + '</span><div style="font-size:12px; color:var(--slate); margin-top:4px;">' + escapeHtml(align.industry_group) + '</div>';
       const archivedLabel = p.archived ? ' <span class="tag pending">Archived</span>' : '';
       const newLabel = isPortfolioNew(p) ? ' <span class="tag new" title="Added to the portfolio in the last 7 days and not opened yet">New</span>' : '';
+      const kindLabel = isPortfolioPublication(p) ? ' <span class="tag mature">Publication</span>' : '';
       const archiveBtnLabel = p.archived ? 'Restore' : 'Archive';
       const ev = p.evaluation || {};
       const detailBits = [ev.market_demand_rationale, ev.marketing_abstract].filter(Boolean);
@@ -3448,7 +3596,7 @@
         : '';
       return '<tr class="clickable' + (isPortfolioNew(p) ? ' portfolio-new' : '') + '" data-open="'+p.id+'">' +
         '<td class="case-id">CU-' + String(p.id).padStart(4,'0') + '</td>' +
-        '<td><div class="patent-title">' + escapeHtml(p.title) + newLabel + archivedLabel + '</div><div class="patent-sub">' + escapeHtml(p.dept) + '</div>' + detailLine + licenseLine + storedLine + '</td>' +
+        '<td><div class="patent-title">' + escapeHtml(p.title) + kindLabel + newLabel + archivedLabel + '</div><div class="patent-sub">' + escapeHtml(p.dept) + '</div>' + detailLine + licenseLine + storedLine + '</td>' +
         '<td>' + pathTagHtml(p) + '</td>' +
         '<td class="mono">' + trl + (trl !== '—' ? '/9' : '') + '</td>' +
         '<td>' + valueCell + '</td>' +
