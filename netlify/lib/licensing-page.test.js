@@ -13,6 +13,7 @@ const records = [
     title: "Older packaging film",
     dept: "Packaging Science",
     text: "A stored evaluation from before licensing targets.",
+    portfolioAddedAt: "2026-01-15T00:00:00.000Z",
     status: "evaluated",
     evaluation: {
       recommended_path: "LICENSE",
@@ -37,6 +38,7 @@ const records = [
     title: "Recycled carbon fiber panels",
     dept: "Automotive Engineering",
     text: "A new evaluation with licensing destinations.",
+    portfolioAddedAt: "2026-01-15T00:00:00.000Z",
     status: "evaluated",
     evaluation: {
       recommended_path: "LICENSE",
@@ -66,6 +68,7 @@ const records = [
     title: "Narrow lab assay",
     dept: "Chemistry",
     text: "A hard pass evaluation.",
+    portfolioAddedAt: "2026-01-15T00:00:00.000Z",
     status: "evaluated",
     evaluation: {
       recommended_path: "MATURE",
