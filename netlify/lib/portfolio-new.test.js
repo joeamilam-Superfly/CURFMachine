@@ -178,6 +178,57 @@ test("portfolio stays on Active when nothing was added in the last 7 days", () =
   assert.deepEqual(errors, [], errors.join("\n"));
 });
 
+test("patents and publications stay on separate portfolio lists", () => {
+  const recent = new Date(Date.now() - 2 * DAY).toISOString();
+  const old = new Date(Date.now() - 10 * DAY).toISOString();
+  const { dom, errors } = loadPage([
+    evaluated(1, "Fresh carbon panels", recent),
+    evaluated(2, "Older packaging film", old),
+    evaluated(3, "New Clemson paper", recent, { recordType: "publication" }),
+    evaluated(4, "Older Clemson paper", old, { recordType: "Publication" })
+  ]);
+  const { window } = dom;
+  const { document } = window;
+  const patentsTab = document.querySelector("#portfolio-kind-patents");
+  const papersTab = document.querySelector("#portfolio-kind-publications");
+  assert.equal(patentsTab.getAttribute("aria-pressed"), "true");
+  assert.equal(document.querySelector("#portfolio-patents-count").textContent, "2");
+  assert.equal(document.querySelector("#portfolio-patents-new").textContent, "New (1)");
+  assert.equal(document.querySelector("#portfolio-publications-count").textContent, "2");
+  assert.equal(document.querySelector("#portfolio-publications-new").textContent, "New (1)");
+  assert.equal(document.querySelector("#portfolio-publications-new").hidden, false);
+  const patentList = document.querySelector("#portfolio-body").textContent;
+  assert.match(patentList, /Fresh carbon panels/);
+  assert.doesNotMatch(patentList, /Clemson paper/);
+  assert.match(document.querySelector('#portfolio-view-filter option[value="new"]').textContent, /^New \(1\)$/);
+
+  papersTab.click();
+  assert.equal(papersTab.getAttribute("aria-pressed"), "true");
+  assert.equal(patentsTab.getAttribute("aria-pressed"), "false");
+  assert.equal(document.querySelector("#portfolio-view-filter").value, "new");
+  const paperList = document.querySelector("#portfolio-body").textContent;
+  assert.match(paperList, /New Clemson paper/);
+  assert.doesNotMatch(paperList, /Older Clemson paper/);
+  assert.doesNotMatch(paperList, /Fresh carbon panels/);
+  assert.doesNotMatch(paperList, /Older packaging film/);
+  assert.match(document.querySelector('#portfolio-view-filter option[value="new"]').textContent, /^New \(1\)$/);
+
+  chooseView(document, window, "active");
+  const paperActive = document.querySelector("#portfolio-body").textContent;
+  assert.match(paperActive, /New Clemson paper/);
+  assert.match(paperActive, /Older Clemson paper/);
+  assert.doesNotMatch(paperActive, /packaging film/);
+
+  document.querySelector("#btn-mark-portfolio-seen").click();
+  assert.equal(document.querySelector("#portfolio-publications-new").hidden, true);
+  assert.equal(document.querySelector("#portfolio-patents-new").hidden, false);
+  assert.match(document.querySelector("#portfolio-patents-new").textContent, /New \(1\)/);
+  patentsTab.click();
+  assert.match(document.querySelector("#portfolio-body").textContent, /Fresh carbon panels/);
+  assert.equal(document.querySelector("#portfolio-body").querySelectorAll(".tag.new").length, 1);
+  assert.deepEqual(errors, [], errors.join("\n"));
+});
+
 test("mark all seen on an untouched menu returns to Active", () => {
   const recent = new Date(Date.now() - 2 * DAY).toISOString();
   const { dom, errors } = loadPage([

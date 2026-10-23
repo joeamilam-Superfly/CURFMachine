@@ -174,6 +174,9 @@
   .tag.new{ background:#FFF1E6; color: var(--orange-deep); }
   table.docket tr.portfolio-new td{ background:#FFF6EF; }
   table.docket tr.clickable.portfolio-new:hover td{ background:#FDEFE2; }
+  .portfolio-kinds{ display:flex; gap:8px; flex-wrap:wrap; margin:0 0 14px 0; }
+  .portfolio-kinds button[aria-pressed="true"]{ background:var(--orange); color:#fff; border-color:var(--orange); }
+  .portfolio-kinds button[aria-pressed="true"] .tag.new{ background:#fff; color:var(--orange-deep); }
 
   /* intake */
   .intake-grid{ display:grid; grid-template-columns: 1.1fr 1fr; gap:20px; }
@@ -551,7 +554,7 @@
         <div>
           <div class="eyebrow">Step 2</div>
           <h1>Portfolio</h1>
-          <p>Full evaluations land here and stay here. Each row is the stored result, including the demand read, who to sell or license it to, and the marketing abstract. Opening a case does not run the model again. Re-evaluate, on the case file, is the only way to replace a stored result. An older result that has no licensing list says so on the case file. Sorted by value score, then South Carolina alignment. A patent added in the last 7 days wears a New badge until that case is opened, or until Mark all seen. The view menu starts on New when any of those are waiting.</p>
+          <p>Full evaluations land here and stay here. Patents and publications are separate lists, each with its own count, New badge, and view filter. Each row is the stored result, including the demand read, who to sell or license it to, and the marketing abstract. Opening a case does not run the model again. Re-evaluate, on the case file, is the only way to replace a stored result. An older result that has no licensing list says so on the case file. Sorted by value score, then South Carolina alignment. A row added in the last 7 days wears a New badge until that case is opened, or until Mark all seen on that list. The view menu starts on New when any of those are waiting in the list you are looking at.</p>
         </div>
         <div>
           <button class="btn secondary" id="btn-load-sample">Load sample portfolio</button>
@@ -563,6 +566,10 @@
         <div class="stat-card"><div class="label">Venture candidates</div><div class="value" id="stat-venture">0</div><div class="sub">demand fits a new market</div></div>
         <div class="stat-card"><div class="label">Insufficient demand</div><div class="value" id="stat-no-demand">0</div><div class="sub">no real market pull found</div></div>
         <div class="stat-card"><div class="label">Needs maturation</div><div class="value" id="stat-mature">0</div><div class="sub">too early technically</div></div>
+      </div>
+      <div class="portfolio-kinds" role="tablist" aria-label="Portfolio lists">
+        <button type="button" class="btn secondary" id="portfolio-kind-patents" role="tab" aria-pressed="true" aria-controls="portfolio-body">Patents <span class="tag" id="portfolio-patents-count">0</span> <span class="tag new" id="portfolio-patents-new" hidden>New (0)</span></button>
+        <button type="button" class="btn secondary" id="portfolio-kind-publications" role="tab" aria-pressed="false" aria-controls="portfolio-body">Publications <span class="tag" id="portfolio-publications-count">0</span> <span class="tag new" id="portfolio-publications-new" hidden>New (0)</span></button>
       </div>
       <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end; margin-bottom:10px;">
         <div class="field" style="margin:0; min-width:180px;">
@@ -798,8 +805,10 @@
   const REGISTRY_PAGE_SIZE = 20;
   let hiddenAlreadyEvaluatedCount = 0;
   let showAlreadyEvaluated = false;
+  let portfolioKind = 'patents';
   let portfolioView = 'active';
-  let portfolioViewTouched = false;
+  const portfolioViewByKind = { patents: 'active', publications: 'active' };
+  const portfolioViewTouchedByKind = { patents: false, publications: false };
   const PORTFOLIO_NEW_MS = 7 * 24 * 60 * 60 * 1000;
 
   // Bump this string any time the evaluation schema or the value score
@@ -951,6 +960,15 @@
     return parseTime(ev.evaluated_at);
   }
 
+  function isPortfolioPublication(p){
+    return String((p && (p.recordType || p.portfolioKind)) || '').toLowerCase() === 'publication';
+  }
+
+  function portfolioRecordsForKind(kind){
+    const wanted = kind || portfolioKind;
+    return patents.filter(p => (wanted === 'publications') === isPortfolioPublication(p));
+  }
+
   function isPortfolioNew(p){
     const added = portfolioAddedTime(p);
     if(added == null) return false;
@@ -984,7 +1002,7 @@
   }
 
   function markAllPortfolioSeen(){
-    const fresh = patents.filter(isPortfolioNew);
+    const fresh = portfolioRecordsForKind().filter(isPortfolioNew);
     if(!fresh.length) return;
     const seenAt = new Date().toISOString();
     fresh.forEach(p => {
@@ -1380,9 +1398,17 @@
     e.preventDefault(); showView('portfolio');
   });
   document.getElementById('portfolio-view-filter').addEventListener('change', (e)=>{
-    portfolioViewTouched = true;
-    portfolioView = e.target.value || 'active';
+    portfolioViewTouchedByKind[portfolioKind] = true;
+    portfolioViewByKind[portfolioKind] = e.target.value || 'active';
+    portfolioView = portfolioViewByKind[portfolioKind];
     renderPortfolio();
+  });
+  document.querySelectorAll('#portfolio-kind-patents, #portfolio-kind-publications').forEach(btn => {
+    btn.addEventListener('click', () => {
+      portfolioKind = btn.id === 'portfolio-kind-publications' ? 'publications' : 'patents';
+      portfolioView = portfolioViewByKind[portfolioKind];
+      renderPortfolio();
+    });
   });
   document.getElementById('btn-mark-portfolio-seen').addEventListener('click', markAllPortfolioSeen);
 
@@ -3326,7 +3352,8 @@
   }
 
   function renderDashboard(){
-    const active = patents.filter(p => !p.archived);
+    const patentRows = patents.filter(p => !isPortfolioPublication(p));
+    const active = patentRows.filter(p => !p.archived);
     const totalEl = document.getElementById('stat-total');
     if(!totalEl) return;
     totalEl.textContent = active.length;
@@ -3338,7 +3365,7 @@
     const recentEl = document.getElementById('dashboard-recent');
     if(!recentEl) return;
     if(active.length === 0){
-      recentEl.innerHTML = patents.length > 0
+      recentEl.innerHTML = patentRows.length > 0
         ? '<div class="empty"><h3>Everything is archived</h3><p>Every patent currently in the docket has been archived.</p><div style="margin-top:12px;"><button class="btn small" data-view="portfolio">Open portfolio</button></div></div>'
         : '<div class="empty"><h3>No patents on the docket yet</h3><p>Start from Triage, rank the list, then evaluate the ones worth a full read.</p><div style="margin-top:12px; display:flex; gap:8px; justify-content:center; flex-wrap:wrap;"><button class="btn small" data-view="triage">Open triage</button><button class="btn secondary small" data-view="intake">Submit a disclosure</button></div></div>';
       bindViewButtons(recentEl);
@@ -3352,26 +3379,57 @@
     attachOpenHandlers(recentEl);
   }
 
+  function portfolioKindCounts(kind){
+    const rows = portfolioRecordsForKind(kind);
+    return {
+      active: rows.filter(p => !p.archived).length,
+      fresh: rows.filter(isPortfolioNew).length
+    };
+  }
+
+  function paintPortfolioKindTabs(){
+    ['patents', 'publications'].forEach(kind => {
+      const counts = portfolioKindCounts(kind);
+      const countEl = document.getElementById(kind === 'patents' ? 'portfolio-patents-count' : 'portfolio-publications-count');
+      const newEl = document.getElementById(kind === 'patents' ? 'portfolio-patents-new' : 'portfolio-publications-new');
+      const tab = document.getElementById(kind === 'patents' ? 'portfolio-kind-patents' : 'portfolio-kind-publications');
+      if(countEl) countEl.textContent = String(counts.active);
+      if(newEl){
+        newEl.textContent = 'New (' + counts.fresh + ')';
+        newEl.hidden = counts.fresh === 0;
+      }
+      if(tab) tab.setAttribute('aria-pressed', portfolioKind === kind ? 'true' : 'false');
+    });
+  }
+
   function syncPortfolioViewControls(){
-    const newCount = patents.filter(isPortfolioNew).length;
-    if(!portfolioViewTouched) portfolioView = newCount > 0 ? 'new' : 'active';
-    if(['active', 'new', 'archived', 'all'].indexOf(portfolioView) === -1) portfolioView = 'active';
+    const counts = portfolioKindCounts(portfolioKind);
+    if(!portfolioViewTouchedByKind[portfolioKind]){
+      portfolioViewByKind[portfolioKind] = counts.fresh > 0 ? 'new' : 'active';
+    }
+    portfolioView = portfolioViewByKind[portfolioKind];
+    if(['active', 'new', 'archived', 'all'].indexOf(portfolioView) === -1){
+      portfolioView = 'active';
+      portfolioViewByKind[portfolioKind] = 'active';
+    }
     const viewSelect = document.getElementById('portfolio-view-filter');
     if(viewSelect){
       const newOption = viewSelect.querySelector('option[value="new"]');
-      if(newOption) newOption.textContent = 'New (' + newCount + ')';
+      if(newOption) newOption.textContent = 'New (' + counts.fresh + ')';
       if(viewSelect.value !== portfolioView) viewSelect.value = portfolioView;
     }
     const markBtn = document.getElementById('btn-mark-portfolio-seen');
-    if(markBtn) markBtn.disabled = newCount === 0;
-    return newCount;
+    if(markBtn) markBtn.disabled = counts.fresh === 0;
+    paintPortfolioKindTabs();
+    return counts.fresh;
   }
 
   function portfolioRowsForView(){
-    if(portfolioView === 'new') return patents.filter(isPortfolioNew);
-    if(portfolioView === 'archived') return patents.filter(p => p.archived);
-    if(portfolioView === 'all') return patents.slice();
-    return patents.filter(p => !p.archived);
+    const rows = portfolioRecordsForKind();
+    if(portfolioView === 'new') return rows.filter(isPortfolioNew);
+    if(portfolioView === 'archived') return rows.filter(p => p.archived);
+    if(portfolioView === 'all') return rows;
+    return rows.filter(p => !p.archived);
   }
 
   function renderPortfolio(){
@@ -3379,10 +3437,12 @@
     const emptyEl = document.getElementById('portfolio-empty');
     const statusEl = document.getElementById('portfolio-archive-status');
 
-    const archivedCount = patents.filter(p => p.archived).length;
+    const kindRows = portfolioRecordsForKind();
+    const archivedCount = kindRows.filter(p => p.archived).length;
     const newCount = syncPortfolioViewControls();
+    const kindLabel = portfolioKind === 'publications' ? 'publication' : 'patent';
     const statusParts = [];
-    if(newCount > 0) statusParts.push(newCount + ' new, added in the last 7 days and not opened yet.');
+    if(newCount > 0) statusParts.push(newCount + ' new ' + kindLabel + (newCount === 1 ? '' : 's') + ', added in the last 7 days and not opened yet.');
     if(archivedCount > 0) statusParts.push(archivedCount + ' archived. Choose Archived or All in the view menu to see them.');
     statusEl.textContent = statusParts.join(' ');
 
@@ -3391,13 +3451,16 @@
     if(visible.length === 0){
       body.innerHTML = '';
       emptyEl.style.display = 'block';
-      const allArchived = portfolioView === 'active' && patents.length > 0 && archivedCount === patents.length;
+      const allArchived = portfolioView === 'active' && kindRows.length > 0 && archivedCount === kindRows.length;
+      const noun = portfolioKind === 'publications' ? 'publications' : 'patents';
       if(portfolioView === 'new'){
-        emptyEl.innerHTML = '<h3>No new patents</h3><p>New means added to the portfolio in the last 7 days and not opened yet. Choose Active in the view menu to see the rest of the docket.</p>';
+        emptyEl.innerHTML = '<h3>No new ' + noun + '</h3><p>New means added to this list in the last 7 days and not opened yet. Choose Active in the view menu to see the rest.</p>';
       } else if(portfolioView === 'archived'){
-        emptyEl.innerHTML = '<h3>Nothing is archived</h3><p>Archived cases stay on the docket. Choose Active to see the ones still in play.</p>';
+        emptyEl.innerHTML = '<h3>Nothing is archived</h3><p>Archived cases stay on this list. Choose Active to see the ones still in play.</p>';
       } else if(allArchived){
-        emptyEl.innerHTML = '<h3>Everything here is archived</h3><p>Choose Archived or All in the view menu to see those cases.</p>';
+        emptyEl.innerHTML = '<h3>Everything in this list is archived</h3><p>Choose Archived or All in the view menu to see those cases.</p>';
+      } else if(portfolioKind === 'publications'){
+        emptyEl.innerHTML = '<h3>No publications in the portfolio</h3><p>Publications stay on their own list. Patent evaluations are on the Patents tab.</p>';
       } else {
         emptyEl.innerHTML = '<h3>The docket is empty</h3><p>Triage a discovered patent and choose Evaluate selected, or submit a disclosure from Intake.</p><div style="margin-top:12px; display:flex; gap:8px; justify-content:center; flex-wrap:wrap;"><button class="btn small" data-view="triage">Open triage</button><button class="btn secondary small" data-view="intake">Submit a disclosure</button></div>';
       }
