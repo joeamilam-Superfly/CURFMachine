@@ -549,7 +549,7 @@
         <div>
           <div class="eyebrow">Step 2</div>
           <h1>Portfolio</h1>
-          <p>Full evaluations land here and stay here. Each row is the stored result, including the demand read and marketing abstract. Opening a case does not run the model again. Re-evaluate, on the case file, is the only way to replace a stored result. Sorted by value score, then South Carolina alignment.</p>
+          <p>Full evaluations land here and stay here. Each row is the stored result, including the demand read, who to sell or license it to, and the marketing abstract. Opening a case does not run the model again. Re-evaluate, on the case file, is the only way to replace a stored result. An older result that has no licensing list says so on the case file. Sorted by value score, then South Carolina alignment.</p>
         </div>
         <div>
           <button class="btn secondary" id="btn-load-sample">Load sample portfolio</button>
@@ -689,7 +689,7 @@
           </div>
           <div class="bp-item">
             <div class="who">The value score is computed, not guessed</div>
-            <div class="what">Every patent gets a letter tier (A through D) and a points total out of 15. Thirteen points come from the evaluation itself: market demand verdict, technology readiness level, adoption risk, whether a real acquirer was confirmed via search rather than just a sector guess, and whether staff or the inventor confirmed real engagement. Up to two more points come from South Carolina investment alignment, described below. The letter thresholds stay at 10, 7, and 4, so alignment can raise a grade and cannot raise the bar for A. It is computed with a fixed formula, not asked of the AI, so the same inputs always produce the same score and every point is traceable back to something already on the page. It deliberately does not produce a licensing-value dollar figure. The dollar amount in the alignment note is PitchBook's reported median check size, not a sum of capital and not a valuation of the patent. Backward citation counts and patent family IDs are shown for reference on live registry pulls but are not folded into this score. Evaluations stored before this change keep the score they were given. Re-run one to include the alignment points.</div>
+            <div class="what">Every patent gets a letter tier (A through D) and a points total out of 15. Thirteen points come from the evaluation itself: market demand verdict, technology readiness level, adoption risk, whether a real licensee or buyer was named with a source rather than just a sector guess, and whether staff or the inventor confirmed real engagement. Up to two more points come from South Carolina investment alignment, described below. The letter thresholds stay at 10, 7, and 4, so alignment can raise a grade and cannot raise the bar for A. It is computed with a fixed formula, not asked of the AI, so the same inputs always produce the same score and every point is traceable back to something already on the page. It deliberately does not produce a licensing-value dollar figure. The dollar amount in the alignment note is PitchBook's reported median check size, not a sum of capital and not a valuation of the patent. Backward citation counts and patent family IDs are shown for reference on live registry pulls but are not folded into this score. Evaluations stored before this change keep the score they were given. Re-run one to include the alignment points.</div>
           </div>
           <div class="bp-item">
             <div class="who">South Carolina investment alignment</div>
@@ -697,7 +697,7 @@
           </div>
           <div class="bp-item">
             <div class="who">Evaluation runs as two calls, not one</div>
-            <div class="what">Every patent first gets a fast, search free core evaluation, TRL, demand, path, risk, marketing abstract, all in one call with no web search involved. Only when that comes back LICENSE does a second, smaller, focused call run just to find acquirer targets. This exists because a combined call, doing full evaluation and web research together, could run long enough on a niche technical topic to exceed Netlify's fixed 60 second execution limit, which cannot be raised through any setting or plan upgrade. Splitting the work means most patents only ever make the fast call, and if the second, smaller acquirer search call does fail, the already successful core evaluation is kept rather than the whole result being thrown away.</div>
+            <div class="what">Every patent first gets a fast, search free core evaluation, TRL, demand, path, risk, marketing abstract, all in one call with no web search involved. Unless that read is already a no-demand hard pass, a second call searches for who to sell or license the patent to and stores that list on the evaluation. The list aims for as many real organizations as the search supports, and a marketable patent needs at least three. Fewer than three is a hard pass, not a padded list. This split exists because a combined call, doing full evaluation and web research together, could run long enough on a niche technical topic to exceed Netlify's fixed 60 second execution limit, which cannot be raised through any setting or plan upgrade. If the licensing search fails, the already successful core evaluation is kept rather than the whole result being thrown away. Results stored before this list existed say so, and Re-evaluate is what adds it.</div>
           </div>
           <div class="bp-item">
             <div class="who">Portfolio ordering and archiving</div>
@@ -709,7 +709,7 @@
           </div>
           <div class="bp-item">
             <div class="who">Outreach drafts are written from already-verified facts, not new claims</div>
-            <div class="what">Each confirmed acquirer target now also gets a one line pitch angle specific to that company, based on what search actually found about them, not a generic sector pitch reused across all three. A "Draft outreach email" button turns that into a short cold email draft, but that drafting step deliberately uses no web search of its own, it only writes from the company name, sector, and pitch angle the acquirer search already verified, so it cannot introduce a new, unverified claim about the recipient. Every draft is explicitly a starting point for CURF staff to review, personalize, and send themselves, this app never sends anything on its own.</div>
+            <div class="what">Each named licensing destination can get a "Draft outreach email" button. That drafting step uses no web search of its own. It writes only from the organization name, the role, and why it fits, which the licensing search already returned, so it cannot introduce a new, unverified claim about the recipient. Every draft is a starting point for CURF staff to review, personalize, and send themselves. This app never sends anything on its own.</div>
           </div>
           <div class="bp-item">
             <div class="who">Publication Watch is public search only, stated plainly</div>
@@ -793,7 +793,7 @@
   // exactly what it showed originally, not a live recomputation under
   // whatever logic is current by then. See openCaseFile for where the
   // mismatch gets surfaced to the user rather than hidden.
-  const EVALUATION_SCHEMA_VERSION = 'v2';
+  const EVALUATION_SCHEMA_VERSION = 'v3';
 
   // ---------- full evaluation persistence ----------
   // Two layers, deliberately redundant. localStorage always works, no
@@ -2179,15 +2179,14 @@
   // Call one: the core evaluation, deliberately with NO web search tool
   // at all. This is the part every single patent needs, and it should
   // be fast and reliable regardless of topic. Splitting this out from
-  // the acquirer search below is the actual fix for evaluations timing
+  // the licensing search below is the actual fix for evaluations timing
   // out on niche topics that made a combined search-plus-evaluate call
   // consistently exceed Netlify's fixed 60 second limit, a second
   // attempt at the same expensive combined work just timed out twice
-  // instead of once. Isolating the slow, unpredictable part to its own
-  // smaller call means most patents (anything not LICENSE) now only
-  // ever make this one fast call.
+  // instead of once. A no-demand result stops after this call. Anything
+  // with a real demand read continues to the licensing search.
   async function runCoreEvaluation(patent){
-    const systemPrompt = "You are a skeptical technology transfer analyst supporting a university research foundation's patent portfolio triage. Your job is not to describe the disclosure favorably, it is to pressure test it the way a hardnosed licensing officer or investor would, and to catch overclaimed readiness or invented demand rather than rubber stamp it. The central question for every patent is: is there real market demand for what this solves, not just technical novelty. Follow this decision order exactly. Step one, assess market demand critically: look for actual evidence in the disclosure of a real problem someone would pay to solve (named interest, a pilot, a competitor's existing product, a cited pain point), versus mere assertion that something 'could be used for' or 'may have applications in' a market with no supporting evidence. Rate demand as STRONG, MODERATE, WEAK, or NONE, and explicitly say what claim in the disclosure is asserted but not actually backed by evidence in the text, do not skip this even if you have to say 'none, the abstract asserts market need without evidence.' Step two, only if demand is at least MODERATE, decide the path: LICENSE fits when the problem is narrow and specific enough that an existing company would view it as an incremental addition to a product line they already have, VENTURE fits when the opportunity is a broader market problem no single incumbent already serves well, better suited to a new company built around it. If demand is WEAK or NONE, the path is NO_DEMAND regardless of how technically impressive the patent is, do not recommend LICENSE or VENTURE just because the technology is good. If demand is at least MODERATE but the Technology Readiness Level (1 to 9, NASA or DOD scale) is too low for either outside licensing or a venture to move on right now, the path is MATURE. Also score adoption risk factors modeled on the Adoption Readiness Level concept (market pull, supply chain, workforce, or regulatory friction). If the user message includes a section of staff or inventor provided input, treat known industry contacts and the inventor's own feasibility read as real evidence for the market demand assessment, generally stronger than the disclosure text's own unsupported claims, but note in market_demand_rationale that it is self-reported and not independently verified. If a funding source is provided and is federal (NIH, NSF, DOD, or Other federal), add a one sentence compliance note to critical_challenge or caveat that the federal government retains a royalty free use license and possible march-in rights under the Bayh-Dole Act; if the funding source is specifically NIH, also note the NIH affordability mandate adopted in October 2025 may constrain licensing terms. Also write a marketing_abstract: two to three plain language sentences pitching this technology to a business audience, no patent jargon, suitable to send to a prospective licensee, distinct in tone and content from the internal analysis above. Every rationale, note, or reason field must be one short sentence, under 20 words, this is a triage tool, not a full memo. Respond with ONLY valid JSON as your final message, no markdown fences, no commentary, matching exactly this shape: {\"trl\": number, \"trl_rationale\": string, \"market_demand_verdict\": \"STRONG|MODERATE|WEAK|NONE\", \"market_demand_rationale\": string, \"unsupported_claims\": string, \"adoption_risks\": [{\"factor\": string, \"level\": \"low|medium|high\", \"note\": string}], \"recommended_path\": \"LICENSE|VENTURE|NO_DEMAND|MATURE\", \"path_rationale\": string, \"venture_plan\": {\"team\": string, \"next_steps\": [string]}, \"marketing_abstract\": string, \"critical_challenge\": string, \"confidence\": \"low|medium|high\", \"caveat\": string, \"sc_industry_group\": string}. Keep adoption_risks to at most 4 items. venture_plan.next_steps should only be filled in when recommended_path is VENTURE, otherwise leave team empty and next_steps an empty array. critical_challenge must state the single strongest reason this specific evaluation could be wrong, a weak assumption, a gap in the disclosure, or a reason a skeptical reviewer would push back, never a generic disclaimer. Do not mention acquirer targets or companies at all, that is handled in a separate step you are not part of.";
+    const systemPrompt = "You are a skeptical technology transfer analyst supporting a university research foundation's patent portfolio triage. Your job is not to describe the disclosure favorably, it is to pressure test it the way a hardnosed licensing officer or investor would, and to catch overclaimed readiness or invented demand rather than rubber stamp it. The central question for every patent is: is there real market demand for what this solves, not just technical novelty. Follow this decision order exactly. Step one, assess market demand critically: look for actual evidence in the disclosure of a real problem someone would pay to solve (named interest, a pilot, a competitor's existing product, a cited pain point), versus mere assertion that something 'could be used for' or 'may have applications in' a market with no supporting evidence. Rate demand as STRONG, MODERATE, WEAK, or NONE, and explicitly say what claim in the disclosure is asserted but not actually backed by evidence in the text, do not skip this even if you have to say 'none, the abstract asserts market need without evidence.' Step two, only if demand is at least MODERATE, decide the path: LICENSE fits when the problem is narrow and specific enough that an existing company would view it as an incremental addition to a product line they already have, VENTURE fits when the opportunity is a broader market problem no single incumbent already serves well, better suited to a new company built around it. If demand is WEAK or NONE, the path is NO_DEMAND regardless of how technically impressive the patent is, do not recommend LICENSE or VENTURE just because the technology is good. If demand is at least MODERATE but the Technology Readiness Level (1 to 9, NASA or DOD scale) is too low for either outside licensing or a venture to move on right now, the path is MATURE. Also score adoption risk factors modeled on the Adoption Readiness Level concept (market pull, supply chain, workforce, or regulatory friction). If the user message includes a section of staff or inventor provided input, treat known industry contacts and the inventor's own feasibility read as real evidence for the market demand assessment, generally stronger than the disclosure text's own unsupported claims, but note in market_demand_rationale that it is self-reported and not independently verified. If a funding source is provided and is federal (NIH, NSF, DOD, or Other federal), add a one sentence compliance note to critical_challenge or caveat that the federal government retains a royalty free use license and possible march-in rights under the Bayh-Dole Act; if the funding source is specifically NIH, also note the NIH affordability mandate adopted in October 2025 may constrain licensing terms. Also write a marketing_abstract: two to three plain language sentences pitching this technology to a business audience, no patent jargon, suitable to send to a prospective licensee, distinct in tone and content from the internal analysis above. Every rationale, note, or reason field must be one short sentence, under 20 words, this is a triage tool, not a full memo. Respond with ONLY valid JSON as your final message, no markdown fences, no commentary, matching exactly this shape: {\"trl\": number, \"trl_rationale\": string, \"market_demand_verdict\": \"STRONG|MODERATE|WEAK|NONE\", \"market_demand_rationale\": string, \"unsupported_claims\": string, \"adoption_risks\": [{\"factor\": string, \"level\": \"low|medium|high\", \"note\": string}], \"recommended_path\": \"LICENSE|VENTURE|NO_DEMAND|MATURE\", \"path_rationale\": string, \"venture_plan\": {\"team\": string, \"next_steps\": [string]}, \"marketing_abstract\": string, \"critical_challenge\": string, \"confidence\": \"low|medium|high\", \"caveat\": string, \"sc_industry_group\": string, \"licensing_targets\": [{\"name\": string, \"type\": \"licensee|acquirer|strategic partner|startup/spinout vehicle|investor\", \"why_it_fits\": string, \"sc_connection\": string, \"source\": string}], \"licensing_recommendation\": \"pursue|hard pass\", \"hard_pass_reason\": string}. Keep adoption_risks to at most 4 items. venture_plan.next_steps should only be filled in when recommended_path is VENTURE, otherwise leave team empty and next_steps an empty array. critical_challenge must state the single strongest reason this specific evaluation could be wrong, a weak assumption, a gap in the disclosure, or a reason a skeptical reviewer would push back, never a generic disclaimer. licensing_targets is required in the output schema. In this step the array must be empty, and licensing_recommendation and hard_pass_reason must be empty strings. Do not name companies, buyers, licensees, investors, or partners here. A separate licensing search fills licensing_targets. Inventing a destination in this step is not allowed.";
 
     let staffInputText = "";
     if(patent.staffInput){
@@ -2210,7 +2209,7 @@
     }catch(err){
       const elapsedMs = Date.now() - startedAt;
       // Prefixed explicitly so a failure here is never confused with a
-      // failure in the (separately handled) acquirer search call, and
+      // failure in the (separately handled) licensing search call, and
       // timed so a near instant failure (a real error) is distinguishable
       // from one that took close to the full 60 seconds (genuine
       // exhaustion of Netlify's fixed limit). If this specific prefix
@@ -2222,15 +2221,43 @@
     }
   }
 
-  // Call two: ONLY made when the core evaluation above came back
-  // LICENSE. Deliberately small and focused, just three ranked
-  // acquirer targets, nothing else, so the search heavy part of this
-  // process carries the smallest possible task alongside it.
-  async function runAcquirerSearch(patent){
-    const systemPrompt = "You are researching real, currently operating companies that would plausibly want to license a specific university owned patent. Use the web_search tool to identify exactly three ranked, real, currently operating companies whose existing products or business would plausibly want to license this specific technology, not generic sector guesses. For each ranked target, if search turns up a specific real company that plausibly fits, name it in company_name and put the URL you found it from in source_url. If search does not turn up a clear, specific, currently real company for a given rank, leave company_name, source_url, and pitch_angle as empty strings and rely on the sector field alone. Never invent or recall a company name from your own training data without having actually found it via search in this conversation, an empty company_name is always better than a guessed one. Use at most two searches total, work efficiently, this runs under a strict time limit. When you do name a real company, also write a pitch_angle, one sentence on why THIS specific company's existing business makes this technology relevant to them in particular, based on what you found about them via search, not a generic pitch that could apply to anyone in the sector. Keep every rationale under 20 words. Respond with ONLY valid JSON as your final message, no markdown fences, no commentary, matching exactly this shape: {\"top_acquirer_targets\": [{\"rank\": number, \"company_name\": string, \"source_url\": string, \"sector\": string, \"rationale\": string, \"pitch_angle\": string}]}. Must contain exactly 3 items, ranked 1 through 3.";
-    const userMsg = "Department: " + patent.dept + "\nTitle: " + patent.title + "\nDisclosure or abstract text:\n" + patent.text.slice(0, 3000);
-    const result = await callAnthropicJson(systemPrompt, userMsg, true);
-    return Array.isArray(result.top_acquirer_targets) ? result.top_acquirer_targets : [];
+  // Call two: who to sell or license this patent to. The prompt and the
+  // licensing_targets schema are owned by evaluate-patent (task
+  // licensing_targets) so the browser cannot widen the search budget.
+  // Skipped when the core read is already a no-demand hard pass.
+  async function runLicensingTargetSearch(patent, core){
+    const staff = patent.staffInput || {};
+    const response = await fetchWithTimeoutRetry(API_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        task: "licensing_targets",
+        enableSearch: true,
+        patent: {
+          title: patent.title,
+          dept: patent.dept,
+          text: (patent.text || "").slice(0, 4000),
+          industryContacts: staff.industryContacts || "",
+          sc_industry_group: (core && core.sc_industry_group) || ""
+        }
+      })
+    });
+    if(!response.ok){
+      const errBody = await response.json().catch(()=>({}));
+      throw new Error(readApiError(errBody, response.status));
+    }
+    const data = await response.json();
+    if(data.stop_reason === 'max_tokens'){
+      throw new Error('The model response was cut off before finishing (hit the token limit). Try again, and if it keeps happening the max_tokens limit in the app needs raising further.');
+    }
+    if(data.stop_reason === 'pause_turn'){
+      throw new Error('The web search ran long and was paused mid turn. This app does not yet resume a paused search automatically, just retry.');
+    }
+    const textBlock = selectFinalTextBlock(data.content);
+    if(!textBlock) throw new Error('No text response from the model');
+    const parsed = extractJsonObject(textBlock.text);
+    if(!parsed) throw new Error('Could not find a valid JSON object in the model response');
+    return parsed;
   }
 
   // Drafts a cold outreach email for ONE specific, already identified
@@ -2242,9 +2269,9 @@
   // new, unverified claim about the recipient company.
   async function generateOutreachDraft(patent, target, marketingAbstract){
     const systemPrompt = "Draft a short, professional cold outreach email from a university technology transfer office to a specific company, introducing a patented technology for potential licensing. Use ONLY the facts given below, do not invent or assume anything about the recipient company beyond what is stated. Keep it concise: one short paragraph of context, one sentence on why it's specifically relevant to them using the pitch angle given, and a clear, low pressure call to action to schedule a short call. Sign off generically as a Technology Commercialization Officer at Clemson University Research Foundation (CURF), do not invent a specific person's name. Respond with ONLY valid JSON as your final message, no markdown fences, no commentary: {\"subject\": string, \"body\": string}.";
-    const userMsg = "Recipient company: " + (target.company_name || "Unknown") +
-      "\nRecipient sector: " + (target.sector || "Unknown") +
-      "\nWhy relevant to them specifically: " + (target.pitch_angle || target.rationale || "Not specified") +
+    const userMsg = "Recipient company: " + (target.name || target.company_name || "Unknown") +
+      "\nRecipient role: " + (target.type || target.sector || "Unknown") +
+      "\nWhy relevant to them specifically: " + (target.why_it_fits || target.pitch_angle || target.rationale || "Not specified") +
       "\nPatent title: " + patent.title +
       "\nPlain language marketing abstract: " + (marketingAbstract || "Not available");
     return await callAnthropicJson(systemPrompt, userMsg, false);
@@ -2255,26 +2282,55 @@
     renderAll();
     refreshOpenCaseIfShowing(patent.id);
     const core = await runCoreEvaluation(patent);
+    // The core call must not invent buyers. Drop anything it put in
+    // the licensing fields so only the search, or an explicit hard
+    // pass, is what gets stored.
+    delete core.licensing_targets;
+    delete core.licensing_recommendation;
+    delete core.hard_pass_reason;
     core.top_acquirer_targets = [];
+    core.licensing_search_error = "";
     core.acquirer_search_error = "";
 
-    if(core.recommended_path === 'LICENSE'){
-      patent.evalStage = 'Acquirer search';
+    const demandVerdict = String(core.market_demand_verdict || '').toUpperCase();
+    const noMarket = core.recommended_path === 'NO_DEMAND' || demandVerdict === 'NONE' || demandVerdict === 'WEAK';
+    if(noMarket){
+      core.licensing_targets = [];
+      core.licensing_recommendation = 'hard pass';
+      core.hard_pass_reason = 'Hard pass: no viable market. Demand was ' + (core.market_demand_verdict || 'not supported') + ', so there are not 3 credible buyers or licensees to name.';
+    }else{
+      patent.evalStage = 'Licensing targets';
       renderAll();
       refreshOpenCaseIfShowing(patent.id);
       const searchStartedAt = Date.now();
       try{
-        core.top_acquirer_targets = await runAcquirerSearch(patent);
+        const found = await runLicensingTargetSearch(patent, core);
+        const targets = Array.isArray(found.licensing_targets) ? found.licensing_targets : [];
+        core.licensing_targets = targets;
+        if(targets.length >= 3){
+          core.licensing_recommendation = 'pursue';
+          core.hard_pass_reason = '';
+        }else{
+          core.licensing_recommendation = 'hard pass';
+          const reason = found.hard_pass_reason || 'Fewer than 3 credible destinations were found, and the list was not padded.';
+          core.hard_pass_reason = /no viable market/i.test(reason) ? reason : ('Hard pass: no viable market. ' + reason);
+        }
+        core.top_acquirer_targets = targets.map((t, i) => ({
+          rank: i + 1,
+          company_name: t.name || '',
+          source_url: /^https?:\/\//i.test(t.source || '') ? t.source : '',
+          sector: t.type || '',
+          rationale: t.why_it_fits || '',
+          pitch_angle: t.why_it_fits || ''
+        }));
       }catch(err){
         // The core evaluation already succeeded and is not thrown away
-        // just because this second, smaller call failed. The patent
-        // still gets a full result, with an honest note that acquirer
-        // research specifically did not complete, rather than losing
-        // everything and forcing a full retry from scratch. Timed for
-        // the same reason as the core call: a near instant failure
-        // reads very differently than one that ran close to 60 seconds.
+        // just because this second call failed. The patent still gets
+        // a full result, with an honest note that the licensing search
+        // did not complete. Timed so a near instant failure reads
+        // differently from one that ran close to 60 seconds.
         const elapsedMs = Date.now() - searchStartedAt;
-        core.acquirer_search_error = "Failed after " + elapsedMs + "ms: " + (err.message || 'Acquirer search failed');
+        core.licensing_search_error = "Failed after " + elapsedMs + "ms: " + (err.message || 'Licensing target search failed');
       }
     }
     core.sc_alignment = alignmentForPatent(patent, core.sc_industry_group);
@@ -2364,8 +2420,10 @@
     const pathPoints = (ev.recommended_path === 'LICENSE' || ev.recommended_path === 'VENTURE') ? 1 : 0;
     breakdown.push({ label: 'Clear monetization path (' + (ev.recommended_path || 'none') + ')', points: pathPoints, max: 1 });
 
-    const hasConfirmedTarget = ev.recommended_path === 'LICENSE' && (ev.top_acquirer_targets || []).some(t => t.company_name && t.company_name.trim().length > 0);
-    breakdown.push({ label: 'A real acquirer confirmed via search, not just a sector guess', points: hasConfirmedTarget ? 1 : 0, max: 1 });
+    const namedWithSource = Array.isArray(ev.licensing_targets) && ev.licensing_targets.some(t => t && String(t.name || '').trim() && String(t.source || '').trim());
+    const legacyNamed = !Array.isArray(ev.licensing_targets) && ev.recommended_path === 'LICENSE' && (ev.top_acquirer_targets || []).some(t => t.company_name && t.company_name.trim().length > 0);
+    const hasConfirmedTarget = namedWithSource || legacyNamed;
+    breakdown.push({ label: 'A real licensee or buyer named with a source, not just a sector guess', points: hasConfirmedTarget ? 1 : 0, max: 1 });
 
     const si = p.staffInput || {};
     const hasEngagement = (si.industryContacts && si.industryContacts.trim().length > 0) || si.inventorWillingness === 'Willing to engage';
@@ -3025,7 +3083,7 @@
     }
     queueBodyEl.innerHTML = patents.map(p=>{
       const err = (p.status === 'error' && p.error) ? '<div style="color:var(--red); font-size:12px; margin-top:4px;">' + escapeHtml(p.error) + '</div>' : '';
-      return '<div class="risk-row"><span class="factor"><strong>' + escapeHtml(p.title) + '</strong><br><span style="color:var(--slate); font-size:12px;">' + escapeHtml(p.dept) + '</span>' + err + '</span><span style="white-space:nowrap;">' + pathTagHtml(p) + ' <button class="btn secondary small" data-open-btn="' + p.id + '">Open</button></span></div>';
+      return '<div class="risk-row"><span class="factor"><strong>' + escapeHtml(p.title) + '</strong><br><span style="color:var(--slate); font-size:12px;">' + escapeHtml(p.dept) + '</span>' + licensingSummaryLine(p.evaluation) + err + '</span><span style="white-space:nowrap;">' + pathTagHtml(p) + ' <button class="btn secondary small" data-open-btn="' + p.id + '">Open</button></span></div>';
     }).join('');
     attachOpenHandlers(queueBodyEl);
   }
@@ -3118,12 +3176,13 @@
       const detailLine = detailBits.length
         ? '<div class="patent-sub">' + escapeHtml(String(detailBits[0]).slice(0, 220)) + '</div>'
         : '';
+      const licenseLine = licensingSummaryLine(p.evaluation);
       const storedLine = ev.evaluated_at
         ? '<div class="patent-sub">Stored ' + escapeHtml(new Date(ev.evaluated_at).toLocaleDateString()) + (ev.cached_only ? ' · id only, model was not run' : ' · cached result') + '</div>'
         : '';
       return '<tr class="clickable" data-open="'+p.id+'">' +
         '<td class="case-id">CU-' + String(p.id).padStart(4,'0') + '</td>' +
-        '<td><div class="patent-title">' + escapeHtml(p.title) + archivedLabel + '</div><div class="patent-sub">' + escapeHtml(p.dept) + '</div>' + detailLine + storedLine + '</td>' +
+        '<td><div class="patent-title">' + escapeHtml(p.title) + archivedLabel + '</div><div class="patent-sub">' + escapeHtml(p.dept) + '</div>' + detailLine + licenseLine + storedLine + '</td>' +
         '<td>' + pathTagHtml(p) + '</td>' +
         '<td class="mono">' + trl + (trl !== '—' ? '/9' : '') + '</td>' +
         '<td>' + valueCell + '</td>' +
@@ -3287,10 +3346,14 @@
     const reevaluate = p.status === 'evaluated'
       ? '<button class="btn secondary small" data-reevaluate="' + p.id + '">Re-evaluate</button>'
       : '';
+    const report = p.status === 'evaluated' && p.evaluation
+      ? '<button class="btn secondary small" data-download-report="' + p.id + '">Download report</button>'
+      : '';
     return '<div style="margin:-10px 0 18px 0; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">' +
       label +
       '<button class="btn secondary small" data-archive-btn-casefile="' + p.id + '">' + btnLabel + '</button>' +
       reevaluate +
+      report +
       '</div>';
   }
 
@@ -3388,6 +3451,159 @@
     });
   }
 
+  function licensingSummaryLine(ev){
+    if(!ev) return '';
+    if(ev.licensing_search_error && !Array.isArray(ev.licensing_targets)){
+      return '<div class="patent-sub">Licensing targets did not finish. Open the case and use Re-evaluate.</div>';
+    }
+    if(!Array.isArray(ev.licensing_targets)){
+      return '<div class="patent-sub">Licensing targets were not stored with this evaluation. Open the case and use Re-evaluate.</div>';
+    }
+    if(ev.licensing_recommendation === 'hard pass' || ev.licensing_targets.length < 3){
+      return '<div class="patent-sub">Hard pass: no viable market for a sale or license.</div>';
+    }
+    const names = ev.licensing_targets.map(t => t && t.name).filter(Boolean);
+    if(!names.length) return '<div class="patent-sub">No licensing destinations stored.</div>';
+    const extra = names.length > 4 ? ' +' + (names.length - 4) : '';
+    return '<div class="patent-sub">Sell or license: ' + escapeHtml(names.slice(0, 4).join(', ')) + extra + '</div>';
+  }
+
+  function licensingOutreachTargets(ev){
+    if(Array.isArray(ev.licensing_targets)) return ev.licensing_targets;
+    return (ev.top_acquirer_targets || []).slice().sort((a, b) => (a.rank || 99) - (b.rank || 99));
+  }
+
+  function licensingSourceHtml(source){
+    const text = String(source || '').trim();
+    if(!text) return '<div class="why">Source: none returned. Not filled in.</div>';
+    if(/^https?:\/\//i.test(text)){
+      return '<div style="margin-top:4px;"><a href="' + escapeHtml(text) + '" target="_blank" rel="noopener" style="font-size:11.5px;">' + escapeHtml(text) + '</a></div>';
+    }
+    return '<div class="why">Source: ' + escapeHtml(text) + '</div>';
+  }
+
+  function renderLicensingTargetCard(target, idx){
+    const name = target.name || target.company_name || '';
+    const type = target.type || '';
+    const why = target.why_it_fits || target.pitch_angle || target.rationale || '';
+    const hasScField = Object.prototype.hasOwnProperty.call(target, 'sc_connection') || Object.prototype.hasOwnProperty.call(target, 'southeast_connection');
+    const sc = target.sc_connection || target.southeast_connection || '';
+    const source = target.source || target.source_url || '';
+    const scLine = hasScField
+      ? '<div class="why">South Carolina / Southeast: ' + escapeHtml(sc || 'none found') + '</div>'
+      : '';
+    const sectorLine = !type && target.sector ? '<div class="why">Sector: ' + escapeHtml(target.sector) + '</div>' : '';
+    const draftBtn = name ? '<button class="btn secondary small" data-draft-outreach="' + idx + '" style="margin-top:8px;">Draft outreach email</button>' : '';
+    const draftBox = target.outreach_draft
+      ? '<div class="panel" style="margin-top:10px; background:var(--paper);"><div class="panel-body"><p style="font-size:12px; font-weight:600; color:var(--slate); text-transform:uppercase; letter-spacing:0.04em;">Draft, review before sending</p><p style="font-size:13px; font-weight:600; margin-top:6px;">' + escapeHtml(target.outreach_draft.subject || '') + '</p><p style="font-size:13px; white-space:pre-wrap; margin-top:4px;">' + escapeHtml(target.outreach_draft.body || '') + '</p></div></div>'
+      : '<div data-draft-container="' + idx + '"></div>';
+    return '<div class="archetype"><div class="sector">' + escapeHtml(name || 'Unnamed') +
+      (type ? ' <span class="tag license">' + escapeHtml(type) + '</span>' : '') +
+      '</div><div class="why">Why it fits: ' + escapeHtml(why || 'Not stated') + '</div>' +
+      sectorLine + scLine + licensingSourceHtml(source) + draftBtn + draftBox + '</div>';
+  }
+
+  function renderLicensingTargetsPanel(ev){
+    if(ev.licensing_search_error && !Array.isArray(ev.licensing_targets)){
+      return '<div class="panel" id="licensing-targets"><div class="panel-head"><h3>Who to sell or license this to</h3></div><div class="panel-body">' +
+        '<div class="caveat-box" style="background:var(--red-bg); border-color:#E0B4A6; color:var(--red);">Licensing target research did not complete: ' + escapeHtml(ev.licensing_search_error) + '. The evaluation above is saved. Use Re-evaluate to try this search again.</div>' +
+        '</div></div>';
+    }
+    if(!Array.isArray(ev.licensing_targets)){
+      const legacy = licensingOutreachTargets(ev);
+      const showLegacy = ev.recommended_path === 'LICENSE' && legacy.some(t => t && (t.company_name || t.name));
+      const legacyHtml = showLegacy
+        ? legacy.map((target, idx) => renderLicensingTargetCard(target, idx)).join('') +
+          '<p style="font-size:12px; color:var(--slate); margin-top:8px;">Earlier acquirer list, stored before licensing targets. Re-evaluate replaces it.</p>'
+        : (ev.acquirer_search_error
+          ? '<div class="caveat-box" style="background:var(--red-bg); border-color:#E0B4A6; color:var(--red); margin-top:8px;">An earlier acquirer search did not finish: ' + escapeHtml(ev.acquirer_search_error) + '.</div>'
+          : '');
+      return '<div class="panel" id="licensing-targets"><div class="panel-head"><h3>Who to sell or license this to</h3></div><div class="panel-body">' +
+        '<div class="caveat-box">This stored evaluation does not include licensing targets. Use Re-evaluate to add who this patent could be sold or licensed to. Re-evaluate runs the full model again and replaces the stored result.</div>' +
+        legacyHtml +
+        '</div></div>';
+    }
+    const targets = ev.licensing_targets;
+    const hardPass = ev.licensing_recommendation === 'hard pass' || targets.length < 3;
+    const tag = hardPass
+      ? '<span class="tag error">Hard pass</span>'
+      : '<span class="tag license">' + targets.length + ' destinations</span>';
+    const banner = hardPass
+      ? '<div class="caveat-box" style="background:var(--red-bg); border-color:#E0B4A6; color:var(--red);">' + escapeHtml(ev.hard_pass_reason || 'Hard pass: no viable market. Fewer than 3 credible destinations were found.') + '</div>'
+      : '';
+    const cards = targets.length
+      ? targets.map((target, idx) => renderLicensingTargetCard(target, idx)).join('')
+      : '<p style="font-size:13px; color:var(--slate);">No destinations were named.</p>';
+    return '<div class="panel" id="licensing-targets"><div class="panel-head"><h3>Who to sell or license this to</h3>' + tag + '</div><div class="panel-body">' +
+      banner + cards +
+      '<div class="caveat-box">Destinations come from the licensing search for this evaluation. A name is a lead to check, not confirmed interest. The list is not padded when fewer than three credible organizations were found. Outreach drafts are a starting point for CURF staff. This app never sends email on its own.</div>' +
+      '</div></div>';
+  }
+
+  function buildCaseReport(p){
+    const ev = p.evaluation || {};
+    const lines = [];
+    lines.push('CURF case report');
+    lines.push('CU-' + String(p.id).padStart(4, '0'));
+    lines.push('Title: ' + (p.title || ''));
+    lines.push('Department: ' + (p.dept || ''));
+    lines.push('Recommended path: ' + (ev.recommended_path || 'not evaluated'));
+    lines.push('Demand: ' + (ev.market_demand_verdict || ''));
+    if(ev.evaluated_at) lines.push('Evaluated: ' + ev.evaluated_at);
+    lines.push('');
+    lines.push('Who to sell or license this to');
+    if(ev.licensing_search_error && !Array.isArray(ev.licensing_targets)){
+      lines.push('Licensing target research did not complete: ' + ev.licensing_search_error);
+      lines.push('Use Re-evaluate to try again.');
+    }else if(!Array.isArray(ev.licensing_targets)){
+      lines.push('This stored evaluation does not include licensing targets.');
+      lines.push('Use Re-evaluate to add who this patent could be sold or licensed to.');
+      (ev.top_acquirer_targets || []).forEach((target, index) => {
+        const name = target.company_name || target.name;
+        if(!name) return;
+        lines.push((index + 1) + '. ' + name + (target.sector ? ' (' + target.sector + ')' : ''));
+        if(target.rationale || target.why_it_fits) lines.push('Why it fits: ' + (target.why_it_fits || target.rationale));
+        if(target.source_url || target.source) lines.push('Source: ' + (target.source || target.source_url));
+      });
+    }else{
+      lines.push('Recommendation: ' + (ev.licensing_recommendation || (ev.licensing_targets.length >= 3 ? 'pursue' : 'hard pass')));
+      if(ev.hard_pass_reason) lines.push(ev.hard_pass_reason);
+      if(!ev.licensing_targets.length) lines.push('No destinations were named.');
+      ev.licensing_targets.forEach((target, index) => {
+        lines.push('');
+        lines.push((index + 1) + '. ' + (target.name || 'Unnamed') + (target.type ? ' (' + target.type + ')' : ''));
+        lines.push('Why it fits: ' + (target.why_it_fits || ''));
+        lines.push('South Carolina / Southeast: ' + (target.sc_connection || 'none found'));
+        lines.push('Source: ' + (target.source || 'none returned'));
+      });
+    }
+    lines.push('');
+    lines.push('Marketing abstract');
+    lines.push(ev.marketing_abstract || 'Not generated.');
+    lines.push('');
+    lines.push('Path rationale');
+    lines.push(ev.path_rationale || '');
+    return lines.join('\n');
+  }
+
+  function attachDownloadReportHandler(){
+    const btn = document.querySelector('[data-download-report]');
+    if(!btn) return;
+    btn.addEventListener('click', () => {
+      const patent = patents.find(item => item.id === parseInt(btn.dataset.downloadReport, 10));
+      if(!patent) return;
+      const blob = new Blob([buildCaseReport(patent)], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'CU-' + String(patent.id).padStart(4, '0') + '-case-report.txt';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    });
+  }
+
   function openCaseFile(id){
     const p = patents.find(x => x.id === id);
     if(!p) return;
@@ -3449,30 +3665,8 @@
       return '<div class="risk-row"><span class="risk-dot ' + escapeHtml(level) + '"></span><span class="factor"><strong>' + escapeHtml(r.factor) + '</strong> — ' + escapeHtml(r.note) + '</span></div>';
     }).join('') || '<p style="color:var(--slate); font-size:13px;">No adoption risk factors returned.</p>';
 
-    let archetypesHtml = '';
-    const targets = (ev.top_acquirer_targets || []).slice().sort((a,b)=> (a.rank||99) - (b.rank||99));
-    if(ev.recommended_path === 'LICENSE' && targets.length){
-      archetypesHtml = '<div class="panel"><div class="panel-head"><h3>Top three acquirer targets</h3></div><div class="panel-body">' +
-        targets.map((a, idx) => {
-          const hasCompany = a.company_name && a.company_name.trim().length > 0;
-          const nameLine = hasCompany
-            ? escapeHtml(a.company_name) + ' <span style="font-weight:400; color:var(--slate);">&middot; ' + escapeHtml(a.sector) + '</span>'
-            : '<span style="color:var(--slate); font-style:italic;">No specific company identified via search</span> <span style="font-weight:400; color:var(--slate);">&middot; ' + escapeHtml(a.sector) + '</span>';
-          const sourceLine = (hasCompany && a.source_url) ? '<div style="margin-top:4px;"><a href="' + escapeHtml(a.source_url) + '" target="_blank" rel="noopener" style="font-size:11.5px;">source</a></div>' : '';
-          const pitchLine = (hasCompany && a.pitch_angle) ? '<div class="why" style="font-style:italic; margin-top:4px;">Pitch angle: ' + escapeHtml(a.pitch_angle) + '</div>' : '';
-          const draftBtn = hasCompany ? '<button class="btn secondary small" data-draft-outreach="' + idx + '" style="margin-top:8px;">Draft outreach email</button>' : '';
-          const draftBox = a.outreach_draft
-            ? '<div class="panel" style="margin-top:10px; background:var(--paper);"><div class="panel-body"><p style="font-size:12px; font-weight:600; color:var(--slate); text-transform:uppercase; letter-spacing:0.04em;">Draft, review before sending</p><p style="font-size:13px; font-weight:600; margin-top:6px;">' + escapeHtml(a.outreach_draft.subject || '') + '</p><p style="font-size:13px; white-space:pre-wrap; margin-top:4px;">' + escapeHtml(a.outreach_draft.body || '') + '</p></div></div>'
-            : '<div data-draft-container="' + idx + '"></div>';
-          return '<div class="archetype"><div class="sector">#' + (a.rank || '?') + ' &middot; ' + nameLine + '</div><div class="why">' + escapeHtml(a.rationale) + '</div>' + pitchLine + sourceLine + draftBtn + draftBox + '</div>';
-        }).join('') +
-        '<div class="caveat-box">Company names above were identified through live web search, not invented from memory, but a name here is a lead to check, not confirmed interest. When no specific company is shown, search did not turn up a clear enough fit, only the sector suggestion is offered rather than a guessed name. Outreach drafts are a starting point for CURF staff to review, personalize, and send themselves, this app never sends anything on its own. Verify every prospect with CURF business development contacts before outreach.</div>' +
-        '</div></div>';
-    } else if(ev.recommended_path === 'LICENSE' && ev.acquirer_search_error){
-      archetypesHtml = '<div class="panel"><div class="panel-head"><h3>Top three acquirer targets</h3></div><div class="panel-body">' +
-        '<div class="caveat-box" style="background:var(--red-bg); border-color:#E0B4A6; color:var(--red);">Acquirer target research did not complete for this patent: ' + escapeHtml(ev.acquirer_search_error) + '. The evaluation above is unaffected and complete, only this specific search step failed. Use Re-evaluate to run this patent again.</div>' +
-        '</div></div>';
-    }
+    let licensingHtml = renderLicensingTargetsPanel(ev);
+    const outreachTargets = licensingOutreachTargets(ev);
 
     let venturePlanHtml = '';
     if(ev.recommended_path === 'VENTURE' && ev.venture_plan){
@@ -3520,7 +3714,7 @@
         '<p style="font-size:12px; color:var(--slate); margin-top:8px;">Model confidence: <strong>' + escapeHtml(ev.confidence || 'unspecified') + '</strong></p>' +
       '</div></div>' +
 
-      archetypesHtml + venturePlanHtml +
+      licensingHtml + venturePlanHtml +
 
       '<div class="panel"><div class="panel-head"><h3>Marketing abstract, for outside audiences</h3></div><div class="panel-body">' +
         '<p style="font-size:13.5px;">' + escapeHtml(ev.marketing_abstract || 'Not generated.') + '</p>' +
@@ -3539,10 +3733,11 @@
 
     showView('casefile');
     attachStaffInputHandler();
-      attachReevaluateHandler();
+    attachReevaluateHandler();
     attachPatentabilityHandler();
     attachArchiveButtonHandler();
-    attachOutreachDraftHandlers(p, targets);
+    attachDownloadReportHandler();
+    attachOutreachDraftHandlers(p, outreachTargets);
   }
 
   function escapeHtml(str){
