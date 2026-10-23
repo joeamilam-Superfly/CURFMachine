@@ -243,6 +243,92 @@ export function rewritePilotInResponse(data, options){
   return copy;
 }
 
+export const PILOT_EVALUATION_KEYS = [
+  "pilot_targets",
+  "biggest_proof_gap",
+  "suggested_next_step",
+  "pilot_recommendation",
+  "pilot_search_error"
+];
+
+export function isPilotHardPass(record){
+  const ev = record && record.evaluation && typeof record.evaluation === "object" ? record.evaluation : {};
+  const path = clean(ev.recommended_path, 40).toUpperCase();
+  const demand = clean(ev.market_demand_verdict, 40).toUpperCase();
+  if(path === "NO_DEMAND" || demand === "NONE" || demand === "WEAK") return true;
+  if(clean(ev.licensing_recommendation, 40).toLowerCase() === "hard pass") return true;
+  if(Array.isArray(ev.licensing_targets) && ev.licensing_targets.length < 3) return true;
+  return false;
+}
+
+export function pilotNotRecommendedSection(){
+  return {
+    pilot_targets: [],
+    pilot_recommendation: "not recommended",
+    biggest_proof_gap: "Pilots aren't recommended. This is a hard pass with no marketable destination.",
+    suggested_next_step: "Do not recruit a pilot partner. Pilots aren't recommended until a real buyer or licensee exists.",
+    pilot_search_error: ""
+  };
+}
+
+export function pilotSearchInputFromRecord(record){
+  const source = record && typeof record === "object" ? record : {};
+  const ev = source.evaluation && typeof source.evaluation === "object" ? source.evaluation : {};
+  const licensing = Array.isArray(ev.licensing_targets) ? ev.licensing_targets : (Array.isArray(source.licensing_targets) ? source.licensing_targets : []);
+  return {
+    title: source.title || "",
+    dept: source.dept || "",
+    text: source.text || ev.marketing_abstract || "",
+    abstract: ev.marketing_abstract || source.abstract || "",
+    claims_summary: ev.unsupported_claims || source.claims_summary || "",
+    recommended_path: ev.recommended_path || source.recommended_path || "",
+    market_demand_rationale: ev.market_demand_rationale || source.market_demand_rationale || "",
+    trl_rationale: ev.trl_rationale || source.trl_rationale || "",
+    unsupported_claims: ev.unsupported_claims || source.unsupported_claims || "",
+    sc_industry_group: ev.sc_industry_group || source.sc_industry_group || "",
+    licensing_targets: licensing.map(item => ({
+      name: item && (item.name || item.company_name) || "",
+      type: item && (item.type || item.sector) || "",
+      why_it_fits: item && (item.why_it_fits || item.rationale) || ""
+    })).filter(item => item.name)
+  };
+}
+
+export function readPilotSection(data){
+  const rewritten = rewritePilotInResponse(data, { enforce: true });
+  const blocks = (rewritten && rewritten.content || []).filter(block => block && block.type === "text" && typeof block.text === "string");
+  const text = blocks.length ? blocks[blocks.length - 1].text : "";
+  let parsed;
+  try { parsed = JSON.parse(text); }
+  catch (err) { parsed = null; }
+  if(!parsed || !Array.isArray(parsed.pilot_targets)){
+    throw new Error("Pilot target search did not return targets");
+  }
+  return {
+    pilot_targets: parsed.pilot_targets,
+    biggest_proof_gap: parsed.biggest_proof_gap || "",
+    suggested_next_step: parsed.suggested_next_step || "",
+    pilot_recommendation: parsed.pilot_recommendation === "not recommended" && !parsed.pilot_targets.length ? "not recommended" : "pursue",
+    pilot_search_error: ""
+  };
+}
+
+export function applyPilotFields(record, fields){
+  const copy = JSON.parse(JSON.stringify(record && typeof record === "object" ? record : {}));
+  if(!copy.evaluation || typeof copy.evaluation !== "object" || Array.isArray(copy.evaluation)){
+    copy.evaluation = {};
+  }
+  const patch = fields && typeof fields === "object" ? fields : {};
+  PILOT_EVALUATION_KEYS.forEach(key => {
+    if(Object.prototype.hasOwnProperty.call(patch, key)) copy.evaluation[key] = patch[key];
+  });
+  return copy;
+}
+
+export function countVerifiedPilots(targets){
+  return (Array.isArray(targets) ? targets : []).filter(target => target && target.verified).length;
+}
+
 export function buildPilotSearchRequest(patent){
   const input = patent && typeof patent === "object" ? patent : {};
   const title = clean(input.title, 300) || "Untitled";
@@ -251,8 +337,17 @@ export function buildPilotSearchRequest(patent){
   const path = clean(input.recommended_path, 40);
   const demand = clean(input.market_demand_rationale, 300);
   const trl = clean(input.trl_rationale, 240);
-  const gap = clean(input.unsupported_claims, 240);
+  const claims = clean(input.claims_summary || input.unsupported_claims, 400);
+  const summary = clean(input.abstract, 600);
   const group = clean(input.sc_industry_group, 120);
+  const licensing = (Array.isArray(input.licensing_targets) ? input.licensing_targets : [])
+    .map(item => ({
+      name: clean(item && (item.name || item.company_name), 180),
+      type: clean(item && item.type, 80),
+      why: clean(item && (item.why_it_fits || item.rationale), 240)
+    }))
+    .filter(item => item.name)
+    .slice(0, 8);
   const system = [
     "You are finding real places a university technology transfer office could pilot, validate, or prove a Clemson patent so a later license is easier.",
     "The office is the Clemson University Research Foundation (CURF) in South Carolina.",
@@ -284,8 +379,15 @@ export function buildPilotSearchRequest(patent){
   if(group) lines.push("Technology industry group, for context only: " + group);
   if(demand) lines.push("Demand note from the evaluation: " + demand);
   if(trl) lines.push("Readiness note: " + trl);
-  if(gap) lines.push("Claim the disclosure does not prove: " + gap);
-  lines.push("Disclosure or abstract text:");
+  if(claims) lines.push("Claims summary: " + claims);
+  if(summary && summary !== text) lines.push("Plain-language summary: " + summary);
+  if(licensing.length){
+    lines.push("Licensing destinations already stored. Use them only as context for fit. Name one as a pilot target only when a page shows that organization has already done work in this technical area. Do not copy the list to fill empty slots.");
+    licensing.forEach(item => {
+      lines.push("- " + item.name + (item.type ? " (" + item.type + ")" : "") + (item.why ? ": " + item.why : ""));
+    });
+  }
+  lines.push("Abstract or disclosure text:");
   lines.push(text || "No disclosure text was provided.");
   return {
     system,
