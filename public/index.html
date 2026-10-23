@@ -148,6 +148,27 @@
   }
   .panel-head h3{ font-size:15.5px; }
   .panel-body{ padding: 16px 18px; }
+  .score-info{ position:relative; display:inline-block; margin-left:6px; vertical-align:1px; }
+  .score-info summary{
+    list-style:none; cursor:pointer;
+    width:16px; height:16px; border-radius:50%;
+    border:1px solid var(--line); background:#fff; color:var(--slate);
+    font-family:'IBM Plex Sans', sans-serif; font-size:11px; font-weight:600; font-style:italic;
+    display:inline-flex; align-items:center; justify-content:center; line-height:1;
+  }
+  .score-info summary::-webkit-details-marker{ display:none; }
+  .score-info summary::marker{ content:""; }
+  .score-info .score-tip{
+    display:none; position:absolute; z-index:5; left:0; top:22px; width:280px; max-width:70vw;
+    background:#fff; border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow);
+    padding:10px 12px; font-family:'IBM Plex Sans', sans-serif; font-size:12px; font-weight:400;
+    font-style:normal; line-height:1.45; color:var(--slate); text-align:left;
+  }
+  .score-info[open] .score-tip{ display:block; }
+  #value-score .score-headline{ font-size:15px; margin:0 0 8px; color:var(--ink); }
+  #value-score .score-rank{ font-size:13px; color:var(--slate); margin:0 0 10px; }
+  #value-score .panel-body p{ font-size:13.5px; }
+  #value-score a{ color:var(--purple); }
 
   /* docket table */
   table.docket{ width:100%; border-collapse:collapse; }
@@ -784,6 +805,7 @@
 </div>
 
 <script src="sc-investment.js"></script>
+<script src="value-score-copy.js"></script>
 <script>
 (function(){
 
@@ -2735,17 +2757,52 @@
     return computeValueScore(p);
   }
 
+  function valueScorePeers(){
+    return patents.map(item => {
+      const shown = getDisplayValueScore(item);
+      const ev = item.evaluation || {};
+      return {
+        id: item.id,
+        archived: !!item.archived,
+        skipRemoteSave: !!item.skipRemoteSave,
+        status: item.status,
+        recordType: item.recordType || item.portfolioKind || null,
+        totalPoints: shown && typeof shown.totalPoints === 'number' ? shown.totalPoints : null,
+        demand: ev.market_demand_verdict || null,
+        path: ev.recommended_path || null,
+        cachedOnly: !!ev.cached_only
+      };
+    });
+  }
+
+  function renderValueScoreLever(copy){
+    const text = escapeHtml(copy.lever);
+    if(!copy.seePilotTargets) return text;
+    return text.replace('Pilot targets', '<a href="#pilot-targets">Pilot targets</a>');
+  }
+
   function renderValueScorePanel(p){
     const score = getDisplayValueScore(p);
     if(!score) return '';
-    const tierInfo = VALUE_TIER_INFO[score.tier];
-    const rows = score.breakdown.map(b =>
+    const tierInfo = VALUE_TIER_INFO[score.tier] || VALUE_TIER_INFO.D;
+    const rows = (score.breakdown || []).map(b =>
       '<div class="risk-row"><span class="factor">' + escapeHtml(b.label) + '</span><span class="mono" style="color:var(--slate); font-size:12px;">' + b.points + ' / ' + b.max + '</span></div>'
     ).join('');
-    return '<div class="panel"><div class="panel-head"><h3>Value score</h3><span class="tag ' + tierInfo.tagClass + '">Tier ' + tierInfo.label + '</span></div><div class="panel-body">' +
-      '<p style="font-size:13px; color:var(--slate); margin-bottom:10px;">' + score.totalPoints + ' of ' + score.maxPoints + ' points. Computed directly from this evaluation\'s own outputs, not a separate AI guess, every line below is auditable against what\'s already on this page. Frozen at the time this evaluation ran, it will not change on its own even if the scoring formula is later revised.</p>' +
+    const copy = window.CURF_VALUE && window.CURF_VALUE.buildValueScoreCopy
+      ? window.CURF_VALUE.buildValueScoreCopy(p, score, valueScorePeers())
+      : null;
+    const method = (copy && copy.methodNote) || 'Computed directly from this evaluation\'s own outputs, not a separate AI guess. Every line below is auditable against what\'s already on this page. Frozen at the time this evaluation ran, it will not change on its own even if the scoring formula is later revised.';
+    const headline = copy ? copy.headline : (score.totalPoints + ' / ' + score.maxPoints);
+    const rank = copy ? '<p class="score-rank">' + escapeHtml(copy.rank) + '</p>' : '';
+    const earned = copy ? '<p class="score-earned"><strong>What earned points.</strong> ' + escapeHtml(copy.earned) + '</p>' : '';
+    const cost = copy ? '<p class="score-cost"><strong>What cost points.</strong> ' + escapeHtml(copy.cost) + '</p>' : '';
+    const lever = copy ? '<p class="score-lever"><strong>Fastest way to raise it.</strong> ' + renderValueScoreLever(copy) + '</p>' : '';
+    return '<div class="panel" id="value-score"><div class="panel-head"><h3>Value score ' +
+      '<details class="score-info"><summary aria-label="How this score is computed">i</summary><span class="score-tip" role="tooltip">' + escapeHtml(method) + '</span></details>' +
+      '</h3><span class="tag ' + tierInfo.tagClass + '">Tier ' + tierInfo.label + '</span></div><div class="panel-body">' +
+      '<p class="score-headline">' + escapeHtml(headline) + '</p>' +
+      rank + earned + cost + lever +
       rows +
-      '<div class="caveat-box" style="margin-top:12px;">This is a relative triage score for comparing patents in this docket, not a dollar valuation. Letter thresholds stay at 10, 7, and 4 out of 15. The dollar figure in the South Carolina alignment note is a typical PitchBook check size, not a sum of capital invested and not a value for this patent.</div>' +
     '</div></div>';
   }
 
