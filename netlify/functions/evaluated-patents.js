@@ -70,6 +70,53 @@ function supabaseHeaders(apiKey){
   };
 }
 
+function missingPortfolioColumn(data){
+  if (!data) return false;
+  const message = String(data.message || data.details || "");
+  return data.code === "PGRST204" || /portfolio_(added|seen)_at/.test(message);
+}
+
+// The portfolio columns ship in supabase-portfolio-new.sql. A deploy
+// that races that migration must still read and write the evaluation
+// itself, so a missing-column error retries without those fields.
+async function readEvaluatedRows(supabaseUrl, apiKey){
+  const load = async (select) => {
+    const res = await fetch(supabaseUrl + "/rest/v1/" + TABLE + "?select=" + select, {
+      headers: supabaseHeaders(apiKey)
+    });
+    const data = await res.json().catch(() => ({}));
+    return { res, data };
+  };
+  let result = await load("patent_id,evaluated_at,record_json,portfolio_added_at,portfolio_seen_at");
+  if (!result.res.ok && missingPortfolioColumn(result.data)) {
+    result = await load("patent_id,evaluated_at,record_json");
+  }
+  if (!result.res.ok) {
+    return { error: true, status: result.res.status, detail: result.data };
+  }
+  return { rows: Array.isArray(result.data) ? result.data : [] };
+}
+
+async function writeEvaluatedRow(supabaseUrl, apiKey, row){
+  const send = async (payload) => {
+    const res = await fetch(supabaseUrl + "/rest/v1/" + TABLE, {
+      method: "POST",
+      headers: { ...supabaseHeaders(apiKey), "Prefer": "resolution=merge-duplicates" },
+      body: JSON.stringify([payload])
+    });
+    if (res.ok) return { ok: true, status: res.status, data: {} };
+    const data = await res.json().catch(() => ({}));
+    return { ok: false, status: res.status, data };
+  };
+  let result = await send(row);
+  if (!result.ok && missingPortfolioColumn(result.data) && (row.portfolio_added_at || row.portfolio_seen_at)) {
+    const slim = { patent_id: row.patent_id };
+    if (row.record_json !== undefined) slim.record_json = row.record_json;
+    result = await send(slim);
+  }
+  return result;
+}
+
 export default async (req, context) => {
   const supabaseUrl = process.env.SUPABASE_URL;
   const supabaseKey = process.env.SUPABASE_SERVICE_KEY;
@@ -90,20 +137,22 @@ export default async (req, context) => {
 
   if (req.method === "GET") {
     try {
-      const res = await fetch(supabaseUrl + "/rest/v1/" + TABLE + "?select=patent_id,evaluated_at,record_json", {
-        headers: supabaseHeaders(supabaseKey)
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        return new Response(JSON.stringify({ configured: true, error: "Supabase rejected the request, check the table exists and the key is a service_role key.", detail: data }), {
-          status: res.status, headers: { "Content-Type": "application/json" }
+      const rows = await readEvaluatedRows(supabaseUrl, supabaseKey);
+      if (rows.error) {
+        return new Response(JSON.stringify({ configured: true, error: "Supabase rejected the request, check the table exists and the key is a service_role key.", detail: rows.detail }), {
+          status: rows.status, headers: { "Content-Type": "application/json" }
         });
       }
-      const rows = Array.isArray(data) ? data : [];
-      const patentIds = rows.map(row => row.patent_id).filter(Boolean);
-      const records = rows
+      const patentIds = rows.rows.map(row => row.patent_id).filter(Boolean);
+      const records = rows.rows
         .filter(row => row.record_json)
-        .map(row => ({ patent_id: row.patent_id, evaluated_at: row.evaluated_at, record: row.record_json }));
+        .map(row => ({
+          patent_id: row.patent_id,
+          evaluated_at: row.evaluated_at,
+          portfolio_added_at: row.portfolio_added_at || null,
+          portfolio_seen_at: row.portfolio_seen_at || null,
+          record: row.record_json
+        }));
       return new Response(JSON.stringify({ configured: true, patent_ids: patentIds, records: records }), {
         status: 200, headers: { "Content-Type": "application/json" }
       });
@@ -130,21 +179,19 @@ export default async (req, context) => {
     }
     const row = { patent_id: patentId };
     if (body.record !== undefined) row.record_json = body.record;
+    if (body.portfolio_added_at) row.portfolio_added_at = body.portfolio_added_at;
+    if (body.portfolio_seen_at) row.portfolio_seen_at = body.portfolio_seen_at;
     try {
-      const res = await fetch(supabaseUrl + "/rest/v1/" + TABLE, {
-        method: "POST",
-        headers: { ...supabaseHeaders(supabaseKey), "Prefer": "resolution=merge-duplicates" },
-        body: JSON.stringify([row])
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
+      const written = await writeEvaluatedRow(supabaseUrl, supabaseKey, row);
+      if (!written.ok) {
+        const data = written.data || {};
         const rlsRejected = data && (data.code === "42501" || (data.message && String(data.message).indexOf("row-level security") !== -1));
         return new Response(JSON.stringify({
           configured: true,
           error: rlsRejected ? WRONG_KEY_MESSAGE : "Supabase rejected the write",
           detail: data
         }), {
-          status: res.status, headers: { "Content-Type": "application/json" }
+          status: written.status, headers: { "Content-Type": "application/json" }
         });
       }
       return new Response(JSON.stringify({ configured: true, ok: true }), {

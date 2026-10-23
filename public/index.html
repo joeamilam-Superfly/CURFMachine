@@ -172,6 +172,8 @@
   .tag.pending{ background: var(--paper-dark); color: var(--slate); }
   .tag.error{ background: var(--red-bg); color: var(--red); }
   .tag.new{ background:#FFF1E6; color: var(--orange-deep); }
+  table.docket tr.portfolio-new td{ background:#FFF6EF; }
+  table.docket tr.clickable.portfolio-new:hover td{ background:#FDEFE2; }
 
   /* intake */
   .intake-grid{ display:grid; grid-template-columns: 1.1fr 1fr; gap:20px; }
@@ -549,7 +551,7 @@
         <div>
           <div class="eyebrow">Step 2</div>
           <h1>Portfolio</h1>
-          <p>Full evaluations land here and stay here. Each row is the stored result, including the demand read, who to sell or license it to, and the marketing abstract. Opening a case does not run the model again. Re-evaluate, on the case file, is the only way to replace a stored result. An older result that has no licensing list says so on the case file. Sorted by value score, then South Carolina alignment.</p>
+          <p>Full evaluations land here and stay here. Each row is the stored result, including the demand read, who to sell or license it to, and the marketing abstract. Opening a case does not run the model again. Re-evaluate, on the case file, is the only way to replace a stored result. An older result that has no licensing list says so on the case file. Sorted by value score, then South Carolina alignment. A patent added in the last 7 days wears a New badge until that case is opened, or until Mark all seen. The view menu starts on New when any of those are waiting.</p>
         </div>
         <div>
           <button class="btn secondary" id="btn-load-sample">Load sample portfolio</button>
@@ -561,6 +563,18 @@
         <div class="stat-card"><div class="label">Venture candidates</div><div class="value" id="stat-venture">0</div><div class="sub">demand fits a new market</div></div>
         <div class="stat-card"><div class="label">Insufficient demand</div><div class="value" id="stat-no-demand">0</div><div class="sub">no real market pull found</div></div>
         <div class="stat-card"><div class="label">Needs maturation</div><div class="value" id="stat-mature">0</div><div class="sub">too early technically</div></div>
+      </div>
+      <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end; margin-bottom:10px;">
+        <div class="field" style="margin:0; min-width:180px;">
+          <label for="portfolio-view-filter">View</label>
+          <select id="portfolio-view-filter">
+            <option value="active">Active</option>
+            <option value="new">New (0)</option>
+            <option value="archived">Archived</option>
+            <option value="all">All</option>
+          </select>
+        </div>
+        <button class="btn secondary" id="btn-mark-portfolio-seen" type="button">Mark all seen</button>
       </div>
       <div id="portfolio-archive-status" style="margin-bottom:10px; font-size:12.5px; color:var(--slate);"></div>
       <div class="panel">
@@ -784,7 +798,9 @@
   const REGISTRY_PAGE_SIZE = 20;
   let hiddenAlreadyEvaluatedCount = 0;
   let showAlreadyEvaluated = false;
-  let showArchivedPortfolio = false;
+  let portfolioView = 'active';
+  let portfolioViewTouched = false;
+  const PORTFOLIO_NEW_MS = 7 * 24 * 60 * 60 * 1000;
 
   // Bump this string any time the evaluation schema or the value score
   // formula changes. Every evaluation stores the version it was
@@ -887,8 +903,131 @@
       filingDate: p.filingDate || null,
       kindCode: p.kindCode || null,
       publicationDate: p.publicationDate || null,
-      recordType: p.recordType || null
+      recordType: p.recordType || null,
+      portfolioAddedAt: p.portfolioAddedAt || null,
+      portfolioSeenAt: p.portfolioSeenAt || null
     };
+  }
+
+  function parseTime(value){
+    const t = Date.parse(value || '');
+    return Number.isFinite(t) ? t : null;
+  }
+
+  function earlierIso(a, b){
+    const ta = parseTime(a);
+    const tb = parseTime(b);
+    if(ta == null) return tb == null ? null : b;
+    if(tb == null) return a;
+    return ta <= tb ? a : b;
+  }
+
+  function laterIso(a, b){
+    const ta = parseTime(a);
+    const tb = parseTime(b);
+    if(ta == null) return tb == null ? null : b;
+    if(tb == null) return a;
+    return ta >= tb ? a : b;
+  }
+
+  // Added-to-portfolio time. Prefer the stamp written when the row
+  // joined the docket. Older saved rows have no stamp; their evaluation
+  // time is the backfill. A cached-id stub's evaluated_at is "now" and
+  // is not an add time.
+  function backfillPortfolioAdded(p){
+    if(!p || p.portfolioAddedAt) return;
+    const ev = p.evaluation;
+    if(!ev || ev.cached_only || !ev.evaluated_at) return;
+    if(parseTime(ev.evaluated_at) == null) return;
+    p.portfolioAddedAt = ev.evaluated_at;
+  }
+
+  function portfolioAddedTime(p){
+    if(!p) return null;
+    const direct = parseTime(p.portfolioAddedAt);
+    if(direct != null) return direct;
+    const ev = p.evaluation;
+    if(!ev || ev.cached_only) return null;
+    return parseTime(ev.evaluated_at);
+  }
+
+  function isPortfolioNew(p){
+    const added = portfolioAddedTime(p);
+    if(added == null) return false;
+    if(Date.now() - added > PORTFOLIO_NEW_MS) return false;
+    const seen = parseTime(p.portfolioSeenAt);
+    if(seen != null && seen >= added) return false;
+    return true;
+  }
+
+  function addDocketPatent(fields){
+    const p = { ...fields };
+    if(!p.portfolioAddedAt) p.portfolioAddedAt = new Date().toISOString();
+    patents.push(p);
+    return p;
+  }
+
+  function canPushPortfolioRecord(p){
+    return !!(p && p.status === 'evaluated' && p.evaluation && !p.evaluation.cached_only && !p.skipRemoteSave);
+  }
+
+  function acknowledgePortfolioPatent(p){
+    if(!isPortfolioNew(p)) return false;
+    if(!p.portfolioAddedAt){
+      const added = portfolioAddedTime(p);
+      if(added != null) p.portfolioAddedAt = new Date(added).toISOString();
+    }
+    p.portfolioSeenAt = new Date().toISOString();
+    savePatentRecordsToStorage();
+    if(canPushPortfolioRecord(p)) pushPatentRecordToRemote(p);
+    return true;
+  }
+
+  function markAllPortfolioSeen(){
+    const fresh = patents.filter(isPortfolioNew);
+    if(!fresh.length) return;
+    const seenAt = new Date().toISOString();
+    fresh.forEach(p => {
+      if(!p.portfolioAddedAt){
+        const added = portfolioAddedTime(p);
+        if(added != null) p.portfolioAddedAt = new Date(added).toISOString();
+      }
+      p.portfolioSeenAt = seenAt;
+    });
+    savePatentRecordsToStorage();
+    fresh.forEach(p => {
+      if(canPushPortfolioRecord(p)) pushPatentRecordToRemote(p);
+    });
+    renderPortfolio();
+  }
+
+  function remotePortfolioTimes(r){
+    const record = (r && r.record) || {};
+    const ev = record.evaluation;
+    const fromEval = ev && !ev.cached_only ? ev.evaluated_at : null;
+    return {
+      added: earlierIso(r && r.portfolio_added_at, earlierIso(record.portfolioAddedAt, fromEval)),
+      seen: laterIso(r && r.portfolio_seen_at, record.portfolioSeenAt)
+    };
+  }
+
+  function applyPortfolioTimes(p, added, seen){
+    let changed = false;
+    const nextAdded = earlierIso(p.portfolioAddedAt, added);
+    const nextSeen = laterIso(p.portfolioSeenAt, seen);
+    if(nextAdded && nextAdded !== p.portfolioAddedAt){
+      p.portfolioAddedAt = nextAdded;
+      changed = true;
+    }
+    if(nextSeen && nextSeen !== p.portfolioSeenAt){
+      p.portfolioSeenAt = nextSeen;
+      changed = true;
+    }
+    if(!p.portfolioAddedAt){
+      backfillPortfolioAdded(p);
+      if(p.portfolioAddedAt) changed = true;
+    }
+    return changed;
   }
 
   function savePatentRecordsToStorage(){
@@ -906,6 +1045,7 @@
         const arr = JSON.parse(raw);
         if(Array.isArray(arr) && arr.length){
           patents = arr;
+          patents.forEach(backfillPortfolioAdded);
           const maxId = patents.reduce((m, p) => Math.max(m, p.id || 0), 0);
           nextId = maxId + 1;
         }
@@ -987,7 +1127,12 @@
       const res = await fetch('/api/evaluated-patents', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ patent_id: patentId, record: serializePatentForStorage(p) })
+        body: JSON.stringify({
+          patent_id: patentId,
+          record: serializePatentForStorage(p),
+          portfolio_added_at: p.portfolioAddedAt || null,
+          portfolio_seen_at: p.portfolioSeenAt || null
+        })
       });
       const data = await res.json().catch(() => ({}));
       if(!res.ok || (data && data.error)){
@@ -1029,11 +1174,18 @@
       let patentsChanged = false;
       remoteRecords.forEach(r => {
         if(!r.record) return;
-        const alreadyLocal = patents.some(p => sameRemoteRecord(p, r.patent_id));
-        if(!alreadyLocal){
-          patents.push({ ...r.record, id: nextId++ });
+        const times = remotePortfolioTimes(r);
+        const local = patents.find(p => sameRemoteRecord(p, r.patent_id));
+        if(!local){
+          const created = { ...r.record, id: nextId++ };
+          if(times.added) created.portfolioAddedAt = times.added;
+          if(times.seen) created.portfolioSeenAt = times.seen;
+          backfillPortfolioAdded(created);
+          patents.push(created);
           patentsChanged = true;
+          return;
         }
+        if(applyPortfolioTimes(local, times.added, times.seen)) patentsChanged = true;
       });
       if(patentsChanged) savePatentRecordsToStorage();
 
@@ -1227,13 +1379,19 @@
   document.getElementById('back-to-portfolio').addEventListener('click', (e)=>{
     e.preventDefault(); showView('portfolio');
   });
+  document.getElementById('portfolio-view-filter').addEventListener('change', (e)=>{
+    portfolioViewTouched = true;
+    portfolioView = e.target.value || 'active';
+    renderPortfolio();
+  });
+  document.getElementById('btn-mark-portfolio-seen').addEventListener('click', markAllPortfolioSeen);
 
   // ---------- sample data ----------
   document.getElementById('btn-load-sample').addEventListener('click', ()=>{
     let added = 0;
     SAMPLE_PATENTS.forEach(sp=>{
       if(patents.some(p => p.title === sp.title)) return;
-      patents.push({
+      addDocketPatent({
         id: nextId++,
         title: sp.title,
         dept: sp.dept,
@@ -1861,7 +2019,7 @@
     const citationNote = (typeof p.backward_citation_count === 'number') ? ('\nBackward citations (prior art cited by this patent): ' + p.backward_citation_count) : '';
     const cpcNote = (p.cpc_codes && p.cpc_codes.length) ? ('\nCPC codes: ' + p.cpc_codes.slice(0, 12).join(', ')) : '';
     const filingNote = p.filing_date ? ('\nFiling date: ' + p.filing_date) : '';
-    patents.push({
+    addDocketPatent({
       id: nextId++,
       title: p.title || 'Untitled',
       dept: 'Sourced from the Clemson registry, sector: ' + guessSector(p.title, p.abstract),
@@ -1920,7 +2078,7 @@
     const remain = [];
     pendingFiles.forEach(f=>{
       if(f.text && f.text.trim().length > 0 && !f.extractError){
-        patents.push({
+        addDocketPatent({
           id: nextId++,
           title: f.name.replace(/\.(txt|pdf)$/i,''),
           dept: 'Unspecified',
@@ -1977,7 +2135,7 @@
       alert('Add at least a title and some disclosure text before adding to the docket.');
       return;
     }
-    patents.push({ id: nextId++, title, dept, text, status:'pending', evaluation:null, error:null });
+    addDocketPatent({ id: nextId++, title, dept, text, status:'pending', evaluation:null, error:null });
     document.getElementById('manual-title').value = '';
     document.getElementById('manual-dept').value = '';
     document.getElementById('manual-text').value = '';
@@ -2703,7 +2861,7 @@
       openDocketPatent(knownPatent.number);
       return;
     }
-    patents.push({
+    addDocketPatent({
       id: nextId++,
       title: knownPatent.title,
       dept: 'Sourced from known Clemson patent snapshot, sector: ' + guessSector(knownPatent.title, knownPatent.abstract),
@@ -3115,27 +3273,55 @@
     attachOpenHandlers(recentEl);
   }
 
+  function syncPortfolioViewControls(){
+    const newCount = patents.filter(isPortfolioNew).length;
+    if(!portfolioViewTouched) portfolioView = newCount > 0 ? 'new' : 'active';
+    if(['active', 'new', 'archived', 'all'].indexOf(portfolioView) === -1) portfolioView = 'active';
+    const viewSelect = document.getElementById('portfolio-view-filter');
+    if(viewSelect){
+      const newOption = viewSelect.querySelector('option[value="new"]');
+      if(newOption) newOption.textContent = 'New (' + newCount + ')';
+      if(viewSelect.value !== portfolioView) viewSelect.value = portfolioView;
+    }
+    const markBtn = document.getElementById('btn-mark-portfolio-seen');
+    if(markBtn) markBtn.disabled = newCount === 0;
+    return newCount;
+  }
+
+  function portfolioRowsForView(){
+    if(portfolioView === 'new') return patents.filter(isPortfolioNew);
+    if(portfolioView === 'archived') return patents.filter(p => p.archived);
+    if(portfolioView === 'all') return patents.slice();
+    return patents.filter(p => !p.archived);
+  }
+
   function renderPortfolio(){
     const body = document.getElementById('portfolio-body');
     const emptyEl = document.getElementById('portfolio-empty');
     const statusEl = document.getElementById('portfolio-archive-status');
 
     const archivedCount = patents.filter(p => p.archived).length;
-    statusEl.innerHTML = archivedCount > 0
-      ? archivedCount + ' archived. <button class="btn secondary small" id="btn-toggle-archived-view">' + (showArchivedPortfolio ? 'Hide archived' : 'Show archived') + '</button>'
-      : '';
-    const toggleBtn = document.getElementById('btn-toggle-archived-view');
-    if(toggleBtn) toggleBtn.addEventListener('click', ()=>{ showArchivedPortfolio = !showArchivedPortfolio; renderPortfolio(); });
+    const newCount = syncPortfolioViewControls();
+    const statusParts = [];
+    if(newCount > 0) statusParts.push(newCount + ' new, added in the last 7 days and not opened yet.');
+    if(archivedCount > 0) statusParts.push(archivedCount + ' archived. Choose Archived or All in the view menu to see them.');
+    statusEl.textContent = statusParts.join(' ');
 
-    const visible = showArchivedPortfolio ? patents.slice() : patents.filter(p => !p.archived);
+    const visible = portfolioRowsForView();
 
     if(visible.length === 0){
       body.innerHTML = '';
       emptyEl.style.display = 'block';
-      const allArchived = patents.length > 0 && archivedCount === patents.length;
-      emptyEl.innerHTML = allArchived
-        ? '<h3>Everything here is archived</h3><p>Use "Show archived" above to see those cases.</p>'
-        : '<h3>The docket is empty</h3><p>Triage a discovered patent and choose Evaluate selected, or submit a disclosure from Intake.</p><div style="margin-top:12px; display:flex; gap:8px; justify-content:center; flex-wrap:wrap;"><button class="btn small" data-view="triage">Open triage</button><button class="btn secondary small" data-view="intake">Submit a disclosure</button></div>';
+      const allArchived = portfolioView === 'active' && patents.length > 0 && archivedCount === patents.length;
+      if(portfolioView === 'new'){
+        emptyEl.innerHTML = '<h3>No new patents</h3><p>New means added to the portfolio in the last 7 days and not opened yet. Choose Active in the view menu to see the rest of the docket.</p>';
+      } else if(portfolioView === 'archived'){
+        emptyEl.innerHTML = '<h3>Nothing is archived</h3><p>Archived cases stay on the docket. Choose Active to see the ones still in play.</p>';
+      } else if(allArchived){
+        emptyEl.innerHTML = '<h3>Everything here is archived</h3><p>Choose Archived or All in the view menu to see those cases.</p>';
+      } else {
+        emptyEl.innerHTML = '<h3>The docket is empty</h3><p>Triage a discovered patent and choose Evaluate selected, or submit a disclosure from Intake.</p><div style="margin-top:12px; display:flex; gap:8px; justify-content:center; flex-wrap:wrap;"><button class="btn small" data-view="triage">Open triage</button><button class="btn secondary small" data-view="intake">Submit a disclosure</button></div>';
+      }
       bindViewButtons(emptyEl);
       return;
     }
@@ -3170,6 +3356,7 @@
         ? '<span class="tag pending">Unmatched</span>'
         : '<span class="tag ' + (align.is_focus ? 'license' : 'mature') + '" title="' + escapeHtml(align.short || '') + '">' + align.alignment_score + '</span><div style="font-size:12px; color:var(--slate); margin-top:4px;">' + escapeHtml(align.industry_group) + '</div>';
       const archivedLabel = p.archived ? ' <span class="tag pending">Archived</span>' : '';
+      const newLabel = isPortfolioNew(p) ? ' <span class="tag new" title="Added to the portfolio in the last 7 days and not opened yet">New</span>' : '';
       const archiveBtnLabel = p.archived ? 'Restore' : 'Archive';
       const ev = p.evaluation || {};
       const detailBits = [ev.market_demand_rationale, ev.marketing_abstract].filter(Boolean);
@@ -3180,9 +3367,9 @@
       const storedLine = ev.evaluated_at
         ? '<div class="patent-sub">Stored ' + escapeHtml(new Date(ev.evaluated_at).toLocaleDateString()) + (ev.cached_only ? ' · id only, model was not run' : ' · cached result') + '</div>'
         : '';
-      return '<tr class="clickable" data-open="'+p.id+'">' +
+      return '<tr class="clickable' + (isPortfolioNew(p) ? ' portfolio-new' : '') + '" data-open="'+p.id+'">' +
         '<td class="case-id">CU-' + String(p.id).padStart(4,'0') + '</td>' +
-        '<td><div class="patent-title">' + escapeHtml(p.title) + archivedLabel + '</div><div class="patent-sub">' + escapeHtml(p.dept) + '</div>' + detailLine + licenseLine + storedLine + '</td>' +
+        '<td><div class="patent-title">' + escapeHtml(p.title) + newLabel + archivedLabel + '</div><div class="patent-sub">' + escapeHtml(p.dept) + '</div>' + detailLine + licenseLine + storedLine + '</td>' +
         '<td>' + pathTagHtml(p) + '</td>' +
         '<td class="mono">' + trl + (trl !== '—' ? '/9' : '') + '</td>' +
         '<td>' + valueCell + '</td>' +
@@ -3608,6 +3795,7 @@
     const p = patents.find(x => x.id === id);
     if(!p) return;
     openCaseId = id;
+    if(acknowledgePortfolioPatent(p)) renderPortfolio();
     const el = document.getElementById('casefile-body');
 
     if(p.status === 'pending'){

@@ -64,6 +64,8 @@ By default, the complete evaluation for every patent, not just a flag saying it 
 3. In Netlify, set two environment variables: `SUPABASE_URL` (must be `https://lxindmkredduovyfzszq.supabase.co` for the CURFPatentMachine project) and `SUPABASE_SERVICE_KEY` (the service_role key).
 4. Redeploy. The app checks for these automatically. If the key is an anon JWT, the page shows a warning instead of pretending the save worked.
 
+On the existing CURFPatentMachine project, `supabase-portfolio-new.sql` adds `portfolio_added_at` and `portfolio_seen_at` to `evaluated_patents` for the Portfolio New badge. A fresh `supabase-setup.sql` includes those same statements. The Portfolio view menu uses them together with the timestamp stored on each case.
+
 If these aren't set, `/api/evaluated-patents` returns a normal response saying so, and the app keeps using localStorage. If they are set to the wrong key, the warning above is the symptom. On the browser where the evaluations already completed, reload after the key is fixed. That browser still has them in localStorage and will upload the missing rows. They are not on the server until that happens.
 
 ## Setting up Publication Watch and email alerts (optional)
