@@ -30,8 +30,8 @@
 // The client gets HTTP 202 immediately and polls GET
 // /api/triage-patents. Nothing returned here reaches the browser.
 
-import { applyAlignmentToTier, listGroupNames, scoreAlignment } from "./sc-investment.js";
-import { applyTermOverride, buildTriageSignals } from "./triage-signals.js";
+import { applyAlignmentToTier, listGroupNames, scoreAlignment } from "../lib/sc-investment.js";
+import { applyTermOverride, buildTriageSignals } from "../lib/triage-signals.js";
 
 const TABLE = "patent_triage";
 const TRIAGE_MODEL = "claude-haiku-5-5";

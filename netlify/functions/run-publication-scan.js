@@ -5,7 +5,7 @@
 // this is the only place the page can learn whether the last scan
 // stored rows, failed to score them, or was rejected by Supabase.
 
-import { jwtRole, readPublicationWatch, WRONG_KEY_MESSAGE } from "./publication-watch-lib.js";
+import { jwtRole, readPublicationWatch, WRONG_KEY_MESSAGE } from "../lib/publication-watch-lib.js";
 
 export default async (req) => {
   if(req.method !== "GET"){

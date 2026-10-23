@@ -6,7 +6,7 @@
 // arXiv supply the rows. Haiku only scores them, and a scoring failure
 // still leaves the rows stored.
 
-import { runPublicationScan } from "./publication-watch-lib.js";
+import { runPublicationScan } from "../lib/publication-watch-lib.js";
 
 export default async (req) => {
   if(req.method !== "POST"){
