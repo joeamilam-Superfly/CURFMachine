@@ -3,8 +3,9 @@
 This folder is the deploy bundle:
 
 - `index.html`, the app itself (this is the file the browser loads at the site's root by default, no redirect rule needed)
-- `netlify/functions/`, the server side proxies (evaluation, BigQuery registry, problem match, evaluated-patent storage, publication scans, and alert email). They use Node's built-in `fetch` only, no npm packages.
-- `supabase-setup.sql`, the one-time SQL to run in Supabase if you want shared tracking and Publication Watch (optional, see below). `supabase-rls-grants.sql` is the same lock-down for a project where the tables already exist.
+- `sc-investment.js`, the South Carolina investment aggregates the browser uses. It has no investor names.
+- `netlify/functions/`, the server side proxies (evaluation, BigQuery registry, quick licensing rank, problem match, evaluated-patent storage, publication scans, and alert email). They use Node's built-in `fetch` only, no npm packages.
+- `supabase-setup.sql`, the one-time SQL for a new project. `supabase-rls-grants.sql` locks down tables that already exist. `supabase-publication-scan.sql`, `supabase-triage.sql`, and `supabase-sc-investment.sql` are the same statements for a project that is already in use. None of these files have been applied to production by this change.
 - `netlify.toml`, wiring so Netlify serves all of it together
 - `package.json`, declaring this project uses ES modules. This is required for the function syntax used here (`export default`, `export const config`) to be recognized by Netlify's build system at all. Without it, the functions silently fail to register and calling them returns a 404, not an error naming the actual problem.
 
@@ -86,6 +87,28 @@ An email only goes out for a finding scored HIGH that has not already been alert
 The weekly automatic run (`weekly-publication-scan.js`) cannot be tested by visiting a URL. Use "Run scan now", which calls `run-publication-scan-background.js`. Both runs use the same four sources. The weekly run has a 30 second limit and may leave new rows unscored. The button run scores a larger batch. Either way, stored rows show up even when scoring does not finish. The page shows the last run's time, counts, and error once `publication_scan_runs` exists.
 
 **What this cannot do**: get behind Clemson library's paywalled journal subscriptions. It searches public web sources only, titles, abstracts, press releases, and anything already publicly indexed. That is a known, stated limitation, not an oversight, closing it would require a specific integration with Clemson's own library systems that does not exist here.
+
+## Quick licensing rank (Registry)
+
+"Rank this list" sends the patents already loaded on the Registry tab to `/api/triage-patents-background`. The page then polls `GET /api/triage-patents` until the rows appear. The background function does not call BigQuery again.
+
+The model is `claude-haiku-5-5`, with no web search, effort set to low, and thinking disabled on the first attempt. A rejected thinking block is retried once. Batches are 12 patents. Cached `patent_id` rows are skipped, so a second click does not spend another model call.
+
+Published starting rates for that model are $0.10 per million input tokens and $0.50 per million output tokens. With thinking off, 300 patents are on the order of 75,000 input tokens and 18,000 output tokens, a few cents. If low-effort thinking still adds tokens, plan on under $0.30 for the full list. Runtime is usually 2 to 4 minutes, and the 15 minute background limit covers a slow run. Do not expect a synchronous function to finish 300 patents inside 60 seconds.
+
+Each row uses the fields the live pull already has: title, abstract, CPC codes, kind, filing and publication dates, backward citations, and co-assignees. Claims text is not in the pull. Forward citations are not queried. Maintenance status is an age note, not a USPTO fee check. Remaining term is 20 years from filing for utility and plant records, and 15 years from the grant publication for design records, ignoring term adjustment. An estimated expired term forces the tier to Needs work.
+
+Run `supabase-triage.sql` in the Supabase SQL editor before the first rank. It creates `patent_triage` and grants select, insert, update, and delete to `service_role` only. Row level security is on with no policies. The same statements are at the bottom of `supabase-setup.sql`. This file has not been applied. No new environment variable is required. `SUPABASE_SERVICE_KEY` still has to be the service_role key, or the cache read looks empty and the write is rejected.
+
+## South Carolina investment alignment
+
+`supabase-sc-investment.sql` loads one row per PitchBook industry group: deal counts for 2023, 2024, 2025, and 2026 year to date, a deal-weighted median check size, the focus-area label from that sheet, and the alignment score. It does not load investor names. Row level security is on, `anon` and `authenticated` are revoked, and `service_role` is granted select, insert, update, and delete in the same file. Run it in the SQL editor. It has not been applied. The app scores from `sc-investment.js` and `netlify/functions/sc-investment.js`, so a rank still works before the table exists. The table is the shared reference copy.
+
+The score is 0 to 100. Volume is log-scaled against the largest group in the extract (521 deals) and tops out at 40. Recency is the share of deals in 2025 or 2026 YTD and tops out at 25. A stated focus area adds 40. Focus areas on the sheet are Software and IT, medical devices, life sciences and drug delivery, advanced materials, agriculture, and energy and grid. Seventy or higher adds 2 points to the value score. Fifty-five or higher adds 1. Letter thresholds stay at 10, 7, and 4, on a new maximum of 15. In the quick rank, 75 or higher can lift Low or Needs work to Medium, and 80 or higher can lift Medium to High, when an abstract exists and the estimated term has not run out. A High tier is not lowered for a weak match.
+
+The dollar sentence is a typical PitchBook median, not the sum of capital invested. Some medians are skewed by a few large deals. The mapping uses CPC codes first, then keywords. A tie or a thin keyword hit stays overridable by the model's industry group, which must be one of the 40 names. A high-confidence CPC or keyword match is kept. Prompts receive the group names only, not investor names and not the dollar table.
+
+The ranked registry shows the tier and the alignment score, and can filter by tier, focus area, or score band. The portfolio column and the case-file panel show the same read. New evaluations freeze the points into the value score. Older evaluations keep their stored score until someone re-runs them. The case file still shows the live alignment note.
 
 ## One more setting worth pinning explicitly
 

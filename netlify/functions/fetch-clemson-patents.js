@@ -191,6 +191,8 @@ export default async (req, context) => {
       patent_id: r.publication_number,
       title: r.title || "Untitled",
       date: formatBqDate(r.publication_date),
+      filing_date: formatBqDate(r.filing_date),
+      kind_code: r.kind_code || "",
       abstract: r.abstract || "",
       assignees: r.assignees || [],
       inventors: r.inventors || [],
