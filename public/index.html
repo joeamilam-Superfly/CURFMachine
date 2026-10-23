@@ -3902,7 +3902,7 @@
     return '<button type="button" class="btn secondary small" data-pilot-action="' + patent.id + '"' + (busy ? ' disabled' : '') + '>' + escapeHtml(label) + '</button>';
   }
 
-  async function runPilotLookup(p){
+  async function runPilotLookup(p, lookupOptions){
     if(!p || p.status !== 'evaluated' || !p.evaluation || p.evaluation.cached_only) return;
     if(p.pilotLookup === 'loading') return;
     const generation = (p.pilotGeneration || 0) + 1;
@@ -3916,7 +3916,8 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           patent_id: remotePatentId(p),
-          record: serializePatentForStorage(p)
+          record: serializePatentForStorage(p),
+          force: !!(lookupOptions && lookupOptions.force)
         })
       });
       const data = await response.json().catch(() => ({}));
@@ -3945,7 +3946,7 @@
     document.querySelectorAll('[data-pilot-action]').forEach(btn => {
       btn.addEventListener('click', () => {
         const patent = patents.find(item => item.id === parseInt(btn.dataset.pilotAction, 10));
-        if(patent) runPilotLookup(patent);
+        if(patent) runPilotLookup(patent, { force: true });
       });
     });
   }
