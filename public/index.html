@@ -726,7 +726,37 @@
         <div>
           <div class="eyebrow">How the scoring works</div>
           <h1>How we score</h1>
-          <p>The scores follow published technology-transfer guides and the same choices other universities make. They are not a made-up grade.</p>
+          <p>A case moves through six steps. The scores below follow published technology-transfer guides and the same choices other universities make. They are not a made-up grade.</p>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h3>How a case moves</h3></div>
+        <div class="panel-body">
+          <div class="bp-item">
+            <div class="who"><span class="key-badge">1</span> Scan</div>
+            <div class="what">On Triage, click Scan for new patents. The scan looks in Google's public patent records and at the USPTO for US patents whose owner name contains Clemson. The same document from both places is one row. A patent application and the patent it later becomes stay separate. Before a scan is saved, the page shows the checked Aug 29, 2026 list. On Publications, click Scan for new papers. That scan reads the Clemson news feed, PubMed, OpenAlex, and arXiv. Each paper gets a quick score: High, Moderate, Low, or Not scored.</div>
+          </div>
+          <div class="bp-item">
+            <div class="who"><span class="key-badge">2</span> Quick rank</div>
+            <div class="what">Click Rank patents with no rank yet. The rank is a first look from the title and summary: High, Medium, Low, Needs work, or Not ranked yet. It is not the full review. South Carolina fit is a separate score from 0 to 100. It matches the patent to one South Carolina industry and counts deals since 2023, how recent those deals are, and whether the industry is a CURF focus area. 70 or higher can add two points to the later patent score. 55 or higher can add one. A strong fit can lift a lower rank. It never lowers a High rank. The dollar in the note is a typical deal size, not the value of this patent.</div>
+          </div>
+          <div class="bp-item">
+            <div class="who"><span class="key-badge">3</span> Full review</div>
+            <div class="what">Pick rows and click Evaluate selected. A patent you already reviewed opens right away. The review reads the patent, then looks for organizations that could buy or license it. The case needs at least three named organizations. Fewer than three is marked No real market. The list is not filled with guesses. When there is a real market, the review also looks for pilot sites. A site with a public page about earlier work in the same area is listed first. A site with no page shows No proof link and is listed last. The patent score is out of 15. The page says what raised it, what lowered it, and the fastest way to raise it, using facts from this patent. The score is not a dollar value.</div>
+          </div>
+          <div class="bp-item">
+            <div class="who"><span class="key-badge">4</span> Portfolio</div>
+            <div class="what">Finished reviews stay on Portfolio. Patents and publications are separate lists. A row added in the last 7 days shows New until you open it, or until you click Mark all seen. If any new rows are waiting, the list opens on New. Opening a case does not run the review again. Re-evaluate is what replaces a review. On a patent, Add pilot sites or Refresh pilot sites updates only that section.</div>
+          </div>
+          <div class="bp-item">
+            <div class="who"><span class="key-badge">5</span> Papers</div>
+            <div class="what">A paper uses a Venture Readiness score from 0 to 100, not the patent score. 75 to 100 is ready to pursue. 55 to 74 is promising, but lower the risk first. 35 to 54 is early research. Below 35 is not ready to sell. The next step can be file with CURF, look at a startup, ask for early funding, find a company partner, license the know-how, or check back later. The filing clock is one year from the publication date. It is red when that year has passed, amber while the US window is still open, green before publication, and unknown when there is no exact date. A paper does not fail just because fewer than three buyers are named. This is not legal advice. Check with CURF or a patent lawyer.</div>
+          </div>
+          <div class="bp-item">
+            <div class="who"><span class="key-badge">6</span> Tools</div>
+            <div class="what">Tools can look up one patent by number or by words in the title and summary. That search uses the list already on Triage. You can also describe a problem. The app checks Clemson patents, then the wider field. If a company wrote the problem, do not paste it unless they said you may share it this way.</div>
+          </div>
         </div>
       </div>
 
@@ -766,8 +796,8 @@
             <div class="what">A table counts finished South Carolina deals from 2023 through 2026, by industry. Focus areas are software and IT, medical devices, life sciences, advanced materials, agriculture, and energy and the grid. Each patent is matched to one industry from its patent classes and from words in the title and summary. If that match is unsure, the rank or the full review may pick a group from the same list. The fit score is 0 to 100: how many deals, how many are recent, and 40 points if the group is a focus area. 70 or higher adds two score points. 55 or higher adds one. In the quick rank, 75 or higher can lift Low or Needs work to Medium, and 80 or higher can lift Medium to High, but only when a summary is present and the patent term has not run out. A High grade is never lowered because the match is weak. Investor names are not sent to the AI. You can filter the list by focus area, score, or no match.</div>
           </div>
           <div class="bp-item">
-            <div class="who">A review is two steps, not one</div>
-            <div class="what">First the app reads the patent with no web search: how far along it is, whether anyone wants it, the path, the risks, and a short public summary. Unless that read already finds no market, a second step searches for who might buy or license it and saves that list. A patent with a real market needs at least three named organizations. Fewer than three is marked no real market. The list is not padded. The steps are split because one long search can hit the 60 second server limit. If the buyer search fails, the first read is kept. Older reviews that have no buyer list say so. Re-evaluate is what adds the list.</div>
+            <div class="who">A patent review is three steps</div>
+            <div class="what">First the app reads the patent with no web search: how far along it is, whether anyone wants it, the path, the risks, and a short public summary. Unless that read already finds no market, a second step searches for who might buy or license it and saves that list. A patent with a real market needs at least three named organizations. Fewer than three is marked No real market. The list is not padded. When that list has three or more names, a third step searches for pilot sites. Each site needs a public page about earlier work in the same area. A site with no page shows No proof link and is listed last. If the case is No real market, pilot sites are marked not a good next step, and no pilot search is run. The steps are split because one long search can hit the 60 second server limit. If the buyer search fails, the first read is kept. Older reviews that have no buyer list say so. Re-evaluate is what adds the list. Add pilot sites or Refresh pilot sites updates only the pilot section.</div>
           </div>
           <div class="bp-item">
             <div class="who">Portfolio ordering and archiving</div>
@@ -815,7 +845,7 @@
         <div class="panel-body">
           <div class="bp-item">
             <div class="who">Google's public patent table, not a scrape of the website</div>
-            <div class="what">A live scan asks Google's public patent table for US patents whose owner name contains Clemson, newest first. The list you see before a scan is the checked Aug 29, 2026 list and does not need that query. Google Patents has no public bulk search that fits this job, and copying the website at volume breaks Google's terms. The published data table is what this app uses.</div>
+            <div class="what">A live scan asks Google's public patent table for US patents whose owner name contains Clemson, newest first. It also asks the USPTO when that key is set. If the USPTO key is missing, the Google list still saves. The same document from both places is one row. A patent application and the patent it later becomes stay separate. The list you see before a scan is the checked Aug 29, 2026 list and does not need that query. Google Patents has no public bulk search that fits this job, and copying the website at volume breaks Google's terms. The published data table is what this app uses.</div>
           </div>
           <div class="bp-item">
             <div class="who">What it cannot do</div>
