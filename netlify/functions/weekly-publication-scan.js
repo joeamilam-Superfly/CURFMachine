@@ -8,7 +8,7 @@
 import { runPublicationScan } from "../lib/publication-watch-lib.js";
 
 export default async () => {
-  const result = await runPublicationScan({ trigger: "weekly", scoreLimit: 8 });
+  const result = await runPublicationScan({ trigger: "weekly", scoreLimit: 8, windowId: "1" });
   console.log("publication-scan weekly finished " + JSON.stringify(result));
   if(!result.ok){
     return new Response(result.error || "Scan failed", { status: 500 });

@@ -43,8 +43,11 @@ create table if not exists publication_watch (
   commercial_relevance_score text,
   commercial_rationale text,
   found_at timestamptz not null default now(),
-  alerted boolean not null default false
+  alerted boolean not null default false,
+  published_on date
 );
+
+alter table public.publication_watch add column if not exists published_on date;
 
 -- The Netlify functions read and write these tables with the
 -- service_role key. The browser never queries Supabase directly, and

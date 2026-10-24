@@ -13,7 +13,14 @@ export default async (req) => {
     console.log("publication-scan background ignored non-POST");
     return;
   }
-  const result = await runPublicationScan({ trigger: "background", scoreLimit: 24 });
+  let windowId = "1";
+  try {
+    const body = await req.json();
+    windowId = body && body.window;
+  } catch (err) {
+    windowId = "1";
+  }
+  const result = await runPublicationScan({ trigger: "background", scoreLimit: 24, windowId });
   console.log("publication-scan background finished " + JSON.stringify(result));
 };
 

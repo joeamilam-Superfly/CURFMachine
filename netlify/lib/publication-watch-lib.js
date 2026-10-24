@@ -5,15 +5,76 @@
 // The model only scores commercial relevance. If scoring fails, the
 // rows are still stored as UNSCORED.
 //
-// Crossref's query.affiliation parameter is a loose text search, not
-// an institution filter. A live check returned tens of millions of
-// unrelated works, so it is not used.
+// Crossref is not used to discover papers. Its affiliation search is a
+// loose text match. It is used only to read a publication date for a
+// DOI that another source already found.
 
 const FINDINGS = "publication_watch";
 const RUNS = "publication_scan_runs";
-const WINDOW_DAYS = 120;
 const TRIAGE_MODEL = "claude-haiku-5-5";
 const ALERT_THRESHOLD = "HIGH";
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+export function normalizeScanWindow(value){
+  const key = String(value == null ? "" : value).trim().toLowerCase();
+  if(key === "2" || key === "2y" || key === "two") return "2";
+  if(key === "5" || key === "5y" || key === "five") return "5";
+  if(key === "all" || key === "any") return "all";
+  return "1";
+}
+
+function utcDay(value){
+  const date = value instanceof Date ? value : new Date(value || Date.now());
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+}
+
+function yearsBefore(day, years){
+  return new Date(Date.UTC(day.getUTCFullYear() - years, day.getUTCMonth(), day.getUTCDate()));
+}
+
+export function isoDay(date){
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(date.getUTCDate()).padStart(2, "0");
+  return date.getUTCFullYear() + "-" + month + "-" + day;
+}
+
+function slashDay(date){
+  return isoDay(date).replace(/-/g, "/");
+}
+
+function arxivStamp(date){
+  return isoDay(date).replace(/-/g, "") + "0000";
+}
+
+export function scanWindowStart(windowId, now){
+  const id = normalizeScanWindow(windowId);
+  const today = utcDay(now || new Date());
+  if(id === "all") return { id, since: null };
+  const years = id === "5" ? 5 : (id === "2" ? 2 : 1);
+  return { id, since: yearsBefore(today, years) };
+}
+
+// Last 1 year is the recent band only. A longer choice also asks for a
+// short list of papers older than 1 year, so the choice changes the
+// results instead of repeating the newest page.
+export function scanBands(windowId, now, options){
+  const weekly = !!(options && options.weekly);
+  const window = scanWindowStart(windowId, now);
+  const oneYear = scanWindowStart("1", now).since;
+  const recentLimit = weekly ? 12 : (window.id === "1" ? 25 : 15);
+  const bands = [{ from: oneYear, to: null, limit: recentLimit }];
+  if(!weekly && window.id !== "1"){
+    const olderEnd = new Date(oneYear.getTime() - DAY_MS);
+    bands.push({ from: window.since, to: olderEnd, limit: 10 });
+  }
+  return {
+    id: window.id,
+    since: window.since,
+    newsLimit: 12,
+    arxivRecent: weekly ? 8 : 12,
+    bands
+  };
+}
 
 export const WRONG_KEY_MESSAGE = "SUPABASE_SERVICE_KEY is not the service_role key. Reads then look empty and writes are rejected by row level security (Postgres 42501). In Supabase open Project Settings, API, and copy the service_role key, not the anon key, into that Netlify variable, then redeploy.";
 
@@ -62,15 +123,51 @@ function tagText(block, name){
   return match ? decodeXml(match[1]) : "";
 }
 
-function daysAgo(days){
-  return new Date(Date.now() - days * 24 * 60 * 60 * 1000);
-}
-
-function withinWindow(dateValue){
+function withinWindow(dateValue, since){
+  if(!since) return true;
   if(!dateValue) return true;
   const parsed = new Date(dateValue);
   if(Number.isNaN(parsed.getTime())) return true;
-  return parsed >= daysAgo(WINDOW_DAYS);
+  return parsed >= since;
+}
+
+export function extractDoi(value){
+  const match = String(value || "").match(/10\.\d{4,9}\/[-._;()/:A-Z0-9]+/i);
+  if(!match) return "";
+  return match[0].replace(/[.)\],;]+$/, "");
+}
+
+function validIso(year, month, day){
+  const y = Number(year);
+  const m = Number(month);
+  const d = Number(day);
+  if(!y || !m || !d) return null;
+  const date = new Date(Date.UTC(y, m - 1, d));
+  if(date.getUTCFullYear() !== y || date.getUTCMonth() !== m - 1 || date.getUTCDate() !== d) return null;
+  return isoDay(date);
+}
+
+export function fullCalendarDate(value){
+  const text = String(value || "").trim();
+  let match = /^(\d{4})-(\d{2})-(\d{2})/.exec(text);
+  if(match) return validIso(match[1], match[2], match[3]);
+  match = /^(\d{4})[\/ ](\d{1,2})[\/ ](\d{1,2})\b/.exec(text);
+  if(match) return validIso(match[1], match[2], match[3]);
+  return null;
+}
+
+function datePartsToIso(block){
+  const parts = block && Array.isArray(block["date-parts"]) ? block["date-parts"][0] : null;
+  if(!Array.isArray(parts) || parts.length < 3) return null;
+  return validIso(parts[0], parts[1], parts[2]);
+}
+
+export function earliestCrossrefDate(message){
+  const dates = ["published-online", "published-print", "published", "issued"]
+    .map(key => datePartsToIso(message && message[key]))
+    .filter(Boolean)
+    .sort();
+  return dates[0] || null;
 }
 
 export function canonicalUrl(value){
@@ -149,14 +246,14 @@ function parseAtomEntries(xml){
   }).filter(item => item.title && item.link);
 }
 
-async function collectNews(){
+async function collectNews(since, limit){
   const xml = await fetchText("https://news.clemson.edu/feed/", 8000);
   const items = parseRss(xml).filter(item => {
     const blob = item.title + " " + item.summary + " " + item.categories.join(" ");
     if(NEWS_DROP.test(blob)) return false;
     if(item.categories.some(cat => /research/i.test(cat))) return true;
     return NEWS_KEEP.test(item.title + " " + item.summary);
-  }).filter(item => withinWindow(item.published)).slice(0, 12);
+  }).filter(item => withinWindow(item.published, since)).slice(0, limit || 12);
   return items.map(item => ({
     title: clip(item.title, 300),
     source_url: canonicalUrl(item.link),
@@ -167,14 +264,14 @@ async function collectNews(){
   }));
 }
 
-async function collectPubMed(){
-  const start = daysAgo(WINDOW_DAYS);
-  const mindate = start.toISOString().slice(0, 10).replace(/-/g, "/");
-  const maxdate = new Date().toISOString().slice(0, 10).replace(/-/g, "/");
-  const searchUrl = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&retmode=json&retmax=12&sort=pub_date&datetype=pdat"
-    + "&mindate=" + mindate + "&maxdate=" + maxdate
+async function collectPubMed(band){
+  if(!band || !band.limit) return [];
+  const maxdate = band.to ? slashDay(band.to) : slashDay(utcDay(new Date()));
+  let searchUrl = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&retmode=json&retmax=" + band.limit
+    + "&sort=pub_date&datetype=pdat&maxdate=" + maxdate
     + "&term=" + encodeURIComponent("Clemson[Affiliation]")
     + "&tool=curf-docket";
+  if(band.from) searchUrl += "&mindate=" + slashDay(band.from);
   const search = JSON.parse(await fetchText(searchUrl, 8000));
   const ids = (search.esearchresult && search.esearchresult.idlist) || [];
   log("pubmed-search", "count " + ((search.esearchresult && search.esearchresult.count) || 0) + " ids " + ids.length);
@@ -199,7 +296,7 @@ async function collectPubMed(){
       summary: clip(abstract || tagText(body, "ArticleTitle"), 700),
       source_name: "PubMed",
       doi,
-      published: tagText(body, "ArticleDate") || tagText(body, "PubDate") || null
+      published: pubmedDate(body) || tagText(body, "ArticleDate") || tagText(body, "PubDate") || null
     };
   }).filter(item => item.title && item.source_url);
 }
@@ -214,10 +311,24 @@ function openAlexAbstract(inverted){
   return words.map(pair => pair[1]).join(" ");
 }
 
-async function collectOpenAlex(){
-  const from = daysAgo(WINDOW_DAYS).toISOString().slice(0, 10);
-  const url = "https://api.openalex.org/works?per-page=12&sort=publication_date:desc"
-    + "&filter=" + encodeURIComponent("authorships.institutions.ror:https://ror.org/037s24f05,from_publication_date:" + from)
+function pubmedDate(body){
+  const block = (body.match(/<ArticleDate[\s>][\s\S]*?<\/ArticleDate>/i) || [])[0]
+    || (body.match(/<PubDate[\s>][\s\S]*?<\/PubDate>/i) || [])[0]
+    || "";
+  if(!block) return "";
+  const year = tagText(block, "Year");
+  const month = tagText(block, "Month");
+  const day = tagText(block, "Day");
+  return validIso(year, month, day) || "";
+}
+
+async function collectOpenAlex(band){
+  if(!band || !band.limit) return [];
+  const filters = ["authorships.institutions.ror:https://ror.org/037s24f05"];
+  if(band.from) filters.push("from_publication_date:" + isoDay(band.from));
+  if(band.to) filters.push("to_publication_date:" + isoDay(band.to));
+  const url = "https://api.openalex.org/works?per-page=" + band.limit + "&sort=publication_date:desc"
+    + "&filter=" + encodeURIComponent(filters.join(","))
     + "&select=id,display_name,publication_date,doi,authorships,abstract_inverted_index";
   const data = JSON.parse(await fetchText(url, 8000));
   const results = Array.isArray(data.results) ? data.results : [];
@@ -236,14 +347,21 @@ async function collectOpenAlex(){
   }).filter(item => item.title && item.source_url);
 }
 
-async function collectArxiv(){
-  const url = "https://export.arxiv.org/api/query?search_query=" + encodeURIComponent("all:\"Clemson University\"")
-    + "&sortBy=submittedDate&sortOrder=descending&max_results=12";
+async function collectArxiv(band){
+  if(!band || !band.limit) return [];
+  let search = "all:\"Clemson University\"";
+  if(band.from || band.to){
+    const start = band.from ? arxivStamp(band.from) : "199108140000";
+    const end = band.to ? arxivStamp(band.to) : arxivStamp(utcDay(new Date()));
+    search += " AND submittedDate:[" + start + " TO " + end + "]";
+  }
+  const url = "https://export.arxiv.org/api/query?search_query=" + encodeURIComponent(search)
+    + "&sortBy=submittedDate&sortOrder=descending&max_results=" + band.limit;
   const xml = await fetchText(url, 8000);
   return parseAtomEntries(xml).filter(entry => {
     const blob = entry.title + " " + entry.summary + " " + entry.affiliations.join(" ") + " " + entry.authors.join(" ");
-    return /clemson/i.test(blob) && withinWindow(entry.published);
-  }).slice(0, 8).map(entry => ({
+    return /clemson/i.test(blob) && withinWindow(entry.published, band.from);
+  }).slice(0, band.limit).map(entry => ({
     title: clip(entry.title, 300),
     source_url: canonicalUrl(entry.link),
     authors: entry.authors.join(", "),
@@ -253,13 +371,15 @@ async function collectArxiv(){
   }));
 }
 
-export async function collectPublications(){
-  const jobs = [
-    ["Clemson News", collectNews],
-    ["PubMed", collectPubMed],
-    ["OpenAlex", collectOpenAlex],
-    ["arXiv", collectArxiv]
-  ];
+export async function collectPublications(options){
+  const plan = scanBands(options && options.windowId, options && options.now, { weekly: !!(options && options.weekly) });
+  const jobs = [["Clemson News", () => collectNews(plan.since, plan.newsLimit)]];
+  plan.bands.forEach((band, index) => {
+    const label = plan.bands.length > 1 ? (index === 0 ? " recent" : " older") : "";
+    jobs.push(["PubMed" + label, () => collectPubMed(band)]);
+    jobs.push(["OpenAlex" + label, () => collectOpenAlex(band)]);
+    jobs.push(["arXiv" + label, () => collectArxiv(Object.assign({}, band, { limit: index === 0 ? plan.arxivRecent : band.limit }))]);
+  });
   const settled = await Promise.all(jobs.map(async ([name, fn]) => {
     try {
       const items = await fn();
@@ -281,9 +401,20 @@ export async function collectPublications(){
       merged.push(item);
     });
   });
+  const sources = [];
+  settled.forEach(source => {
+    const name = source.name.replace(/ (recent|older)$/, "");
+    let row = sources.find(item => item.name === name);
+    if(!row){
+      row = { name, fetched: 0, error: null };
+      sources.push(row);
+    }
+    row.fetched += source.items.length;
+    if(source.error) row.error = row.error ? (row.error + "; " + source.error) : source.error;
+  });
   return {
-    items: merged.slice(0, 40),
-    sources: settled.map(source => ({ name: source.name, fetched: source.items.length, error: source.error }))
+    items: merged.slice(0, 80),
+    sources
   };
 }
 
@@ -333,22 +464,116 @@ async function fetchExistingUrls(supabaseUrl, supabaseKey){
   return new Set((Array.isArray(result.data) ? result.data : []).map(row => row.source_url).filter(Boolean));
 }
 
+function missingPublishedColumn(result){
+  const blob = (result.text || "") + (typeof result.data === "string" ? result.data : JSON.stringify(result.data || {}));
+  return blob.indexOf("published_on") !== -1;
+}
+
 async function storeFindings(supabaseUrl, supabaseKey, rows){
   if(rows.length === 0) return 0;
   let stored = 0;
+  let dropDate = false;
   for(let offset = 0; offset < rows.length; offset += 20){
-    const chunk = rows.slice(offset, offset + 20);
-    const result = await supabaseFetch(supabaseUrl, supabaseKey, FINDINGS, {
+    const chunk = rows.slice(offset, offset + 20).map(row => {
+      if(!dropDate) return row;
+      const copy = Object.assign({}, row);
+      delete copy.published_on;
+      return copy;
+    });
+    let result = await supabaseFetch(supabaseUrl, supabaseKey, FINDINGS, {
       method: "POST",
       headers: { "Prefer": "resolution=ignore-duplicates,return=representation" },
       body: JSON.stringify(chunk)
     });
+    if(!result.ok && missingPublishedColumn(result)){
+      dropDate = true;
+      const slim = chunk.map(row => {
+        const copy = Object.assign({}, row);
+        delete copy.published_on;
+        return copy;
+      });
+      result = await supabaseFetch(supabaseUrl, supabaseKey, FINDINGS, {
+        method: "POST",
+        headers: { "Prefer": "resolution=ignore-duplicates,return=representation" },
+        body: JSON.stringify(slim)
+      });
+    }
     if(!result.ok){
       throw { step: "supabase_store", status: result.status, detail: clip(result.text, 400), wrongKey: isRlsRejection(result) };
     }
     stored += Array.isArray(result.data) ? result.data.length : chunk.length;
   }
   return stored;
+}
+
+export async function lookupCrossrefDate(doi){
+  const id = extractDoi(doi);
+  if(!id) return null;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 4000);
+  try {
+    const res = await fetch("https://api.crossref.org/works/" + encodeURIComponent(id), {
+      signal: controller.signal,
+      headers: {
+        "User-Agent": "CURF-Docket/1.0 (https://curfpatentmachine.netlify.app)",
+        "Accept": "application/json"
+      }
+    });
+    if(!res.ok) return null;
+    const data = await res.json();
+    return earliestCrossrefDate(data && data.message);
+  } catch (err) {
+    log("crossref-failed", id + " " + (err && err.name === "AbortError" ? "timed out" : (err && err.message ? err.message : String(err))));
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function attachCrossrefDates(items, limit){
+  const queue = (items || []).filter(item => extractDoi(item.doi || item.source_url)).slice(0, limit || 40);
+  async function worker(){
+    while(queue.length){
+      const item = queue.shift();
+      const date = await lookupCrossrefDate(item.doi || item.source_url);
+      if(date) item.published_on = date;
+    }
+  }
+  const workers = Math.min(4, queue.length);
+  await Promise.all(Array.from({ length: workers }, worker));
+  (items || []).forEach(item => {
+    if(!item.published_on) item.published_on = fullCalendarDate(item.published);
+  });
+}
+
+async function fillMissingPublicationDates(supabaseUrl, supabaseKey, limit){
+  const result = await supabaseFetch(
+    supabaseUrl,
+    supabaseKey,
+    FINDINGS + "?select=id,source_url,summary&published_on=is.null&order=found_at.desc&limit=" + (limit || 40),
+    { method: "GET" }
+  );
+  if(!result.ok){
+    if(missingPublishedColumn(result)) return 0;
+    log("date-backfill-read", result.status + " " + result.text.slice(0, 180));
+    return 0;
+  }
+  const rows = Array.isArray(result.data) ? result.data : [];
+  let updated = 0;
+  for(const row of rows){
+    const doi = extractDoi(row.source_url) || extractDoi(row.summary);
+    if(!doi) continue;
+    const date = await lookupCrossrefDate(doi);
+    if(!date) continue;
+    const patched = await supabaseFetch(supabaseUrl, supabaseKey, FINDINGS + "?id=eq." + row.id, {
+      method: "PATCH",
+      headers: { "Prefer": "return=minimal" },
+      body: JSON.stringify({ published_on: date })
+    });
+    if(patched.ok) updated += 1;
+    else log("date-backfill-write", patched.status + " " + patched.text.slice(0, 180));
+  }
+  return updated;
 }
 
 function extractJsonObject(text){
@@ -509,10 +734,12 @@ async function finishRun(supabaseUrl, supabaseKey, id, fields){
   if(!result.ok) log("scan-log-update-failed", result.status + " " + result.text.slice(0, 240));
 }
 
-export async function runPublicationScan({ trigger, scoreLimit }){
+export async function runPublicationScan({ trigger, scoreLimit, windowId }){
   const anthropicKey = process.env.ANTHROPIC_API_KEY;
   const supabaseUrl = process.env.SUPABASE_URL;
   const supabaseKey = process.env.SUPABASE_SERVICE_KEY;
+  const window = normalizeScanWindow(windowId);
+  const weekly = trigger === "weekly";
   if(!supabaseUrl || !supabaseKey){
     log("abort", trigger + " missing SUPABASE_URL or SUPABASE_SERVICE_KEY");
     return { ok: false, error: "Supabase is not configured" };
@@ -522,13 +749,18 @@ export async function runPublicationScan({ trigger, scoreLimit }){
   try {
     await assertCanWrite(supabaseUrl, supabaseKey);
     runId = await startRun(supabaseUrl, supabaseKey, trigger);
-    const collected = await collectPublications();
+    const collected = await collectPublications({ windowId: window, weekly });
+    try {
+      await attachCrossrefDates(collected.items, weekly ? 8 : 40);
+    } catch (err) {
+      log("crossref-batch-failed", err && err.message ? err.message : String(err));
+    }
     const sourceErrors = collected.sources.filter(source => source.error);
     if(collected.items.length === 0 && sourceErrors.length === collected.sources.length){
       const error = "Every source failed. " + sourceErrors.map(source => source.name + ": " + source.error).join(" | ");
       await finishRun(supabaseUrl, supabaseKey, runId, {
         status: "error", found_count: 0, stored_count: 0, scored_count: 0,
-        error: clip(error, 500), detail: { sources: collected.sources }
+        error: clip(error, 500), detail: { sources: collected.sources, window }
       });
       return { ok: false, error };
     }
@@ -542,7 +774,8 @@ export async function runPublicationScan({ trigger, scoreLimit }){
       summary: clip((item.source_name ? item.source_name + ": " : "") + (item.summary || item.title), 900),
       commercial_relevance_score: "UNSCORED",
       commercial_rationale: "Collected from " + item.source_name + ". Relevance scoring has not run yet.",
-      alerted: false
+      alerted: false,
+      published_on: item.published_on || null
     }));
     const stored = await storeFindings(supabaseUrl, supabaseKey, rows);
 
@@ -567,6 +800,14 @@ export async function runPublicationScan({ trigger, scoreLimit }){
       log("alert-failed", alertError);
     }
 
+    if(!weekly){
+      try {
+        await fillMissingPublicationDates(supabaseUrl, supabaseKey, 40);
+      } catch (err) {
+        log("date-backfill-failed", err && err.message ? err.message : String(err));
+      }
+    }
+
     const error = [scoreError, alertError].filter(Boolean).join(" ");
     await finishRun(supabaseUrl, supabaseKey, runId, {
       status: error ? "partial" : "ok",
@@ -574,7 +815,7 @@ export async function runPublicationScan({ trigger, scoreLimit }){
       stored_count: stored,
       scored_count: scored,
       error: error || null,
-      detail: { sources: collected.sources }
+      detail: { sources: collected.sources, window }
     });
     log("done", trigger + " found " + collected.items.length + " stored " + stored + " scored " + scored);
     return { ok: true, found: collected.items.length, stored, scored, error: error || null };

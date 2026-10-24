@@ -74,9 +74,9 @@ If these aren't set, `/api/evaluated-patents` returns a normal response saying s
 
 The findings list needs `SUPABASE_URL` and `SUPABASE_SERVICE_KEY`. `SUPABASE_SERVICE_KEY` must be the service_role key. With the anon key, the page reports `configured: true` and an empty list, and every save is rejected by row level security. That is the same failure as evaluated patents. `ANTHROPIC_API_KEY` is used only to score relevance. Items are still stored when scoring fails.
 
-Run `supabase-setup.sql` on a new project. On the existing project, run `supabase-publication-scan.sql` as well. It creates `publication_scan_runs` (last scan time, status, counts, and error) and grants that table to `service_role` only. Do not expect a scan status line until that file has been run. No new environment variable is required.
+Run `supabase-setup.sql` on a new project. On the existing project, run `supabase-publication-scan.sql` as well. It creates `publication_scan_runs` (last scan time, status, counts, and error) and grants that table to `service_role` only. Do not expect a scan status line until that file has been run. Also run `supabase-publication-dates.sql`. It adds `published_on` to `publication_watch`. No new environment variable is required.
 
-The scan reads the Clemson news RSS feed, PubMed (affiliation Clemson), OpenAlex (Clemson University ROR `037s24f05`), and arXiv. It does not ask the model to discover publications, and it does not use web search.
+The scan reads the Clemson news RSS feed, PubMed (affiliation Clemson), OpenAlex (Clemson University ROR `037s24f05`), and arXiv. It does not ask the model to discover publications, and it does not use web search. The button defaults to the last year. The page can send `window` `2`, `5`, or `all`. The weekly run stays on the last year. When a paper has a DOI, the scan asks the Crossref works API for a full publication day and stores it in `published_on`. A year without a day is not stored.
 
 For actual email alerts on top of that:
 
@@ -88,7 +88,7 @@ For actual email alerts on top of that:
 
 An email only goes out for a finding scored HIGH that has not already been alerted. A later scan does not send a second email for the same row. If the email send fails, `alerted` stays false and a later scan tries again.
 
-The weekly automatic run (`weekly-publication-scan.js`) cannot be tested by visiting a URL. Use **Scan for new papers**, which calls `run-publication-scan-background.js`. Both runs use the same four sources. The weekly run has a 30 second limit and may leave new rows unscored. The button run scores a larger batch. Either way, stored rows show up even when scoring does not finish. The page shows the last run's time, counts, and error once `publication_scan_runs` exists.
+The weekly automatic run (`weekly-publication-scan.js`) cannot be tested by visiting a URL. Use **Scan for new papers**, which calls `run-publication-scan-background.js` with the range chosen on the page. Both runs use the same four sources. The weekly run has a 30 second limit, stays on the last year, and may leave new rows unscored. The button run scores a larger batch and can look further back. Either way, stored rows show up even when scoring does not finish. The page shows the last run's time, counts, range, and error once `publication_scan_runs` exists.
 
 **What this cannot do**: get behind Clemson library's paywalled journal subscriptions. It searches public web sources only, titles, abstracts, press releases, and anything already publicly indexed. That is a known, stated limitation, not an oversight, closing it would require a specific integration with Clemson's own library systems that does not exist here.
 
