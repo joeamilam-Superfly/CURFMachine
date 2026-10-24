@@ -45,7 +45,7 @@ Running **What already exists** on a case sends the disclosure text to Anthropic
 
 ## Publication Watch sends an internal CURF email address to a third party mail provider
 
-If email alerts are configured, the recipient address (`CURF_ALERT_EMAIL`) and the content of each alert, publication titles and summaries pulled from public sources, are sent through Resend to deliver the email. None of that content is Clemson's confidential IP. It is drawn from the Clemson news feed, PubMed, OpenAlex, and arXiv. The recipient address itself is still something to be deliberate about. Don't point this at a personal inbox or a list broader than intended without thinking it through the same way you would for any other institutional mailing. A paper scored High is emailed once. A later scan does not send a second email for the same row.
+If email alerts are configured, the recipient address (`CURF_ALERT_EMAIL`) and the content of each alert, publication titles and summaries pulled from public sources, are sent through Resend to deliver the email. None of that content is Clemson's confidential IP. It is drawn from the Clemson news feed, PubMed, OpenAlex, and arXiv. The recipient address itself is still something to be deliberate about. Don't point this at a personal inbox or a list broader than intended without thinking it through the same way you would for any other institutional mailing. A paper scored High is emailed once. A later scan does not send a second email for the same row. When a paper has a DOI, the scan also asks the Crossref API for that DOI's publication date. The request is the DOI only. The paper text is not sent.
 
 ## One question outside Anthropic's control entirely
 

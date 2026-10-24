@@ -16,7 +16,7 @@ Until a scan is saved, or if shared storage is off, the page shows the checked l
 
 The list only includes patents Clemson or CURF owns. It cannot find a patent owned by a company, even when a Clemson graduate or staff member is an inventor.
 
-On **Publications**, click **Scan for new papers**. That scan reads public Clemson sources: the Clemson news feed, PubMed, OpenAlex, and arXiv. It looks about 120 days back. It cannot open a paid journal article. Each paper gets a quick score: High, Moderate, Low, or Not scored. High means it looks more commercial. A weekly scan also runs. It has less time, so some new rows can stay Not scored until you click the button. A High paper is emailed once, when email is set up. Finding it again does not send a second email.
+On **Publications**, click **Scan for new papers**. The scan looks at the last year. To search older papers, choose **Last 2 years**, **Last 5 years**, or **All** before you click the button. A longer range adds a short list of older papers. It does not download every Clemson paper. The sources are the Clemson news feed, PubMed, OpenAlex, and arXiv. News and arXiv only show what those sites still list. PubMed and OpenAlex follow the range you pick. The scan cannot open a paid journal article. Each paper gets a quick score: High, Moderate, Low, or Not scored. High means it looks more commercial. If the paper has a DOI, the publication date is looked up and saved. A year alone is not saved as a full date. A weekly scan also runs, and it stays on the last year. It has less time, so some new rows can stay Not scored until you click the button. A High paper is emailed once, when email is set up. Finding it again does not send a second email.
 
 ### 2. Quick rank, and what the South Carolina fit score means
 
@@ -95,7 +95,7 @@ The bands are:
 
 The recommended next step is one of these: **File with CURF now**, **Look at a startup**, **Ask for early funding**, **Find a company partner**, **License the know-how**, or **Check back later**.
 
-The **filing clock** counts one year from the publication date. That is the US window people often use before a public paper makes a later US filing harder. The labels are:
+The **filing clock** counts one year from the publication date saved from the paper's DOI. That is the US window people often use before a public paper makes a later US filing harder. If the lookup does not return a full day, the clock stays unknown. The labels are:
 
 - **Not published yet**
 - **US filing window only. Other countries are likely closed.** This is the amber window, while days are still left in that year.
@@ -138,7 +138,9 @@ The Aug 29, 2026 list is `KNOWN_CLEMSON_PATENTS` inside `public/index.html`. It 
 
 The button sends `POST /api/run-publication-scan-background` (`run-publication-scan-background.js`, up to 15 minutes, `scoreLimit` 24). `GET /api/run-publication-scan` only lists saved findings. `weekly-publication-scan.js` is the scheduled run. It has no public URL, a 30 second limit, and a smaller scoring batch.
 
-The work lives in `netlify/lib/publication-watch-lib.js`. Findings go to `publication_watch`. Each run goes to `publication_scan_runs`. Sources are the Clemson news RSS feed, PubMed (affiliation Clemson), OpenAlex (Clemson ROR `037s24f05`), and arXiv. Crossref is not used. The window is 120 days.
+The work lives in `netlify/lib/publication-watch-lib.js`. Findings go to `publication_watch`. Each run goes to `publication_scan_runs`. Sources are the Clemson news RSS feed, PubMed (affiliation Clemson), OpenAlex (Clemson ROR `037s24f05`), and arXiv. Crossref is not used to find papers. When a row has a DOI, the scan calls `https://api.crossref.org/works/{doi}` and stores a full `YYYY-MM-DD` on `publication_watch.published_on` (`supabase-publication-dates.sql`). The date is the earliest full day among `published-online`, `published-print`, `published`, and `issued`. A year or a year-month is not stored. The deposit timestamp `created` is not used. If Crossref has no full day, a full day already returned by the source is kept.
+
+The button sends `POST /api/run-publication-scan-background` with `{ "window": "1" | "2" | "5" | "all" }`. Missing or unknown values use `1`. The default band is the last year. `2`, `5`, and `all` also request a short older band: the newest papers older than one year that still fall inside the chosen range. The weekly run always uses window `1` and does not request the older band. `runPublicationScan` stores `window` on `publication_scan_runs.detail`. A button run also fills `published_on` on older rows that are still blank.
 
 The quick commercial score uses `claude-haiku-5-5` with no web search. If scoring fails, the row is still stored as `UNSCORED`. A finding scored `HIGH` that has not been alerted is emailed through `send-email.js` when `RESEND_API_KEY` and `CURF_ALERT_EMAIL` are set. A later scan does not send a second email for that row.
 
@@ -188,7 +190,7 @@ Archive is a flag on the stored record. It hides the row from the active counts.
 
 Points, band, path, advice, and the filing flag are computed in `netlify/lib/venture-readiness.js`. The browser copy is `public/venture-readiness.js` (`window.CURF_VENTURE`). Regenerate that file from the library. Do not hand-edit the two copies apart. A point total returned by the AI is ignored. The stored shape is `evaluation.venture_readiness` with schema `publication-venture-v1`. The page recomputes the band, path, and filing flag from the stored evidence plus today's UTC date, so the one-year clock moves without a new review.
 
-The clock date is the publication date plus one year, in UTC. Days left at 0 or more is the amber label. Days left below 0 is the red label. No exact date, and not marked unpublished, is the unknown label. `publication_watch` has no published-date column. Do not invent a date from a year in a DOI.
+The clock date is the publication date plus one year, in UTC. Days left at 0 or more is the amber label. Days left below 0 is the red label. No exact date, and not marked unpublished, is the unknown label. Do not invent a day from a year in a DOI. A saved Crossref day is written onto `evaluation.venture_readiness.evidence.publication_date` when that field is empty, and `disclosure_state` moves from `unknown` to `published`. The page recomputes the flag from that date. It does not send the paper to the AI again.
 
 The scored paper is written to `evaluated_patents` through `/api/evaluated-patents`, the same table as patents. The scan row stays in `publication_watch`. `review-publications.js` exists at `/api/review-publications`. The page review flow calls `/api/evaluate-patent` with the three tasks above.
 

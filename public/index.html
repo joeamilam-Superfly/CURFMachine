@@ -666,9 +666,18 @@
         <div>
           <div class="eyebrow">Step 3</div>
           <h1>Publications</h1>
-          <p>Scan public Clemson research. Read the quick score. Then review only the rows you pick. The same paper is saved once. A review you already saved opens again. It is not sent back to the AI unless you click Re-review selected.</p>
+          <p>Scan public Clemson research from the last year. To look further back, choose Last 2 years, Last 5 years, or All, then click Scan for new papers. Read the quick score. Then review only the rows you pick. The same paper is saved once. A review you already saved opens again. It is not sent back to the AI unless you click Re-review selected.</p>
         </div>
-        <div>
+        <div style="display:flex; gap:8px; align-items:flex-end; flex-wrap:wrap;">
+          <div class="field" style="margin:0; min-width:190px;">
+            <label for="pub-scan-window">How far back</label>
+            <select id="pub-scan-window">
+              <option value="1" selected>Last 1 year (default)</option>
+              <option value="2">Last 2 years</option>
+              <option value="5">Last 5 years</option>
+              <option value="all">All</option>
+            </select>
+          </div>
           <button class="btn" id="btn-run-pubwatch-scan">Scan for new papers</button>
         </div>
       </div>
@@ -684,7 +693,7 @@
       </div>
 
       <div class="caveat-box" style="margin-bottom:20px;">
-        Sources are the Clemson news feed, PubMed, OpenAlex, and arXiv. The weekly scan has 30 seconds, so some rows may stay "Not scored". A closer review uses the saved title and summary only. It does not search again, and it cannot read paid journal text. Shared storage has to be on once, so review notes can be saved on the papers you already have.
+        The scan looks at the last year unless you choose an older range. Sources are the Clemson news feed, PubMed, OpenAlex, and arXiv. News and arXiv only show what those sites still list. PubMed and OpenAlex follow the range you pick. If a paper has a DOI, the publication date is looked up and saved. The weekly scan stays on the last year and has 30 seconds, so some rows may stay "Not scored". A closer review uses the saved title and summary only. It does not search again, and it cannot read paid journal text. Shared storage has to be on once, so review notes can be saved on the papers you already have.
       </div>
 
       <div class="panel" id="pubwatch-status-panel" style="display:none;">
@@ -735,7 +744,7 @@
         <div class="panel-body">
           <div class="bp-item">
             <div class="who"><span class="key-badge">1</span> Scan</div>
-            <div class="what">On Triage, click Scan for new patents. The scan looks in Google's public patent records and at the USPTO for US patents whose owner name contains Clemson. The same document from both places is one row. A patent application and the patent it later becomes stay separate. Before a scan is saved, the page shows the checked Aug 29, 2026 list. On Publications, click Scan for new papers. That scan reads the Clemson news feed, PubMed, OpenAlex, and arXiv. Each paper gets a quick score: High, Moderate, Low, or Not scored.</div>
+            <div class="what">On Triage, click Scan for new patents. The scan looks in Google's public patent records and at the USPTO for US patents whose owner name contains Clemson. The same document from both places is one row. A patent application and the patent it later becomes stay separate. Before a scan is saved, the page shows the checked Aug 29, 2026 list. On Publications, click Scan for new papers. That scan reads the last year of the Clemson news feed, PubMed, OpenAlex, and arXiv. Choose Last 2 years, Last 5 years, or All to search older papers. Each paper gets a quick score: High, Moderate, Low, or Not scored. If the paper has a DOI, the publication date is looked up and saved.</div>
           </div>
           <div class="bp-item">
             <div class="who"><span class="key-badge">2</span> Quick rank</div>
@@ -751,7 +760,7 @@
           </div>
           <div class="bp-item">
             <div class="who"><span class="key-badge">5</span> Papers</div>
-            <div class="what">A paper uses a Venture Readiness score from 0 to 100, not the patent score. 75 to 100 is ready to pursue. 55 to 74 is promising, but lower the risk first. 35 to 54 is early research. Below 35 is not ready to sell. The next step can be file with CURF, look at a startup, ask for early funding, find a company partner, license the know-how, or check back later. The filing clock is one year from the publication date. It is red when that year has passed, amber while the US window is still open, green before publication, and unknown when there is no exact date. A paper does not fail just because fewer than three buyers are named. This is not legal advice. Check with CURF or a patent lawyer.</div>
+            <div class="what">A paper uses a Venture Readiness score from 0 to 100, not the patent score. 75 to 100 is ready to pursue. 55 to 74 is promising, but lower the risk first. 35 to 54 is early research. Below 35 is not ready to sell. The next step can be file with CURF, look at a startup, ask for early funding, find a company partner, license the know-how, or check back later. The filing clock is one year from the publication date. That date is looked up from the paper's DOI when a full day is available. It is red when that year has passed, amber while the US window is still open, green before publication, and unknown when there is no exact date. A paper does not fail just because fewer than three buyers are named. This is not legal advice. Check with CURF or a patent lawyer.</div>
           </div>
           <div class="bp-item">
             <div class="who"><span class="key-badge">6</span> Tools</div>
@@ -813,7 +822,7 @@
           </div>
           <div class="bp-item">
             <div class="who">The paper scan uses public sources only</div>
-            <div class="what">A weekly scan, and a button you can click, look for new Clemson papers in public titles, summaries, and news. Each one gets a quick "is this commercial?" read. The scan cannot open paid journal articles. That would need the Clemson library, and that link is not built. A paper is saved once and emailed once. Finding it again does not send another email. The button can run for up to 15 minutes. The weekly scan has 30 seconds, so it runs a smaller search on purpose.</div>
+            <div class="what">A weekly scan, and a button you can click, look for Clemson papers in public titles, summaries, and news. The button starts with the last year. Choose Last 2 years, Last 5 years, or All to search further back. The weekly scan stays on the last year. Each paper gets a quick "is this commercial?" read. If the paper has a DOI, the publication date is looked up and saved, and the filing clock uses that date. A year or a month alone is not saved as a full date. The scan cannot open paid journal articles. That would need the Clemson library, and that link is not built. A paper is saved once and emailed once. Finding it again does not send another email. The button can run for up to 15 minutes. The weekly scan has 30 seconds, so it runs a smaller search on purpose.</div>
           </div>
         </div>
       </div>
@@ -1049,6 +1058,32 @@
 
   function isPortfolioPublication(p){
     return String((p && (p.recordType || p.portfolioKind)) || '').toLowerCase() === 'publication';
+  }
+
+  function isoPublicationDate(value){
+    return /^\d{4}-\d{2}-\d{2}$/.test(String(value || '')) ? String(value) : '';
+  }
+
+  function storedPublicationDate(record){
+    const evidence = record && record.evaluation && record.evaluation.venture_readiness && record.evaluation.venture_readiness.evidence;
+    return isoPublicationDate(evidence && evidence.publication_date) || isoPublicationDate(record && record.publicationDate);
+  }
+
+  function applyKnownPublicationDate(record, iso){
+    const date = isoPublicationDate(iso);
+    if(!record || !date || !isPortfolioPublication(record)) return false;
+    let changed = false;
+    if(!isoPublicationDate(record.publicationDate)){
+      record.publicationDate = date;
+      changed = true;
+    }
+    const evidence = record.evaluation && record.evaluation.venture_readiness && record.evaluation.venture_readiness.evidence;
+    if(evidence && !isoPublicationDate(evidence.publication_date)){
+      evidence.publication_date = date;
+      if(!evidence.disclosure_state || evidence.disclosure_state === 'unknown') evidence.disclosure_state = 'published';
+      changed = true;
+    }
+    return changed;
   }
 
   function portfolioRecordsForKind(kind){
@@ -1291,6 +1326,7 @@
           return;
         }
         if(applyPortfolioTimes(local, times.added, times.seen)) patentsChanged = true;
+        if(applyKnownPublicationDate(local, storedPublicationDate(r.record))) patentsChanged = true;
       });
       if(patentsChanged) savePatentRecordsToStorage();
 
@@ -2735,6 +2771,11 @@
       core.pilot_search_error = "Failed after " + elapsedMs + "ms: " + (err.message || 'Pilot target search failed');
       delete core.pilot_targets;
     }
+    const evidence = core.venture_readiness && core.venture_readiness.evidence;
+    if(evidence && /^\d{4}-\d{2}-\d{2}$/.test(String(patent.publicationDate || ''))){
+      evidence.publication_date = patent.publicationDate;
+      if(!evidence.disclosure_state || evidence.disclosure_state === 'unknown') evidence.disclosure_state = 'published';
+    }
     return core;
   }
 
@@ -3374,6 +3415,9 @@
       const whenText = when ? new Date(when).toLocaleString() : 'an unknown time';
       parts.push('Last scan (' + (scan.trigger || 'scan') + ') ' + (scan.status || 'unknown') + ' at ' + whenText + '.');
       parts.push('Found ' + (scan.found_count == null ? '—' : scan.found_count) + ', saved ' + (scan.stored_count == null ? '—' : scan.stored_count) + ', scored ' + (scan.scored_count == null ? '—' : scan.scored_count) + '.');
+      const windowId = scan.detail && scan.detail.window;
+      const windowText = windowId === '2' ? 'Last 2 years' : (windowId === '5' ? 'Last 5 years' : (windowId === 'all' ? 'All' : (windowId ? 'Last 1 year' : '')));
+      if(windowText) parts.push('Range: ' + windowText + '.');
       if(scan.error) parts.push(scan.error);
       const sources = scan.detail && scan.detail.sources;
       if(Array.isArray(sources) && sources.length){
@@ -3410,6 +3454,15 @@
       }
       showPublicationStatus(data);
       if(Array.isArray(data.findings)) publicationFindings = data.findings;
+      let datesAdded = false;
+      publicationFindings.forEach(finding => {
+        const record = portfolioRecordForSource(finding.source_url);
+        if(record && applyKnownPublicationDate(record, finding.published_on)){
+          datesAdded = true;
+          pushPatentRecordToRemote(record);
+        }
+      });
+      if(datesAdded) savePatentRecordsToStorage();
       renderPublicationWatchList(publicationFindings);
       return data;
     }catch(err){
@@ -3546,7 +3599,8 @@
             evaluation: null,
             error: null,
             sourcePatentId: url,
-            recordType: 'publication'
+            recordType: 'publication',
+            publicationDate: finding.published_on || null
           });
         }
         record.recordType = 'publication';
@@ -3679,13 +3733,20 @@
     }
 
     try{
-      const res = await fetch('/api/run-publication-scan-background', { method: 'POST' });
+      const windowEl = document.getElementById('pub-scan-window');
+      const windowValue = windowEl ? windowEl.value : '1';
+      const windowPhrase = windowValue === '2' ? 'the last 2 years' : (windowValue === '5' ? 'the last 5 years' : (windowValue === 'all' ? 'all years' : 'the last year'));
+      const res = await fetch('/api/run-publication-scan-background', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ window: windowValue })
+      });
       if(!res.ok && res.status !== 202){
         showPublicationStatus(null, 'Could not start the scan (status ' + res.status + ').');
         btn.disabled = false;
         return;
       }
-      showPublicationStatus(null, 'Scan started. Papers are saved as they are found, then scored. This page checks for an update.');
+      showPublicationStatus(null, 'Scan started for ' + windowPhrase + '. Papers are saved as they are found, then scored. This page checks for an update.');
       pollForNewFindings(countBefore, 24, 24, Date.now()).finally(() => { btn.disabled = false; });
     }catch(err){
       showPublicationStatus(null, 'Could not reach the scan: ' + (err.message || 'unknown error') + '. Use the hosted app.');
